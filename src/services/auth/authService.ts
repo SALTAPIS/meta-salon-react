@@ -1,6 +1,8 @@
 import { supabase } from '../../lib/supabase';
 import type { AuthError, AuthResponse } from '@supabase/supabase-js';
 
+const SITE_URL = import.meta.env.VITE_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://meta-salon-react.vercel.app');
+
 export class AuthService {
   private static instance: AuthService;
 
@@ -14,9 +16,7 @@ export class AuthService {
   }
 
   async signInWithEmail(email: string): Promise<AuthResponse> {
-    const redirectTo = typeof window !== 'undefined' 
-      ? `${window.location.origin}/auth/callback`
-      : '/auth/callback';
+    const redirectTo = `${SITE_URL}/auth/callback`;
 
     return await supabase.auth.signInWithOtp({
       email,
@@ -36,9 +36,7 @@ export class AuthService {
   async signUpWithPassword(email: string, password: string): Promise<AuthResponse> {
     try {
       console.log('Starting signup process for:', email);
-      const redirectTo = typeof window !== 'undefined' 
-        ? `${window.location.origin}/auth/callback`
-        : '/auth/callback';
+      const redirectTo = `${SITE_URL}/auth/callback`;
 
       const response = await supabase.auth.signUp({
         email,
