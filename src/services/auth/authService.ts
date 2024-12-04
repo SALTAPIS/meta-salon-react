@@ -14,10 +14,14 @@ export class AuthService {
   }
 
   async signInWithEmail(email: string): Promise<AuthResponse> {
+    const redirectTo = typeof window !== 'undefined' 
+      ? `${window.location.origin}/auth/callback`
+      : '/auth/callback';
+
     return await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: redirectTo,
       },
     });
   }
@@ -32,14 +36,18 @@ export class AuthService {
   async signUpWithPassword(email: string, password: string): Promise<AuthResponse> {
     try {
       console.log('Starting signup process for:', email);
+      const redirectTo = typeof window !== 'undefined' 
+        ? `${window.location.origin}/auth/callback`
+        : '/auth/callback';
+
       const response = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectTo,
           data: {
             role: 'user',
-            balance: 0
+            balance: 500 // Initial balance
           }
         }
       });

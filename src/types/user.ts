@@ -17,6 +17,7 @@ export interface Profile {
   role: UserRole;
   balance: number;
   wallet: string | null;
+  avatar_url: string | null;
   premium_until: string | null;
   created_at: string;
   updated_at: string;
@@ -29,4 +30,5 @@ export interface UserProfile {
   premiumUntil: string | null;
   role: UserRole;
   updatedAt: string;
+  avatar_url: string | null;
 } 

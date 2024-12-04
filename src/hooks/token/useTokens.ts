@@ -5,6 +5,7 @@ import type { Database } from '../../types/supabase';
 
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 type VotePack = Database['public']['Tables']['vote_packs']['Row'];
+type VotePackType = VotePack['type'];
 
 export function useTokens() {
   const { user } = useAuth();
@@ -92,7 +93,7 @@ export function useTokens() {
     };
   }, [user]);
 
-  const purchaseVotePack = async (type: string, amount: number) => {
+  const purchaseVotePack = async (type: VotePackType, amount: number) => {
     if (!user) throw new Error('User not authenticated');
 
     const { error } = await supabase.rpc('purchase_vote_pack', {

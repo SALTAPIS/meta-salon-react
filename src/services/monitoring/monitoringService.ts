@@ -1,6 +1,8 @@
 import { supabase } from '../../lib/supabase';
 import type { SystemHealth } from '../../types/monitoring/types';
 
+type MetricContext = Record<string, string | number | boolean | null>;
+
 export class MonitoringService {
   private static instance: MonitoringService;
 
@@ -11,21 +13,54 @@ export class MonitoringService {
     return MonitoringService.instance;
   }
 
-  async recordMetric(type: string, value: number, context?: Record<string, any>): Promise<string> {
-    const { data, error } = await supabase.rpc('record_metric', {
-      p_type: type,
-      p_value: value,
-      p_context: context,
-    });
+  async recordMetric(
+    type: string,
+    value: number,
+    context?: MetricContext
+  ): Promise<string> {
+    try {
+      const { data, error } = await supabase
+        .from('system_metrics')
+        .insert({
+          metric_type: type,
+          value: value,
+          metadata: context || {}
+        })
+        .select('id')
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data.id;
+    } catch (error) {
+      console.error('Error recording metric:', error);
+      throw error;
+    }
   }
 
   async getSystemHealth(): Promise<SystemHealth[]> {
-    const { data, error } = await supabase.rpc('get_system_health');
+    try {
+      const { data: dbHealth } = await supabase
+        .from('system_metrics')
+        .select('*')
+        .eq('metric_type', 'health')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
-    if (error) throw error;
-    return data;
+      return [{
+        component: 'database',
+        status: (dbHealth?.value ?? 0) > 0 ? 'healthy' : 'degraded',
+        last_check: dbHealth?.created_at || new Date().toISOString(),
+        details: dbHealth?.metadata || {}
+      }];
+    } catch (error) {
+      console.error('Error getting system health:', error);
+      return [{
+        component: 'database',
+        status: 'degraded',
+        last_check: new Date().toISOString(),
+        details: { error: 'Failed to fetch health metrics' }
+      }];
+    }
   }
 } 

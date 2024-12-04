@@ -9,25 +9,46 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        // Get the URL hash
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+
+        if (accessToken && refreshToken) {
+          // Set the session manually if tokens are in URL
+          const { data: { session }, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (error) throw error;
+          if (session) {
+            console.log('Session set successfully, redirecting to dashboard');
+            navigate('/dashboard', { replace: true });
+            return;
+          }
+        }
+
+        // Fallback to getting current session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error during auth callback:', error);
-          navigate('/auth/signin');
+          navigate('/auth/signin', { replace: true });
           return;
         }
 
         if (!session) {
           console.log('No session found in callback');
-          navigate('/auth/signin');
+          navigate('/auth/signin', { replace: true });
           return;
         }
 
         console.log('Session found, redirecting to dashboard');
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       } catch (error) {
         console.error('Unexpected error in auth callback:', error);
-        navigate('/auth/signin');
+        navigate('/auth/signin', { replace: true });
       }
     };
 

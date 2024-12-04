@@ -1,6 +1,5 @@
 import {
   Container,
-  SimpleGrid,
   Box,
   useColorModeValue,
   VStack,
