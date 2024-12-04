@@ -7,7 +7,6 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react';
-import { TokenBalance } from '../../components/token/TokenBalance';
 import { VotePacks } from '../../components/token/VotePacks';
 import { UserStats } from '../../components/profile/UserStats';
 import { useAuth } from '../../hooks/auth/useAuth';
@@ -51,17 +50,6 @@ const DashboardPage = () => {
             <UserStats userId={user.id} />
           </Box>
         </SimpleGrid>
-
-        <Box
-          p={6}
-          bg={bgColor}
-          borderWidth="1px"
-          borderColor={borderColor}
-          borderRadius="lg"
-          shadow="sm"
-        >
-          <TokenBalance userId={user.id} />
-        </Box>
 
         <Box
           p={6}
