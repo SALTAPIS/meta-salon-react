@@ -52,6 +52,10 @@ create policy "Users can update their own profile"
 on public.profiles for update
 using (auth.uid() = id);
 
+create policy "System can create profiles"
+on public.profiles for insert
+with check (true);
+
 create policy "Users can view their own transactions"
 on public.transactions for select
 using (auth.uid() = user_id);

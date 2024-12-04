@@ -35,11 +35,10 @@ export interface AlertHistory {
 }
 
 export interface SystemHealth {
-  metric_type: MetricType;
-  current_value: number;
-  alert_count: number;
-  last_alert_severity?: AlertSeverity;
-  last_alert_time?: string;
+  component: string;
+  status: 'healthy' | 'degraded' | 'down';
+  last_check: string;
+  details?: Record<string, any>;
 }
 
 export interface MonitoringState {

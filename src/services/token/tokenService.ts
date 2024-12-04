@@ -7,7 +7,7 @@ type VotePackType = Database['public']['Tables']['vote_packs']['Row']['type'];
 export class TokenService {
   private static instance: TokenService;
 
-  private constructor() {}
+  protected constructor() {}
 
   public static getInstance(): TokenService {
     if (!TokenService.instance) {

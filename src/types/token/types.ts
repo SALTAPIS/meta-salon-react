@@ -1,4 +1,4 @@
-export type TransactionType = 'grant' | 'submission' | 'votePack' | 'premium' | 'challenge' | 'reward';
+export type TransactionType = 'grant' | 'submission' | 'vote_pack' | 'reward' | 'premium' | 'refund';
 export type TransactionStatus = 'pending' | 'completed' | 'failed';
 
 export interface Transaction {
@@ -31,4 +31,6 @@ export interface TokenMetrics {
   totalSupply: number;
   circulatingSupply: number;
   marketFeePercentage: number; // 2.18%
-} 
+}
+
+export type VotePackType = 'basic' | 'art_lover' | 'pro' | 'expert' | 'elite'; 

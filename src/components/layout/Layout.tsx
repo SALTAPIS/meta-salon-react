@@ -1,4 +1,3 @@
-import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Box, Container } from '@chakra-ui/react';
 import { Header } from '../navigation/Header';

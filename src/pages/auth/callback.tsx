@@ -8,12 +8,26 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      const { error } = await supabase.auth.getSession();
-      if (error) {
-        console.error('Error during auth callback:', error);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error during auth callback:', error);
+          navigate('/auth/signin');
+          return;
+        }
+
+        if (!session) {
+          console.log('No session found in callback');
+          navigate('/auth/signin');
+          return;
+        }
+
+        console.log('Session found, redirecting to dashboard');
+        navigate('/dashboard');
+      } catch (error) {
+        console.error('Unexpected error in auth callback:', error);
         navigate('/auth/signin');
-      } else {
-        navigate('/game');
       }
     };
 

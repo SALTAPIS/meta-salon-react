@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -18,28 +18,20 @@ import {
   IconButton,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
-import { useAuth } from '../../components/auth/AuthProvider';
+import { useAuth } from '../../hooks/auth/useAuth';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const navigate = useNavigate();
   const toast = useToast();
-  const { signUpWithPassword, user } = useAuth();
+  const { signUpWithPassword } = useAuth();
 
   const bg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const textColor = useColorModeValue('gray.800', 'white');
   const secondaryTextColor = useColorModeValue('gray.600', 'gray.400');
-
-  // Redirect if user is already logged in
-  useEffect(() => {
-    if (user) {
-      navigate('/game', { replace: true });
-    }
-  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +79,7 @@ export default function SignUpPage() {
           duration: 5000,
           isClosable: true,
         });
-        // Navigation will happen automatically via the useEffect
+        // Navigation will be handled by AuthProvider
       } else {
         console.log('Signup successful, email confirmation required');
         toast({
@@ -97,7 +89,7 @@ export default function SignUpPage() {
           duration: 5000,
           isClosable: true,
         });
-        navigate('/auth/signin', { replace: true });
+        window.location.href = '/auth/signin';
       }
     } catch (error) {
       console.error('Sign up error:', error);
@@ -118,7 +110,6 @@ export default function SignUpPage() {
         duration: 5000,
         isClosable: true,
       });
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -173,6 +164,7 @@ export default function SignUpPage() {
                 size="lg"
                 width="full"
                 isLoading={isSubmitting}
+                loadingText="Creating Account..."
               >
                 Create Account
               </Button>

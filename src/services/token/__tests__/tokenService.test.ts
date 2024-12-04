@@ -1,93 +1,103 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { supabase } from '../../../lib/supabase';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TokenService } from '../tokenService';
+import { supabase } from '../../../lib/supabase';
+
+// Mock the Supabase client
+vi.mock('../../../lib/supabase', () => ({
+  supabase: {
+    from: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(),
+      insert: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockReturnThis(),
+    })),
+    rpc: vi.fn(),
+  },
+}));
 
 describe('TokenService', () => {
   let tokenService: TokenService;
 
   beforeEach(() => {
-    tokenService = new TokenService();
     vi.clearAllMocks();
+    tokenService = TokenService.getInstance();
   });
 
   describe('processTransaction', () => {
-    it('should process a valid transaction', async () => {
-      const mockTransaction = {
-        user_id: 'test-user',
-        type: 'grant',
-        amount: 100,
-        description: 'Test grant'
-      };
-
-      vi.spyOn(supabase.rpc, 'process_transaction').mockResolvedValueOnce({
-        data: 'transaction-id',
-        error: null
+    it('should process a transaction successfully', async () => {
+      const mockTransactionId = 'transaction-id';
+      const mockRpc = vi.fn().mockResolvedValueOnce({
+        data: mockTransactionId,
+        error: null,
       });
+      (supabase.rpc as any) = mockRpc;
 
       const result = await tokenService.processTransaction(
-        mockTransaction.user_id,
-        mockTransaction.type as any,
-        mockTransaction.amount,
-        mockTransaction.description
+        'user-id',
+        'grant',
+        100,
+        'Test transaction'
       );
 
-      expect(result).toBe('transaction-id');
-      expect(supabase.rpc.process_transaction).toHaveBeenCalledWith({
-        p_user_id: mockTransaction.user_id,
-        p_type: mockTransaction.type,
-        p_amount: mockTransaction.amount,
-        p_description: mockTransaction.description
+      expect(result).toBe(mockTransactionId);
+      expect(mockRpc).toHaveBeenCalledWith('process_transaction', {
+        p_user_id: 'user-id',
+        p_type: 'grant',
+        p_amount: 100,
+        p_description: 'Test transaction',
+        p_reference_id: undefined,
       });
     });
 
-    it('should throw error for invalid transaction', async () => {
-      vi.spyOn(supabase.rpc, 'process_transaction').mockResolvedValueOnce({
+    it('should throw an error when transaction fails', async () => {
+      const mockError = new Error('Invalid transaction');
+      const mockRpc = vi.fn().mockResolvedValueOnce({
         data: null,
-        error: new Error('Invalid transaction')
+        error: mockError,
       });
+      (supabase.rpc as any) = mockRpc;
 
       await expect(
-        tokenService.processTransaction('user-id', 'grant', -100)
-      ).rejects.toThrow('Invalid transaction');
+        tokenService.processTransaction('user-id', 'grant', 100)
+      ).rejects.toThrow(mockError);
     });
   });
 
   describe('purchaseVotePack', () => {
     it('should purchase a vote pack successfully', async () => {
-      const mockPurchase = {
-        user_id: 'test-user',
-        type: 'basic',
-        amount: 10
-      };
-
-      vi.spyOn(supabase.rpc, 'purchase_vote_pack').mockResolvedValueOnce({
-        data: 'vote-pack-id',
-        error: null
+      const mockVotePackId = 'vote-pack-id';
+      const mockRpc = vi.fn().mockResolvedValueOnce({
+        data: mockVotePackId,
+        error: null,
       });
+      (supabase.rpc as any) = mockRpc;
 
       const result = await tokenService.purchaseVotePack(
-        mockPurchase.user_id,
-        mockPurchase.type as any,
-        mockPurchase.amount
+        'user-id',
+        'basic',
+        100
       );
 
-      expect(result).toBe('vote-pack-id');
-      expect(supabase.rpc.purchase_vote_pack).toHaveBeenCalledWith({
-        p_user_id: mockPurchase.user_id,
-        p_type: mockPurchase.type,
-        p_amount: mockPurchase.amount
+      expect(result).toBe(mockVotePackId);
+      expect(mockRpc).toHaveBeenCalledWith('purchase_vote_pack', {
+        p_user_id: 'user-id',
+        p_type: 'basic',
+        p_amount: 100,
       });
     });
 
-    it('should throw error for invalid purchase', async () => {
-      vi.spyOn(supabase.rpc, 'purchase_vote_pack').mockResolvedValueOnce({
+    it('should throw an error when purchase fails', async () => {
+      const mockError = new Error('Insufficient balance');
+      const mockRpc = vi.fn().mockResolvedValueOnce({
         data: null,
-        error: new Error('Insufficient balance')
+        error: mockError,
       });
+      (supabase.rpc as any) = mockRpc;
 
       await expect(
-        tokenService.purchaseVotePack('user-id', 'basic', 1000)
-      ).rejects.toThrow('Insufficient balance');
+        tokenService.purchaseVotePack('user-id', 'basic', 100)
+      ).rejects.toThrow(mockError);
     });
   });
 }); 

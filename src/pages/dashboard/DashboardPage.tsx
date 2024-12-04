@@ -1,70 +1,69 @@
-import React from 'react';
 import {
   Container,
-  Heading,
   SimpleGrid,
   Box,
+  Heading,
   Text,
-  VStack,
-  Stat,
-  StatLabel,
-  StatNumber,
-  Divider,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { useAuth } from '../../components/auth/AuthProvider';
 import { TokenBalance } from '../../components/token/TokenBalance';
 import { VotePacks } from '../../components/token/VotePacks';
+import { useAuth } from '../../hooks/auth/useAuth';
 
-export default function DashboardPage() {
+const DashboardPage = () => {
   const { user } = useAuth();
+  const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
-  console.log('DashboardPage render:', { user });
+  if (!user?.id) return null;
 
   return (
-    <Container maxW="container.xl" py={8}>
-      <VStack spacing={8} align="stretch">
-        <Box>
-          <Heading as="h1" size="xl" mb={2}>Dashboard</Heading>
-          <Text color="gray.600">
-            Welcome back{user?.email ? `, ${user.email}` : ''}
+    <Container maxW="7xl" py={8}>
+      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8}>
+        <Box
+          p={6}
+          bg={bgColor}
+          borderWidth="1px"
+          borderColor={borderColor}
+          borderRadius="lg"
+          shadow="sm"
+        >
+          <Heading size="md" mb={4}>
+            Welcome Back
+          </Heading>
+          <Text color="gray.500">
+            Your art journey continues here. Vote on artworks, earn tokens, and
+            join the community.
           </Text>
         </Box>
-        
-        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-          <Box p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
-            <Stat>
-              <StatLabel>Your Artworks</StatLabel>
-              <StatNumber>0</StatNumber>
-            </Stat>
-          </Box>
-          
-          <Box p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
-            <Stat>
-              <StatLabel>Total Votes</StatLabel>
-              <StatNumber>0</StatNumber>
-            </Stat>
-          </Box>
-          
-          <Box p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
-            <Stat>
-              <StatLabel>Current Rank</StatLabel>
-              <StatNumber>-</StatNumber>
-            </Stat>
-          </Box>
-        </SimpleGrid>
 
-        <Divider />
-
-        <Box>
-          <Heading as="h2" size="lg" mb={6}>Tokens & Voting</Heading>
-          <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={8}>
-            <TokenBalance />
-            <VotePacks />
-          </SimpleGrid>
+        <Box
+          p={6}
+          bg={bgColor}
+          borderWidth="1px"
+          borderColor={borderColor}
+          borderRadius="lg"
+          shadow="sm"
+        >
+          <Heading size="md" mb={4}>
+            Quick Stats
+          </Heading>
+          <Text color="gray.500">
+            Track your token balance and voting power.
+          </Text>
         </Box>
-      </VStack>
+      </SimpleGrid>
+
+      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8} mt={8}>
+        <Box>
+          <TokenBalance userId={user.id} />
+        </Box>
+        <Box>
+          <VotePacks userId={user.id} />
+        </Box>
+      </SimpleGrid>
     </Container>
   );
-} 
+};
+
+export default DashboardPage; 

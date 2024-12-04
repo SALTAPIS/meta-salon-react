@@ -1,27 +1,24 @@
-import React from 'react';
+import {
+  Button,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  MenuDivider,
+  Avatar,
+  Text,
+  HStack,
+  Box,
+  useColorModeValue,
+} from '@chakra-ui/react';
+import { ChevronDownIcon } from '@chakra-ui/icons';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider';
-import { Box, Stack, Link, Text, Button, Icon, VStack, Spacer } from '@chakra-ui/react';
-import type { UserRole } from '../../types/user';
-import { MdLogout } from 'react-icons/md';
-
-interface NavItem {
-  label: string;
-  href: string;
-  roles?: UserRole[];
-}
-
-const navItems: NavItem[] = [
-  { label: 'Profile', href: '/profile' },
-  { label: 'Challenges', href: '/challenges', roles: ['member', 'admin'] },
-  { label: 'Create Challenge', href: '/challenges/create', roles: ['member', 'admin'] },
-  { label: 'Monitoring', href: '/admin/monitoring', roles: ['admin'] },
-  { label: 'Challenge Management', href: '/admin/challenges', roles: ['admin'] },
-];
+import { useAuth } from '../../hooks/auth/useAuth';
 
 export function NavMenu() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const menuBg = useColorModeValue('white', 'gray.800');
 
   const handleSignOut = async () => {
     try {
@@ -32,47 +29,64 @@ export function NavMenu() {
     }
   };
 
-  return (
-    <VStack h="full" py={4} spacing={4}>
-      <Box as="nav" w="full">
-        <Stack spacing={2}>
-          {navItems.map((item) => {
-            if (item.roles && (!user?.role || !item.roles.includes(user.role as UserRole))) {
-              return null;
-            }
-
-            return (
-              <Link
-                key={item.href}
-                as={RouterLink}
-                to={item.href}
-                p={2}
-                rounded="md"
-                _hover={{
-                  bg: 'gray.100',
-                }}
-              >
-                <Text>{item.label}</Text>
-              </Link>
-            );
-          })}
-        </Stack>
-      </Box>
-      
-      <Spacer />
-      
-      <Box w="full" px={2}>
+  if (!user) {
+    return (
+      <HStack spacing={4}>
         <Button
-          w="full"
+          as={RouterLink}
+          to="/auth/signin"
           variant="ghost"
-          colorScheme="gray"
-          justifyContent="flex-start"
-          leftIcon={<Icon as={MdLogout} />}
-          onClick={handleSignOut}
+          size="sm"
         >
-          Sign Out
+          Sign In
         </Button>
-      </Box>
-    </VStack>
+        <Button
+          as={RouterLink}
+          to="/auth/signup"
+          colorScheme="blue"
+          size="sm"
+        >
+          Sign Up
+        </Button>
+      </HStack>
+    );
+  }
+
+  return (
+    <Menu>
+      <MenuButton
+        as={Button}
+        variant="ghost"
+        rightIcon={<ChevronDownIcon />}
+      >
+        <HStack spacing={2}>
+          <Avatar 
+            size="sm" 
+            name={user.email} 
+            src={user.avatar_url || undefined} 
+          />
+          <Box display={{ base: 'none', md: 'block' }}>
+            <Text fontSize="sm" fontWeight="medium">
+              {user.email}
+            </Text>
+          </Box>
+        </HStack>
+      </MenuButton>
+      <MenuList bg={menuBg}>
+        <MenuItem as={RouterLink} to="/dashboard">
+          Dashboard
+        </MenuItem>
+        <MenuItem as={RouterLink} to="/profile">
+          Profile
+        </MenuItem>
+        <MenuItem as={RouterLink} to="/tokens">
+          Tokens
+        </MenuItem>
+        <MenuDivider />
+        <MenuItem onClick={handleSignOut}>
+          Sign Out
+        </MenuItem>
+      </MenuList>
+    </Menu>
   );
 } 

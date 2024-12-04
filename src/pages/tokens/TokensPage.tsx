@@ -1,29 +1,36 @@
-import React from 'react';
 import {
   Container,
-  Grid,
-  GridItem,
+  SimpleGrid,
+  Box,
+  Heading,
+  Text,
 } from '@chakra-ui/react';
 import { TokenBalance } from '../../components/token/TokenBalance';
 import { VotePacks } from '../../components/token/VotePacks';
-import { ProtectedRoute } from '../../components/auth/ProtectedRoute';
+import { useAuth } from '../../hooks/auth/useAuth';
 
 export default function TokensPage() {
+  const { user } = useAuth();
+
+  if (!user?.id) return null;
+
   return (
-    <ProtectedRoute>
-      <Container maxW="container.xl" py={8}>
-        <Grid
-          templateColumns={{ base: '1fr', lg: 'repeat(2, 1fr)' }}
-          gap={8}
-        >
-          <GridItem>
-            <TokenBalance />
-          </GridItem>
-          <GridItem>
-            <VotePacks />
-          </GridItem>
-        </Grid>
-      </Container>
-    </ProtectedRoute>
+    <Container maxW="7xl" py={8}>
+      <Box mb={8}>
+        <Heading size="lg">Tokens & Vote Packs</Heading>
+        <Text color="gray.500" mt={2}>
+          Manage your tokens and purchase vote packs to participate in artwork voting.
+        </Text>
+      </Box>
+
+      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8}>
+        <Box>
+          <TokenBalance userId={user.id} />
+        </Box>
+        <Box>
+          <VotePacks userId={user.id} />
+        </Box>
+      </SimpleGrid>
+    </Container>
   );
 } 

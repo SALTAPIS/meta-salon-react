@@ -1,115 +1,58 @@
-import { createBrowserRouter, Navigate, isRouteErrorResponse, useRouteError } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { Center, Heading, Text, Button } from '@chakra-ui/react';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
-import { lazy, Suspense } from 'react';
-import { Center, Spinner, Box, Heading, Text, Button } from '@chakra-ui/react';
-
-// Lazy load pages
-const SignInPage = lazy(() => import('./pages/auth/SignInPage'));
-const SignUpPage = lazy(() => import('./pages/auth/SignUpPage'));
-const GamePage = lazy(() => import('./pages/game/GamePage'));
-const ClassementPage = lazy(() => import('./pages/classement/ClassementPage'));
-const ArtworksPage = lazy(() => import('./pages/artworks/ArtworksPage'));
-const SubmitArtPage = lazy(() => import('./pages/submit/SubmitArtPage'));
-const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
-const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
-const UnauthorizedPage = lazy(() => import('./pages/auth/unauthorized'));
-
-const LoadingFallback = () => (
-  <Center h="100vh">
-    <Spinner size="xl" />
-  </Center>
-);
-
-function ErrorBoundary() {
-  const error = useRouteError();
-  
-  if (isRouteErrorResponse(error)) {
-    return (
-      <Center h="100vh" flexDirection="column" gap={4}>
-        <Heading>
-          {error.status} {error.statusText}
-        </Heading>
-        <Text>Sorry, the page you're looking for doesn't exist.</Text>
-        <Button as="a" href="/" colorScheme="blue">
-          Go Home
-        </Button>
-      </Center>
-    );
-  }
-
-  return (
-    <Center h="100vh" flexDirection="column" gap={4}>
-      <Heading>Oops!</Heading>
-      <Text>Sorry, an unexpected error has occurred.</Text>
-      <Button as="a" href="/" colorScheme="blue">
-        Go Home
-      </Button>
-    </Center>
-  );
-}
+import SignInPage from './pages/auth/SignInPage';
+import SignUpPage from './pages/auth/SignUpPage';
+import DashboardPage from './pages/dashboard/DashboardPage';
+import ProfilePage from './pages/profile/ProfilePage';
+import TokensPage from './pages/tokens/TokensPage';
+import UnauthorizedPage from './pages/auth/unauthorized';
+import GamePage from './pages/game/GamePage';
+import ArtworksPage from './pages/artworks/ArtworksPage';
+import ClassementPage from './pages/classement/ClassementPage';
+import SubmitArtPage from './pages/submit/SubmitArtPage';
 
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <Layout />,
-    errorElement: <ErrorBoundary />,
+    errorElement: (
+      <Center h="100vh" flexDirection="column" gap={4}>
+        <Heading>Oops!</Heading>
+        <Text>Something went wrong.</Text>
+        <Button as="a" href="/" colorScheme="blue">
+          Go Home
+        </Button>
+      </Center>
+    ),
     children: [
       {
-        path: 'auth/signin',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <SignInPage />
-          </Suspense>
-        ),
+        index: true,
+        element: <Navigate to="/dashboard" replace />,
       },
       {
-        path: 'auth/signup',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <SignUpPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'game',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <GamePage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'classement',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <ClassementPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'artworks',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <ArtworksPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'submit',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <SubmitArtPage />
-          </Suspense>
-        ),
+        path: 'auth',
+        children: [
+          {
+            path: 'signin',
+            element: <SignInPage />,
+          },
+          {
+            path: 'signup',
+            element: <SignUpPage />,
+          },
+          {
+            path: 'unauthorized',
+            element: <UnauthorizedPage />,
+          },
+        ],
       },
       {
         path: 'dashboard',
         element: (
           <ProtectedRoute>
-            <Suspense fallback={<LoadingFallback />}>
-              <DashboardPage />
-            </Suspense>
+            <DashboardPage />
           </ProtectedRoute>
         ),
       },
@@ -117,32 +60,38 @@ export const router = createBrowserRouter([
         path: 'profile',
         element: (
           <ProtectedRoute>
-            <Suspense fallback={<LoadingFallback />}>
-              <ProfilePage />
-            </Suspense>
+            <ProfilePage />
           </ProtectedRoute>
         ),
       },
       {
-        path: 'unauthorized',
+        path: 'tokens',
         element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <UnauthorizedPage />
-          </Suspense>
+          <ProtectedRoute>
+            <TokensPage />
+          </ProtectedRoute>
         ),
       },
       {
-        index: true,
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <GamePage />
-          </Suspense>
-        ),
+        path: 'game',
+        element: <GamePage />,
       },
       {
-        path: '*',
-        element: <Navigate to="/" replace />
-      }
+        path: 'artworks',
+        element: <ArtworksPage />,
+      },
+      {
+        path: 'classement',
+        element: <ClassementPage />,
+      },
+      {
+        path: 'submit',
+        element: (
+          <ProtectedRoute>
+            <SubmitArtPage />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
 ]); 

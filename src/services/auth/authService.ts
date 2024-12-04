@@ -51,77 +51,9 @@ export class AuthService {
 
       if (response.data.user) {
         console.log('User created successfully:', response.data.user.id);
-        
-        // Try to create profile with retries
-        let profileCreated = false;
-        let retryCount = 0;
-        
-        while (!profileCreated && retryCount < 3) {
-          try {
-            console.log(`Attempting to create profile (attempt ${retryCount + 1}/3)...`);
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .upsert([
-                {
-                  id: response.data.user.id,
-                  email: response.data.user.email,
-                  role: 'user',
-                  balance: 0,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                }
-              ], { 
-                onConflict: 'id',
-                ignoreDuplicates: false 
-              });
-
-            if (profileError) {
-              console.error('Profile creation error:', {
-                code: profileError.code,
-                message: profileError.message,
-                details: profileError.details,
-                hint: profileError.hint
-              });
-              
-              if (profileError.code === 'PGRST301') {
-                console.error('Database permission denied - check RLS policies');
-                break; // Don't retry on permission errors
-              }
-              
-              throw profileError;
-            }
-
-            // Verify profile was created
-            const { data: verifyProfile, error: verifyError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', response.data.user.id)
-              .single();
-
-            if (verifyError) {
-              console.error('Profile verification failed:', verifyError);
-              throw verifyError;
-            }
-
-            if (verifyProfile) {
-              console.log('Profile created and verified:', verifyProfile);
-              profileCreated = true;
-            } else {
-              throw new Error('Profile verification returned no data');
-            }
-          } catch (error) {
-            console.error(`Profile creation attempt ${retryCount + 1} failed:`, error);
-            retryCount++;
-            if (retryCount < 3) {
-              console.log('Waiting 2s before retry...');
-              await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-          }
-        }
-
-        if (!profileCreated) {
-          console.warn('Failed to create profile after all retries');
-        }
+        // The database trigger will handle profile creation
+        // Wait a moment for the trigger to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       return response;
