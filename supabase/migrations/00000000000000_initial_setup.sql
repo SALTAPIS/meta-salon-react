@@ -1,18 +1,40 @@
 -- Enable necessary extensions
 create extension if not exists "uuid-ossp";
 
--- Create tables
+-- Create profiles table
 create table if not exists public.profiles (
     id uuid references auth.users on delete cascade primary key,
-    email text unique not null,
-    role text not null default 'guest' check (role in ('guest', 'user', 'member', 'moderator', 'admin')),
-    wallet text unique,
-    balance numeric(10,2) not null default 0,
+    email text,
+    role text default 'user' check (role in ('user', 'member', 'moderator', 'admin')),
+    balance numeric(10,2) default 0 not null,
     premium_until timestamp with time zone,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Create transactions table
+create table if not exists public.transactions (
+    id uuid default uuid_generate_v4() primary key,
+    user_id uuid references auth.users on delete cascade not null,
+    type text not null check (type in ('grant', 'submission', 'vote_pack', 'reward', 'premium', 'refund')),
+    amount numeric(10,2) not null,
+    description text,
+    reference_id uuid,
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Create vote packs table
+create table if not exists public.vote_packs (
+    id uuid default uuid_generate_v4() primary key,
+    user_id uuid references auth.users on delete cascade not null,
+    type text not null check (type in ('basic', 'art_lover', 'pro', 'expert', 'elite')),
+    votes_remaining integer not null check (votes_remaining >= 0),
+    vote_power integer not null check (vote_power > 0),
+    expires_at timestamp with time zone,
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Create challenges table
 create table if not exists public.challenges (
     id uuid default uuid_generate_v4() primary key,
     title text not null,
@@ -26,11 +48,27 @@ create table if not exists public.challenges (
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Create entries table
+create table if not exists public.entries (
+    id uuid default uuid_generate_v4() primary key,
+    user_id uuid references public.profiles(id) on delete cascade not null,
+    challenge_id uuid references public.challenges(id) on delete cascade not null,
+    title text not null,
+    description text,
+    image_url text not null,
+    status text not null default 'submitted' check (status in ('submitted', 'approved', 'rejected')),
+    votes_count integer not null default 0,
+    total_power integer not null default 0,
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+    updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Create votes table
 create table if not exists public.votes (
     id uuid default uuid_generate_v4() primary key,
     user_id uuid references public.profiles(id) on delete cascade not null,
     challenge_id uuid references public.challenges(id) on delete cascade not null,
-    entry_id uuid not null, -- Will be linked to entries table later
+    entry_id uuid references public.entries(id) on delete cascade not null,
     power integer not null check (power > 0),
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -57,6 +95,9 @@ group by p.id;
 alter table public.profiles enable row level security;
 alter table public.challenges enable row level security;
 alter table public.votes enable row level security;
+alter table public.entries enable row level security;
+alter table public.transactions enable row level security;
+alter table public.vote_packs enable row level security;
 
 -- Profiles policies
 create policy "Public profiles are viewable by everyone"
@@ -76,7 +117,7 @@ using (true);
 create policy "Only admins can create challenges"
 on public.challenges for insert
 to authenticated
-using (exists (
+with check (exists (
     select 1 from public.profiles
     where id = auth.uid()
     and role = 'admin'
@@ -91,6 +132,20 @@ using (exists (
     and role = 'admin'
 ));
 
+-- Entries policies
+create policy "Entries are viewable by everyone"
+on public.entries for select
+using (true);
+
+create policy "Users can create entries"
+on public.entries for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "Users can update own entries"
+on public.entries for update
+using (auth.uid() = user_id);
+
 -- Votes policies
 create policy "Votes are viewable by everyone"
 on public.votes for select
@@ -99,7 +154,7 @@ using (true);
 create policy "Authenticated users can create votes"
 on public.votes for insert
 to authenticated
-using (
+with check (
     auth.uid() = user_id
     and exists (
         select 1 from public.challenges c
@@ -111,6 +166,24 @@ using (
 create policy "Users cannot update votes"
 on public.votes for update
 using (false);
+
+-- Transaction policies
+create policy "Users can view their own transactions"
+on public.transactions for select
+using (auth.uid() = user_id);
+
+create policy "System can create transactions"
+on public.transactions for insert
+with check (true);
+
+-- Vote packs policies
+create policy "Users can view their own vote packs"
+on public.vote_packs for select
+using (auth.uid() = user_id);
+
+create policy "System can manage vote packs"
+on public.vote_packs for all
+using (true);
 
 -- Functions
 create or replace function public.get_user_stats(user_id uuid)
@@ -124,4 +197,49 @@ as $$
     select total_submissions, total_votes, total_rewards, last_activity
     from public.user_stats
     where user_id = $1;
-$$ language sql; 
+$$ language sql;
+
+-- Function to handle new user setup
+create or replace function public.handle_new_user()
+returns trigger
+security definer
+as $$
+begin
+    -- Create profile first
+    insert into public.profiles (id, email)
+    values (new.id, new.email);
+
+    -- Grant initial tokens (500 SLN = $5.00)
+    insert into public.transactions (user_id, type, amount, description)
+    values (new.id, 'grant', 500, 'Initial token grant');
+
+    update public.profiles
+    set balance = balance + 500
+    where id = new.id;
+
+    -- Create initial basic vote pack
+    insert into public.vote_packs (
+        user_id,
+        type,
+        votes_remaining,
+        vote_power,
+        expires_at
+    )
+    values (
+        new.id,
+        'basic',
+        10,
+        1,
+        now() + interval '30 days'
+    );
+
+    return new;
+end;
+$$ language plpgsql;
+
+-- Create trigger for new user setup
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+    after insert on auth.users
+    for each row
+    execute function public.handle_new_user();

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -13,39 +13,60 @@ import {
   useColorModeValue,
   Link,
   useToast,
+  HStack,
+  Divider,
+  InputGroup,
+  InputRightElement,
+  IconButton,
 } from '@chakra-ui/react';
-import { useAuth } from '../../components/auth/AuthProvider';
+import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
+import { AuthService } from '../../services/auth/authService';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signInWithMagicLink } = useAuth();
+  const [isPasswordMode, setIsPasswordMode] = useState(true);
+  const navigate = useNavigate();
   const toast = useToast();
 
   const bg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const textColor = useColorModeValue('gray.700', 'gray.200');
+  const textColor = useColorModeValue('gray.800', 'white');
   const secondaryTextColor = useColorModeValue('gray.600', 'gray.400');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-
     setIsLoading(true);
+
     try {
-      await signInWithMagicLink(email);
-      toast({
-        title: 'Magic link sent!',
-        description: 'Check your email for the sign in link.',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-    } catch (err) {
-      console.error('Sign in error:', err);
+      const authService = AuthService.getInstance();
+      let error;
+
+      if (isPasswordMode) {
+        ({ error } = await authService.signInWithPassword(email, password));
+      } else {
+        ({ error } = await authService.signInWithEmail(email));
+      }
+
+      if (error) throw error;
+
+      if (isPasswordMode) {
+        navigate('/dashboard');
+      } else {
+        toast({
+          title: 'Magic link sent',
+          description: 'Check your email for the login link',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to send magic link. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to sign in',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -53,6 +74,11 @@ export default function SignInPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleAuthMode = () => {
+    setIsPasswordMode(!isPasswordMode);
+    setPassword('');
   };
 
   return (
@@ -76,6 +102,28 @@ export default function SignInPage() {
                 />
               </FormControl>
 
+              {isPasswordMode && (
+                <FormControl isRequired>
+                  <FormLabel color={textColor}>Password</FormLabel>
+                  <InputGroup>
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                    />
+                    <InputRightElement>
+                      <IconButton
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
+                        variant="ghost"
+                        onClick={() => setShowPassword(!showPassword)}
+                      />
+                    </InputRightElement>
+                  </InputGroup>
+                </FormControl>
+              )}
+
               <Button
                 type="submit"
                 colorScheme="blue"
@@ -83,10 +131,26 @@ export default function SignInPage() {
                 width="full"
                 isLoading={isLoading}
               >
-                Send Magic Link
+                {isPasswordMode ? 'Sign In' : 'Send Magic Link'}
               </Button>
             </VStack>
           </form>
+
+          <HStack w="full">
+            <Divider />
+            <Text fontSize="sm" whiteSpace="nowrap" color={secondaryTextColor}>
+              or
+            </Text>
+            <Divider />
+          </HStack>
+
+          <Button
+            variant="outline"
+            width="full"
+            onClick={toggleAuthMode}
+          >
+            {isPasswordMode ? 'Sign in with Magic Link' : 'Sign in with Password'}
+          </Button>
 
           <Text color={secondaryTextColor}>
             Don't have an account?{' '}

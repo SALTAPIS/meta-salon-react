@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -13,45 +13,113 @@ import {
   useColorModeValue,
   Link,
   useToast,
+  InputGroup,
+  InputRightElement,
+  IconButton,
 } from '@chakra-ui/react';
+import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../components/auth/AuthProvider';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { signInWithMagicLink } = useAuth();
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
   const toast = useToast();
+  const { signUpWithPassword, user } = useAuth();
 
   const bg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const textColor = useColorModeValue('gray.700', 'gray.200');
+  const textColor = useColorModeValue('gray.800', 'white');
   const secondaryTextColor = useColorModeValue('gray.600', 'gray.400');
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/game', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-
-    setIsLoading(true);
-    try {
-      await signInWithMagicLink(email);
+    if (isSubmitting) return;
+    
+    if (!email || !password) {
       toast({
-        title: 'Magic link sent!',
-        description: 'Check your email to complete your registration.',
-        status: 'success',
+        title: 'Error',
+        description: 'Please fill in all required fields',
+        status: 'error',
         duration: 5000,
         isClosable: true,
       });
-    } catch (err) {
-      console.error('Sign up error:', err);
+      return;
+    }
+
+    if (password.length < 6) {
       toast({
         title: 'Error',
-        description: 'Failed to send magic link. Please try again.',
+        description: 'Password must be at least 6 characters long',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      console.log('Attempting to sign up with email:', email);
+      const { error, data } = await signUpWithPassword(email, password);
+
+      if (error) {
+        console.error('Signup error response:', error);
+        throw error;
+      }
+
+      if (data?.session) {
+        console.log('Signup successful with session');
+        toast({
+          title: 'Welcome!',
+          description: 'Your account has been created successfully',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        // Navigation will happen automatically via the useEffect
+      } else {
+        console.log('Signup successful, email confirmation required');
+        toast({
+          title: 'Check your email',
+          description: 'Please check your email to confirm your account',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+        navigate('/auth/signin', { replace: true });
+      }
+    } catch (error) {
+      console.error('Sign up error:', error);
+      let errorMessage = 'Failed to create account';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('already registered')) {
+          errorMessage = 'This email is already registered. Please sign in instead.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      toast({
+        title: 'Error',
+        description: errorMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -73,7 +141,30 @@ export default function SignUpPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
+                  isDisabled={isSubmitting}
                 />
+              </FormControl>
+
+              <FormControl isRequired>
+                <FormLabel color={textColor}>Password</FormLabel>
+                <InputGroup>
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    isDisabled={isSubmitting}
+                  />
+                  <InputRightElement>
+                    <IconButton
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
+                      variant="ghost"
+                      onClick={() => setShowPassword(!showPassword)}
+                      isDisabled={isSubmitting}
+                    />
+                  </InputRightElement>
+                </InputGroup>
               </FormControl>
 
               <Button
@@ -81,9 +172,9 @@ export default function SignUpPage() {
                 colorScheme="blue"
                 size="lg"
                 width="full"
-                isLoading={isLoading}
+                isLoading={isSubmitting}
               >
-                Sign Up with Magic Link
+                Create Account
               </Button>
             </VStack>
           </form>

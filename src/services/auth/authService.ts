@@ -1,110 +1,198 @@
 import { supabase } from '../../lib/supabase';
-import type { User, Session } from '../../types/auth/types';
-import type { AuthSession, User as SupabaseUser } from '@supabase/supabase-js';
+import type { AuthError, AuthResponse } from '@supabase/supabase-js';
 
 export class AuthService {
-  private refreshTimeout?: NodeJS.Timeout;
+  private static instance: AuthService;
 
-  constructor() {
-    // Set up auth state change listener
-    supabase.auth.onAuthStateChange(this.handleAuthChange);
+  private constructor() {}
+
+  public static getInstance(): AuthService {
+    if (!AuthService.instance) {
+      AuthService.instance = new AuthService();
+    }
+    return AuthService.instance;
   }
 
-  async signInWithEmail(email: string) {
-    const { data, error } = await supabase.auth.signInWithOtp({
+  async signInWithEmail(email: string): Promise<AuthResponse> {
+    return await supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
-
-    if (error) throw error;
-    return data;
   }
 
-  async signOut() {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    this.clearRefreshTimeout();
+  async signInWithPassword(email: string, password: string): Promise<AuthResponse> {
+    return await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
   }
 
-  async getSession(): Promise<Session | null> {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    if (!session) return null;
+  async signUpWithPassword(email: string, password: string): Promise<AuthResponse> {
+    try {
+      console.log('Starting signup process for:', email);
+      const response = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            role: 'user',
+            balance: 0
+          }
+        }
+      });
 
-    const transformedSession = this.transformSession(session);
-    this.setupSessionRefresh(session);
-    return transformedSession;
-  }
+      if (response.error) {
+        console.error('Signup error:', response.error);
+        return response;
+      }
 
-  async getUser(): Promise<User | null> {
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error) throw error;
-    if (!user) return null;
+      if (response.data.user) {
+        console.log('User created successfully:', response.data.user.id);
+        
+        // Try to create profile with retries
+        let profileCreated = false;
+        let retryCount = 0;
+        
+        while (!profileCreated && retryCount < 3) {
+          try {
+            console.log(`Attempting to create profile (attempt ${retryCount + 1}/3)...`);
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .upsert([
+                {
+                  id: response.data.user.id,
+                  email: response.data.user.email,
+                  role: 'user',
+                  balance: 0,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }
+              ], { 
+                onConflict: 'id',
+                ignoreDuplicates: false 
+              });
 
-    return this.transformUser(user);
-  }
+            if (profileError) {
+              console.error('Profile creation error:', {
+                code: profileError.code,
+                message: profileError.message,
+                details: profileError.details,
+                hint: profileError.hint
+              });
+              
+              if (profileError.code === 'PGRST301') {
+                console.error('Database permission denied - check RLS policies');
+                break; // Don't retry on permission errors
+              }
+              
+              throw profileError;
+            }
 
-  async refreshSession(): Promise<Session | null> {
-    const { data: { session }, error } = await supabase.auth.refreshSession();
-    if (error) throw error;
-    if (!session) return null;
+            // Verify profile was created
+            const { data: verifyProfile, error: verifyError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', response.data.user.id)
+              .single();
 
-    const transformedSession = this.transformSession(session);
-    this.setupSessionRefresh(session);
-    return transformedSession;
-  }
+            if (verifyError) {
+              console.error('Profile verification failed:', verifyError);
+              throw verifyError;
+            }
 
-  private handleAuthChange = async (event: string, session: AuthSession | null) => {
-    if (event === 'SIGNED_OUT') {
-      this.clearRefreshTimeout();
-    } else if (session) {
-      this.setupSessionRefresh(session);
+            if (verifyProfile) {
+              console.log('Profile created and verified:', verifyProfile);
+              profileCreated = true;
+            } else {
+              throw new Error('Profile verification returned no data');
+            }
+          } catch (error) {
+            console.error(`Profile creation attempt ${retryCount + 1} failed:`, error);
+            retryCount++;
+            if (retryCount < 3) {
+              console.log('Waiting 2s before retry...');
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+          }
+        }
+
+        if (!profileCreated) {
+          console.warn('Failed to create profile after all retries');
+        }
+      }
+
+      return response;
+    } catch (err) {
+      console.error('Unexpected signup error:', err);
+      return {
+        data: { user: null, session: null },
+        error: err as AuthError
+      };
     }
-  };
+  }
 
-  private setupSessionRefresh(session: AuthSession) {
-    this.clearRefreshTimeout();
+  async signOut(): Promise<void> {
+    await supabase.auth.signOut();
+  }
+
+  async getCurrentUser() {
+    console.log('Getting current user...');
+    const { data: { session } } = await supabase.auth.getSession();
     
-    // Calculate time until refresh (5 minutes before expiry)
-    const expiresAt = session.expires_at || 0;
-    const expiresIn = expiresAt * 1000 - Date.now() - 5 * 60 * 1000;
-    
-    if (expiresIn > 0) {
-      this.refreshTimeout = setTimeout(() => {
-        this.refreshSession();
-      }, expiresIn);
+    if (!session?.user) {
+      console.log('No active session found');
+      return null;
+    }
+
+    const user = session.user;
+    console.log('Found authenticated user:', user.id);
+
+    try {
+      console.log('Fetching profile for user:', user.id);
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        // Return basic user without profile data rather than throwing
+        return {
+          ...user,
+          role: 'user',
+          balance: 0,
+          wallet: null,
+        };
+      }
+
+      console.log('Profile loaded:', profile);
+      const fullUser = {
+        ...user,
+        role: profile?.role || 'user',
+        balance: profile?.balance || 0,
+        wallet: profile?.wallet || null,
+        premiumUntil: profile?.premium_until ? new Date(profile.premium_until) : undefined,
+      };
+
+      console.log('Returning full user:', fullUser);
+      return fullUser;
+    } catch (error) {
+      console.error('Unexpected error loading profile:', error);
+      // Return basic user without profile data
+      return {
+        ...user,
+        role: 'user',
+        balance: 0,
+        wallet: null,
+      };
     }
   }
 
-  private clearRefreshTimeout() {
-    if (this.refreshTimeout) {
-      clearTimeout(this.refreshTimeout);
-      this.refreshTimeout = undefined;
-    }
-  }
-
-  private transformSession(supabaseSession: AuthSession): Session {
-    return {
-      user: this.transformUser(supabaseSession.user),
-      token: supabaseSession.access_token,
-      expiresAt: new Date(supabaseSession.expires_at ? supabaseSession.expires_at * 1000 : 0),
-    };
-  }
-
-  private transformUser(supabaseUser: SupabaseUser): User {
-    return {
-      id: supabaseUser.id,
-      email: supabaseUser.email || '',
-      role: supabaseUser.user_metadata.role || 'guest',
-      wallet: supabaseUser.user_metadata.wallet,
-      balance: supabaseUser.user_metadata.balance || 0,
-      premiumUntil: supabaseUser.user_metadata.premiumUntil 
-        ? new Date(supabaseUser.user_metadata.premiumUntil)
-        : undefined,
-      createdAt: new Date(supabaseUser.created_at),
-      updatedAt: new Date(supabaseUser.updated_at),
-    };
+  async getSession() {
+    return await supabase.auth.getSession();
   }
 } 

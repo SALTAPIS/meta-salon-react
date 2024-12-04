@@ -1,184 +1,177 @@
 import React from 'react';
 import {
   Box,
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
+  VStack,
   Grid,
-  Heading,
-  Stack,
   Text,
+  Button,
   useToast,
-  Progress,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
   Badge,
+  useColorModeValue,
 } from '@chakra-ui/react';
+import { useAuth } from '../auth/AuthProvider';
 import { useTokens } from '../../hooks/token/useTokens';
 
-const VOTE_PACK_PRICES = {
-  basic: 10,
-  art_lover: 25,
-  pro: 50,
-  expert: 100,
-  elite: 200,
-};
+interface VotePackOption {
+  type: 'basic' | 'art_lover' | 'pro' | 'expert' | 'elite';
+  title: string;
+  votes: number;
+  power: number;
+  price: number;
+  description: string;
+}
 
-const VOTE_PACK_POWERS = {
-  basic: 1,
-  art_lover: 2,
-  pro: 3,
-  expert: 4,
-  elite: 5,
-};
+const VOTE_PACKS: VotePackOption[] = [
+  {
+    type: 'basic',
+    title: 'Basic Pack',
+    votes: 10,
+    power: 1,
+    price: 10,
+    description: 'Start your voting journey',
+  },
+  {
+    type: 'art_lover',
+    title: 'Art Lover',
+    votes: 100,
+    power: 1,
+    price: 80,
+    description: 'For the dedicated art enthusiast',
+  },
+  {
+    type: 'pro',
+    title: 'Pro Pack',
+    votes: 10,
+    power: 2,
+    price: 25,
+    description: 'Double voting power',
+  },
+  {
+    type: 'expert',
+    title: 'Expert Pack',
+    votes: 10,
+    power: 5,
+    price: 50,
+    description: '5x voting power',
+  },
+  {
+    type: 'elite',
+    title: 'Elite Pack',
+    votes: 10,
+    power: 10,
+    price: 90,
+    description: 'Maximum voting impact',
+  },
+];
 
 export function VotePacks() {
-  const {
-    votePacks,
-    activeVotePack,
-    balance,
-    isLoading,
-    error,
-    purchaseVotePack,
-  } = useTokens();
-
+  const { user } = useAuth();
+  const { votePacks, purchaseVotePack } = useTokens();
   const toast = useToast();
 
-  const handlePurchase = async (type: keyof typeof VOTE_PACK_PRICES) => {
+  const cardBg = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+
+  const handlePurchase = async (pack: VotePackOption) => {
     try {
-      await purchaseVotePack(type, VOTE_PACK_PRICES[type]);
+      if (!user) throw new Error('Please sign in to purchase vote packs');
+      if ((user.balance || 0) < pack.price) {
+        throw new Error('Insufficient balance');
+      }
+
+      await purchaseVotePack(pack.type, pack.price);
       toast({
-        title: 'Vote Pack Purchased',
-        description: `Successfully purchased ${type} vote pack`,
+        title: 'Purchase successful',
+        description: `You've purchased the ${pack.title}`,
         status: 'success',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
-    } catch (err) {
+    } catch (error) {
       toast({
-        title: 'Purchase Failed',
-        description: err instanceof Error ? err.message : 'Failed to purchase vote pack',
+        title: 'Purchase failed',
+        description: error instanceof Error ? error.message : 'Failed to purchase vote pack',
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     }
   };
 
-  if (error) {
-    return (
-      <Box p={4} bg="red.50" color="red.500" borderRadius="md">
-        Error loading vote packs: {error.message}
-      </Box>
+  const getActiveVotePack = (type: string) => {
+    return votePacks?.find(pack => 
+      pack.type === type && 
+      pack.votes_remaining > 0 && 
+      new Date(pack.expires_at) > new Date()
     );
-  }
+  };
 
   return (
-    <Stack spacing={6}>
-      <Card>
-        <CardHeader>
-          <Heading size="md">Active Vote Pack</Heading>
-        </CardHeader>
-        <CardBody>
-          {activeVotePack ? (
-            <Stack spacing={4}>
-              <Box>
-                <Text fontWeight="bold">
-                  {activeVotePack.type.replace('_', ' ').toUpperCase()} Pack
-                </Text>
-                <Text fontSize="sm" color="gray.500">
-                  Vote Power: {VOTE_PACK_POWERS[activeVotePack.type as keyof typeof VOTE_PACK_POWERS]}x
-                </Text>
-              </Box>
-              <Box>
-                <Text mb={2}>Votes Remaining</Text>
-                <Progress
-                  value={(activeVotePack.votes_remaining / 10) * 100}
-                  colorScheme="blue"
-                />
-                <Text mt={2} fontSize="sm">
-                  {activeVotePack.votes_remaining} votes left
-                </Text>
-              </Box>
-              {activeVotePack.expires_at && (
-                <Text fontSize="sm" color="gray.500">
-                  Expires: {new Date(activeVotePack.expires_at).toLocaleDateString()}
-                </Text>
-              )}
-            </Stack>
-          ) : (
-            <Text>No active vote pack</Text>
-          )}
-        </CardBody>
-      </Card>
+    <VStack spacing={6} align="stretch">
+      <Box p={6} borderRadius="lg" borderWidth="1px">
+        <Stat>
+          <StatLabel fontSize="lg">Active Vote Packs</StatLabel>
+          <StatNumber fontSize="3xl">
+            {votePacks?.reduce((sum, pack) => sum + pack.votes_remaining, 0) || 0}
+          </StatNumber>
+          <StatHelpText>Total votes remaining</StatHelpText>
+        </Stat>
+      </Box>
 
-      <Card>
-        <CardHeader>
-          <Heading size="md">Available Vote Packs</Heading>
-        </CardHeader>
-        <CardBody>
-          <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={4}>
-            {Object.entries(VOTE_PACK_PRICES).map(([type, price]) => (
-              <Card key={type} variant="outline">
-                <CardBody>
-                  <Stack spacing={4}>
-                    <Box>
-                      <Heading size="sm" textTransform="capitalize">
-                        {type.replace('_', ' ')} Pack
-                      </Heading>
-                      <Badge colorScheme="purple">
-                        {VOTE_PACK_POWERS[type as keyof typeof VOTE_PACK_POWERS]}x Vote Power
-                      </Badge>
-                    </Box>
-                    <Text fontWeight="bold">{price} SLN</Text>
-                    <Button
-                      colorScheme="blue"
-                      isDisabled={balance < price || isLoading}
-                      onClick={() => handlePurchase(type as keyof typeof VOTE_PACK_PRICES)}
-                    >
-                      Purchase
-                    </Button>
-                  </Stack>
-                </CardBody>
-              </Card>
-            ))}
-          </Grid>
-        </CardBody>
-      </Card>
-
-      {votePacks.length > 0 && (
-        <Card>
-          <CardHeader>
-            <Heading size="md">Your Vote Packs</Heading>
-          </CardHeader>
-          <CardBody>
-            <Stack spacing={4}>
-              {votePacks.map((pack) => (
-                <Box
-                  key={pack.id}
-                  p={4}
-                  borderWidth={1}
-                  borderRadius="md"
-                  borderColor="gray.200"
-                >
-                  <Stack direction="row" justify="space-between" align="center">
-                    <Box>
-                      <Text fontWeight="bold" textTransform="capitalize">
-                        {pack.type.replace('_', ' ')} Pack
-                      </Text>
-                      <Text fontSize="sm" color="gray.500">
-                        {pack.votes_remaining} votes remaining
-                      </Text>
-                    </Box>
-                    <Badge colorScheme="purple">
-                      {VOTE_PACK_POWERS[pack.type as keyof typeof VOTE_PACK_POWERS]}x Power
-                    </Badge>
-                  </Stack>
+      <Grid
+        templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }}
+        gap={6}
+      >
+        {VOTE_PACKS.map((pack) => {
+          const activePack = getActiveVotePack(pack.type);
+          return (
+            <Box
+              key={pack.type}
+              p={6}
+              borderRadius="lg"
+              borderWidth="1px"
+              bg={cardBg}
+              borderColor={borderColor}
+            >
+              <VStack spacing={4} align="stretch">
+                <Box>
+                  <Text fontSize="xl" fontWeight="bold">
+                    {pack.title}
+                  </Text>
+                  <Text color="gray.500">{pack.description}</Text>
                 </Box>
-              ))}
-            </Stack>
-          </CardBody>
-        </Card>
-      )}
-    </Stack>
+
+                <Box>
+                  <Text>
+                    {pack.votes} votes × {pack.power}x power
+                  </Text>
+                  <Text fontSize="2xl" fontWeight="bold">
+                    {pack.price} SLN
+                  </Text>
+                </Box>
+
+                {activePack && (
+                  <Badge colorScheme="green">
+                    {activePack.votes_remaining} votes remaining
+                  </Badge>
+                )}
+
+                <Button
+                  colorScheme="blue"
+                  onClick={() => handlePurchase(pack)}
+                  isDisabled={!user || (user.balance || 0) < pack.price}
+                >
+                  Purchase Pack
+                </Button>
+              </VStack>
+            </Box>
+          );
+        })}
+      </Grid>
+    </VStack>
   );
 } 

@@ -1,130 +1,112 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../auth/useAuth';
-import { TokenService } from '../../services/token/tokenService';
+import { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../components/auth/AuthProvider';
 import type { Database } from '../../types/supabase';
 
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 type VotePack = Database['public']['Tables']['vote_packs']['Row'];
 
-interface UseTokensReturn {
-  balance: number;
-  isLoading: boolean;
-  error: Error | null;
-  transactions: Transaction[];
-  votePacks: VotePack[];
-  activeVotePack: VotePack | null;
-  refreshBalance: () => Promise<void>;
-  processTransaction: (
-    type: Transaction['type'],
-    amount: number,
-    description?: string,
-    referenceId?: string
-  ) => Promise<void>;
-  purchaseVotePack: (
-    type: VotePack['type'],
-    amount: number
-  ) => Promise<void>;
-}
-
-export function useTokens(): UseTokensReturn {
+export function useTokens() {
   const { user } = useAuth();
-  const [balance, setBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [votePacks, setVotePacks] = useState<VotePack[]>([]);
-  const [activeVotePack, setActiveVotePack] = useState<VotePack | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  const tokenService = TokenService.getInstance();
-
-  const refreshBalance = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const [newBalance, newTransactions, newVotePacks, newActiveVotePack] = await Promise.all([
-        tokenService.getUserBalance(user.id),
-        tokenService.getUserTransactions(user.id),
-        tokenService.getUserVotePacks(user.id),
-        tokenService.getActiveVotePack(user.id),
-      ]);
-
-      setBalance(newBalance);
-      setTransactions(newTransactions);
-      setVotePacks(newVotePacks);
-      setActiveVotePack(newActiveVotePack);
-    } catch (err) {
-      setError(err as Error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
 
   useEffect(() => {
-    refreshBalance();
-  }, [refreshBalance]);
+    if (!user) return;
 
-  const processTransaction = useCallback(async (
-    type: Transaction['type'],
-    amount: number,
-    description?: string,
-    referenceId?: string
-  ) => {
+    // Load transactions
+    const loadTransactions = async () => {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Error loading transactions:', error);
+        return;
+      }
+
+      setTransactions(data);
+    };
+
+    // Load vote packs
+    const loadVotePacks = async () => {
+      const { data, error } = await supabase
+        .from('vote_packs')
+        .select('*')
+        .eq('user_id', user.id)
+        .gt('votes_remaining', 0)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading vote packs:', error);
+        return;
+      }
+
+      setVotePacks(data);
+    };
+
+    loadTransactions();
+    loadVotePacks();
+
+    // Subscribe to transaction changes
+    const transactionSubscription = supabase
+      .channel('transactions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          loadTransactions();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to vote pack changes
+    const votePackSubscription = supabase
+      .channel('vote_packs')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vote_packs',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          loadVotePacks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      transactionSubscription.unsubscribe();
+      votePackSubscription.unsubscribe();
+    };
+  }, [user]);
+
+  const purchaseVotePack = async (type: string, amount: number) => {
     if (!user) throw new Error('User not authenticated');
 
-    try {
-      setIsLoading(true);
-      setError(null);
-      await tokenService.processTransaction(
-        user.id,
-        type,
-        amount,
-        description,
-        referenceId
-      );
-      await refreshBalance();
-    } catch (err) {
-      setError(err as Error);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, refreshBalance]);
+    const { error } = await supabase.rpc('purchase_vote_pack', {
+      p_user_id: user.id,
+      p_type: type,
+      p_amount: amount,
+    });
 
-  const purchaseVotePack = useCallback(async (
-    type: VotePack['type'],
-    amount: number
-  ) => {
-    if (!user) throw new Error('User not authenticated');
-
-    try {
-      setIsLoading(true);
-      setError(null);
-      await tokenService.purchaseVotePack(
-        user.id,
-        type,
-        amount
-      );
-      await refreshBalance();
-    } catch (err) {
-      setError(err as Error);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, refreshBalance]);
+    if (error) throw error;
+  };
 
   return {
-    balance,
-    isLoading,
-    error,
     transactions,
     votePacks,
-    activeVotePack,
-    refreshBalance,
-    processTransaction,
     purchaseVotePack,
   };
 } 

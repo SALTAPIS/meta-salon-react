@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Heading, Text, Button, Center, VStack } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 
-export function UnauthorizedPage() {
+export default function UnauthorizedPage() {
   const navigate = useNavigate();
 
   return (

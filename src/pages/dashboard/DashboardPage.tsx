@@ -1,11 +1,26 @@
 import React from 'react';
-import { Container, Heading, SimpleGrid, Box, Text, VStack, Stat, StatLabel, StatNumber, Divider } from '@chakra-ui/react';
+import {
+  Container,
+  Heading,
+  SimpleGrid,
+  Box,
+  Text,
+  VStack,
+  Stat,
+  StatLabel,
+  StatNumber,
+  Divider,
+  useColorModeValue,
+} from '@chakra-ui/react';
 import { useAuth } from '../../components/auth/AuthProvider';
 import { TokenBalance } from '../../components/token/TokenBalance';
 import { VotePacks } from '../../components/token/VotePacks';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+
+  console.log('DashboardPage render:', { user });
 
   return (
     <Container maxW="container.xl" py={8}>
@@ -18,21 +33,21 @@ export default function DashboardPage() {
         </Box>
         
         <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-          <Box p={6} borderRadius="lg" borderWidth="1px">
+          <Box p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
             <Stat>
               <StatLabel>Your Artworks</StatLabel>
               <StatNumber>0</StatNumber>
             </Stat>
           </Box>
           
-          <Box p={6} borderRadius="lg" borderWidth="1px">
+          <Box p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
             <Stat>
               <StatLabel>Total Votes</StatLabel>
               <StatNumber>0</StatNumber>
             </Stat>
           </Box>
           
-          <Box p={6} borderRadius="lg" borderWidth="1px">
+          <Box p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
             <Stat>
               <StatLabel>Current Rank</StatLabel>
               <StatNumber>-</StatNumber>
@@ -42,14 +57,13 @@ export default function DashboardPage() {
 
         <Divider />
 
-        <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={8}>
-          <Box>
+        <Box>
+          <Heading as="h2" size="lg" mb={6}>Tokens & Voting</Heading>
+          <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={8}>
             <TokenBalance />
-          </Box>
-          <Box>
             <VotePacks />
-          </Box>
-        </SimpleGrid>
+          </SimpleGrid>
+        </Box>
       </VStack>
     </Container>
   );

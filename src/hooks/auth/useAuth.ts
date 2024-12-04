@@ -1,99 +1,130 @@
 import { useState, useEffect, useCallback } from 'react';
+import type { User } from '../../types/user';
 import { AuthService } from '../../services/auth/authService';
-import type { AuthState } from '../../types/auth/types';
 import { supabase } from '../../lib/supabase';
 
-const authService = new AuthService();
+interface AuthState {
+  user: User | null;
+  isLoading: boolean;
+}
 
 export function useAuth() {
   const [state, setState] = useState<AuthState>({
     user: null,
-    session: null,
     isLoading: true,
-    error: null,
   });
 
-  const refreshState = useCallback(async () => {
+  const loadUser = useCallback(async () => {
     try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
-      const [session, user] = await Promise.all([
-        authService.getSession(),
-        authService.getUser(),
-      ]);
-      setState({ user, session, isLoading: false, error: null });
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: error as Error,
+      console.log('Loading user profile...');
+      const authService = AuthService.getInstance();
+      const user = await authService.getCurrentUser();
+      console.log('User profile loaded:', { 
+        id: user?.id,
+        email: user?.email,
+        role: user?.role,
+        balance: user?.balance
+      });
+      setState(prev => ({ 
+        ...prev, 
+        user: user as User | null,
+        isLoading: false 
       }));
+    } catch (error) {
+      console.error('Error loading user:', error);
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   }, []);
 
   useEffect(() => {
-    refreshState();
+    let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        await refreshState();
-      } else if (event === 'SIGNED_OUT') {
-        setState({
-          user: null,
-          session: null,
-          isLoading: false,
-          error: null,
-        });
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session }}) => {
+      if (!mounted) return;
+      
+      console.log('Initial session check:', { 
+        hasSession: !!session,
+        userId: session?.user?.id
+      });
+
+      if (session?.user) {
+        loadUser();
+      } else {
+        setState(prev => ({ ...prev, isLoading: false }));
       }
     });
 
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', { event, session });
+        if (!mounted) return;
+
+        if (event === 'SIGNED_IN') {
+          console.log('User signed in, loading profile...');
+          await loadUser();
+        } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out, clearing state...');
+          setState(prev => ({
+            ...prev,
+            user: null,
+            isLoading: false,
+          }));
+        }
+      }
+    );
+
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
-  }, [refreshState]);
+  }, [loadUser]);
 
-  const signIn = async (email: string) => {
+  const signInWithPassword = async (email: string, password: string) => {
+    setState(prev => ({ ...prev, isLoading: true }));
     try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
-      await authService.signInWithEmail(email);
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: null,
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: error as Error,
-      }));
-      throw error;
+      const authService = AuthService.getInstance();
+      const result = await authService.signInWithPassword(email, password);
+      if (result.error) {
+        console.error('Sign in error:', result.error);
+      }
+      return result;
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const signUpWithPassword = async (email: string, password: string) => {
+    setState(prev => ({ ...prev, isLoading: true }));
+    try {
+      const authService = AuthService.getInstance();
+      const result = await authService.signUpWithPassword(email, password);
+      if (result.error) {
+        console.error('Sign up error:', result.error);
+      }
+      return result;
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   };
 
   const signOut = async () => {
+    setState(prev => ({ ...prev, isLoading: true }));
     try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
+      const authService = AuthService.getInstance();
       await authService.signOut();
-      setState({
-        user: null,
-        session: null,
-        isLoading: false,
-        error: null,
-      });
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: error as Error,
-      }));
-      throw error;
+      setState(prev => ({ ...prev, user: null }));
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   };
 
   return {
-    ...state,
-    signIn,
+    user: state.user,
+    isLoading: state.isLoading,
+    signInWithPassword,
+    signUpWithPassword,
     signOut,
-    refresh: refreshState,
   };
 } 

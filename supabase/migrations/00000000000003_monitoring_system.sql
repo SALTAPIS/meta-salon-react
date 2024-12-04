@@ -1,7 +1,7 @@
 -- System metrics table
 create table if not exists public.system_metrics (
     id uuid default uuid_generate_v4() primary key,
-    metric_type text not null check (metric_type in ('vault_balance', 'user_count', 'transaction_volume', 'active_challenges', 'system_health')),
+    metric_type text not null check (metric_type in ('vault_balance', 'user_count', 'transaction_volume', 'active_challenges', 'system_health')) unique,
     value numeric not null,
     metadata jsonb,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -46,7 +46,7 @@ using (true);
 create policy "Only admins can insert system metrics"
 on public.system_metrics for insert
 to authenticated
-using (exists (
+with check (exists (
     select 1 from public.profiles
     where id = auth.uid()
     and role = 'admin'
