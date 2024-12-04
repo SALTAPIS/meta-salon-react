@@ -3,6 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TokenService } from '../../services/token/tokenService';
 import { useAuth } from '../auth/useAuth';
 import { supabase } from '../../lib/supabase';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import type { Database } from '../../types/supabase';
+
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 export function useTokens() {
   const { user } = useAuth();
@@ -31,10 +35,10 @@ export function useTokens() {
           table: 'profiles',
           filter: `id=eq.${user.id}`,
         },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Profile>) => {
           console.log('Real-time update received:', payload);
           console.log('Previous balance:', balance);
-          console.log('New balance:', payload.new?.balance);
+          console.log('New balance:', (payload.new as Profile)?.balance);
           
           // Invalidate the balance query to trigger a refresh
           queryClient.invalidateQueries({ queryKey: ['balance', user.id] });
