@@ -3,8 +3,11 @@ import {
   SimpleGrid,
   Box,
   useColorModeValue,
+  VStack,
+  Heading,
+  Text,
+  Avatar,
 } from '@chakra-ui/react';
-import { UserProfile } from '../../components/profile/UserProfile';
 import { UserStats } from '../../components/profile/UserStats';
 import { useAuth } from '../../hooks/auth/useAuth';
 
@@ -17,21 +20,44 @@ export default function ProfilePage() {
 
   return (
     <Container maxW="7xl" py={8}>
-      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8}>
-        <Box>
-          <UserProfile />
-        </Box>
+      <VStack spacing={8} align="stretch">
         <Box
-          p={6}
+          p={8}
           bg={bgColor}
           borderWidth="1px"
           borderColor={borderColor}
           borderRadius="lg"
           shadow="sm"
         >
-          <UserStats userId={user.id} />
+          <VStack spacing={6} align="center">
+            <Avatar
+              size="2xl"
+              name={user.email}
+              src={user.avatar_url || undefined}
+            />
+            <Box textAlign="center">
+              <Heading size="lg">{user.email}</Heading>
+              <Text color="gray.500" mt={2}>
+                Member since {new Date(user.created_at).toLocaleDateString()}
+              </Text>
+            </Box>
+          </VStack>
         </Box>
-      </SimpleGrid>
+
+        <Box
+          p={8}
+          bg={bgColor}
+          borderWidth="1px"
+          borderColor={borderColor}
+          borderRadius="lg"
+          shadow="sm"
+        >
+          <VStack spacing={6} align="stretch">
+            <Heading size="md">Account Statistics</Heading>
+            <UserStats userId={user.id} />
+          </VStack>
+        </Box>
+      </VStack>
     </Container>
   );
 } 

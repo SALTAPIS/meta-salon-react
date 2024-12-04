@@ -6,7 +6,6 @@ import SignInPage from './pages/auth/SignInPage';
 import SignUpPage from './pages/auth/SignUpPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import ProfilePage from './pages/profile/ProfilePage';
-import TokensPage from './pages/tokens/TokensPage';
 import UnauthorizedPage from './pages/auth/unauthorized';
 import GamePage from './pages/game/GamePage';
 import ArtworksPage from './pages/artworks/ArtworksPage';
@@ -65,14 +64,6 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'tokens',
-        element: (
-          <ProtectedRoute>
-            <TokensPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
         path: 'game',
         element: <GamePage />,
       },
@@ -92,6 +83,6 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-    ],
-  },
+    ]
+  }
 ]); 

@@ -79,9 +79,6 @@ export function NavMenu() {
         <MenuItem as={RouterLink} to="/profile">
           Profile
         </MenuItem>
-        <MenuItem as={RouterLink} to="/tokens">
-          Tokens
-        </MenuItem>
         <MenuDivider />
         <MenuItem onClick={handleSignOut}>
           Sign Out
