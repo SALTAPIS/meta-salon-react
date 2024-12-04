@@ -12,5 +12,17 @@ export default defineConfig(async () => {
       port,
       strictPort: true,
     },
+    build: {
+      minify: 'esbuild',
+      sourcemap: true,
+      rollupOptions: {
+        output: {
+          manualChunks: undefined,
+        },
+      },
+    },
+    esbuild: {
+      drop: process.env.NODE_ENV === 'production' ? [] : undefined,
+    },
   }
 })
