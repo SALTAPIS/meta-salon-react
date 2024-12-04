@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TokenService } from '../../services/token/tokenService';
 import { useAuth } from '../auth/useAuth';
@@ -14,23 +14,62 @@ export function useTokens() {
   const queryClient = useQueryClient();
   const tokenService = TokenService.getInstance();
   const toast = useToast();
+  const [realtimeStatus, setRealtimeStatus] = useState<string>('initializing');
+
+  // Debug info toast
+  useEffect(() => {
+    if (user?.id) {
+      toast({
+        title: 'Debug Info',
+        description: `User ID: ${user.id.slice(0, 8)}..., RT Status: ${realtimeStatus}`,
+        status: 'info',
+        duration: 5000,
+        isClosable: true,
+        position: 'bottom-right',
+      });
+    }
+  }, [user?.id, realtimeStatus]);
 
   const { data: balance = 0, isLoading: isBalanceLoading } = useQuery({
     queryKey: ['balance', user?.id],
-    queryFn: () => user?.id ? tokenService.getUserBalance(user.id) : Promise.resolve(0),
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      try {
+        const result = await tokenService.getUserBalance(user.id);
+        toast({
+          title: 'Balance Fetched',
+          description: `Current balance: ${result}`,
+          status: 'info',
+          duration: 3000,
+          isClosable: true,
+          position: 'bottom-left',
+        });
+        return result;
+      } catch (error) {
+        toast({
+          title: 'Error Fetching Balance',
+          description: error instanceof Error ? error.message : 'Unknown error',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        throw error;
+      }
+    },
     enabled: !!user?.id,
   });
 
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log('Setting up real-time subscription for user:', user.id);
+    setRealtimeStatus('connecting');
     toast({
       title: 'Real-time Updates',
-      description: 'Setting up balance tracking...',
+      description: 'Connecting to real-time service...',
       status: 'info',
       duration: 3000,
       isClosable: true,
+      position: 'top-right',
     });
 
     // Subscribe to real-time changes
@@ -45,20 +84,19 @@ export function useTokens() {
           filter: `id=eq.${user.id}`,
         },
         (payload: RealtimePostgresChangesPayload<Profile>) => {
-          console.log('Real-time update received:', payload);
-          console.log('Previous balance:', balance);
+          setRealtimeStatus('update-received');
           const newBalance = (payload.new as Profile)?.balance;
-          console.log('New balance:', newBalance);
           
           // Show toast for balance change
           if (newBalance !== undefined && newBalance !== balance) {
             const difference = newBalance - balance;
             toast({
               title: 'Balance Updated',
-              description: `${difference > 0 ? '+' : ''}${difference} tokens`,
+              description: `${difference > 0 ? '+' : ''}${difference} tokens (RT)`,
               status: difference > 0 ? 'success' : 'info',
               duration: 5000,
               isClosable: true,
+              position: 'top-right',
             });
           }
           
@@ -67,23 +105,19 @@ export function useTokens() {
         }
       )
       .subscribe((status) => {
-        console.log('Subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          toast({
-            title: 'Real-time Ready',
-            description: 'Balance tracking is now active',
-            status: 'success',
-            duration: 3000,
-            isClosable: true,
-          });
-        }
+        setRealtimeStatus(status);
+        toast({
+          title: 'Real-time Status',
+          description: `Connection status: ${status}`,
+          status: status === 'SUBSCRIBED' ? 'success' : 'info',
+          duration: 3000,
+          isClosable: true,
+          position: 'bottom-right',
+        });
       });
 
-    // Test the subscription
-    console.log('Subscription object:', subscription);
-
     return () => {
-      console.log('Cleaning up real-time subscription');
+      setRealtimeStatus('disconnecting');
       subscription.unsubscribe();
     };
   }, [user?.id, queryClient, balance, toast]);
@@ -105,5 +139,6 @@ export function useTokens() {
     transactions,
     votePacks,
     isLoading: isBalanceLoading || isTransactionsLoading || isVotePacksLoading,
+    realtimeStatus, // Expose status for debugging
   };
 } 

@@ -8,14 +8,17 @@ import {
   VStack,
   Button,
   useToast,
+  Badge,
 } from '@chakra-ui/react';
 import { VotePacks } from '../../components/token/VotePacks';
 import { UserStats } from '../../components/profile/UserStats';
 import { useAuth } from '../../hooks/auth/useAuth';
+import { useTokens } from '../../hooks/token/useTokens';
 import { checkDatabaseSetup } from '../../lib/supabase';
 
 const DashboardPage = () => {
   const { user } = useAuth();
+  const { realtimeStatus } = useTokens();
   const toast = useToast();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -73,6 +76,13 @@ const DashboardPage = () => {
             >
               Test Database Setup
             </Button>
+            <Badge 
+              ml={4} 
+              colorScheme={realtimeStatus === 'SUBSCRIBED' ? 'green' : 'yellow'}
+              variant="subtle"
+            >
+              RT: {realtimeStatus}
+            </Badge>
           </Box>
 
           <Box
