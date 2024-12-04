@@ -9,19 +9,38 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Get the URL hash
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
+        // Check for email confirmation success
+        const params = new URLSearchParams(window.location.search);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const type = params.get('type');
 
-        if (accessToken && refreshToken) {
-          // Set the session manually if tokens are in URL
-          const { data: { session }, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
-
+        // Handle email confirmation
+        if (type === 'email_confirmation' || type === 'signup') {
+          const { data: { session }, error } = await supabase.auth.getSession();
           if (error) throw error;
+          
+          if (session) {
+            console.log('Auto-signed in after email confirmation');
+            navigate('/dashboard', { replace: true });
+            return;
+          }
+        }
+
+        // Handle OAuth or other callbacks
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const hashAccessToken = hashParams.get('access_token');
+        const hashRefreshToken = hashParams.get('refresh_token');
+
+        if ((accessToken && refreshToken) || (hashAccessToken && hashRefreshToken)) {
+          const tokens = {
+            access_token: accessToken || hashAccessToken!,
+            refresh_token: refreshToken || hashRefreshToken!
+          };
+
+          const { data: { session }, error } = await supabase.auth.setSession(tokens);
+          if (error) throw error;
+
           if (session) {
             console.log('Session set successfully, redirecting to dashboard');
             navigate('/dashboard', { replace: true });

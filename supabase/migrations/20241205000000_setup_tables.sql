@@ -8,6 +8,10 @@ create publication meta_salon_realtime for table
     transactions,
     vote_packs;
 
+-- Enable real-time for profiles table
+drop publication if exists salon_realtime;
+create publication salon_realtime for table profiles;
+
 -- Create profiles table if it doesn't exist
 create table if not exists public.profiles (
     id uuid references auth.users on delete cascade primary key,

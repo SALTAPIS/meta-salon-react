@@ -34,19 +34,19 @@ This template is used when a new user signs up for Meta.Salon.
     <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffffff;">
         <tr>
             <td style="padding: 20px;">
-                <h2 style="color: #1a202c; margin-bottom: 20px;">Verify Your Email</h2>
+                <h2 style="color: #1a202c; margin-bottom: 20px; text-align: center;">Welcome to Meta.Salon</h2>
                 
                 <p style="margin-bottom: 24px;">
-                    Welcome to Meta.Salon! To start your journey in digital art, please verify your email address.
+                    Thank you for joining Meta.Salon, where art meets innovation. To complete your registration and receive your welcome tokens, please verify your email address.
                 </p>
                 
                 <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
-                        <td align="center">
+                        <td align="center" style="padding: 20px 0;">
                             <a href="{{ .ConfirmationURL }}" 
                                style="display: inline-block; background-color: #3182ce; color: #ffffff; 
                                       padding: 12px 24px; text-decoration: none; border-radius: 4px;
-                                      font-weight: bold; margin: 16px 0;">
+                                      font-weight: bold;">
                                 Verify Email Address
                             </a>
                         </td>
@@ -96,7 +96,7 @@ This template is used when a new user signs up for Meta.Salon.
 3. **Accessibility**
    - Use semantic HTML
    - Maintain good color contrast
-   - Include alt text for images
+   - Clear, readable text
 
 4. **Security**
    - Include "didn't sign up" disclaimer
@@ -120,4 +120,4 @@ Before deploying new templates:
 1. Test with different email clients (Gmail, Outlook, Apple Mail)
 2. Check spam score using tools like mail-tester.com
 3. Verify all links work correctly
-4. Test on mobile devices 
+4. Test on mobile devices

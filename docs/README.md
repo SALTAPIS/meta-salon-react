@@ -6,7 +6,7 @@ This documentation covers the technical aspects and implementation details of Me
 ## Structure
 
 ### System
-- [Email Templates](./system/email-templates.md) - System email templates and configuration
+- [Email Templates](system/email-templates.md) - System email templates and configuration
 - Database Schema (coming soon)
 - Authentication Flow (coming soon)
 - Token System (coming soon)
