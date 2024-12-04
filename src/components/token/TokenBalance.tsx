@@ -5,6 +5,7 @@ import {
   StatNumber,
   StatHelpText,
   useColorModeValue,
+  Skeleton,
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { TokenService } from '../../services/token/tokenService';
@@ -20,6 +21,7 @@ export function TokenBalance({ userId }: TokenBalanceProps) {
   const { data: balance, isLoading } = useQuery({
     queryKey: ['userBalance', userId],
     queryFn: () => TokenService.getInstance().getUserBalance(userId),
+    refetchInterval: 5000,
   });
 
   return (
@@ -33,7 +35,9 @@ export function TokenBalance({ userId }: TokenBalanceProps) {
     >
       <Stat>
         <StatLabel>Token Balance</StatLabel>
-        <StatNumber>{isLoading ? '-' : balance || 0}</StatNumber>
+        <Skeleton isLoaded={!isLoading}>
+          <StatNumber>{balance || 0}</StatNumber>
+        </Skeleton>
         <StatHelpText>Available tokens</StatHelpText>
       </Stat>
     </Box>
