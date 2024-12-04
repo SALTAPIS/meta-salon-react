@@ -18,6 +18,8 @@ export function useTokens() {
   useEffect(() => {
     if (!user?.id) return;
 
+    console.log('Setting up real-time subscription for user:', user.id);
+
     // Subscribe to real-time changes
     const subscription = supabase
       .channel('profile-changes')
@@ -31,16 +33,25 @@ export function useTokens() {
         },
         (payload) => {
           console.log('Real-time update received:', payload);
+          console.log('Previous balance:', balance);
+          console.log('New balance:', payload.new?.balance);
+          
           // Invalidate the balance query to trigger a refresh
           queryClient.invalidateQueries({ queryKey: ['balance', user.id] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+      });
+
+    // Test the subscription
+    console.log('Subscription object:', subscription);
 
     return () => {
+      console.log('Cleaning up real-time subscription');
       subscription.unsubscribe();
     };
-  }, [user?.id, queryClient]);
+  }, [user?.id, queryClient, balance]);
 
   const { data: transactions = [], isLoading: isTransactionsLoading } = useQuery({
     queryKey: ['transactions', user?.id],
