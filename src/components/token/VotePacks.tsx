@@ -7,9 +7,17 @@ import {
   SimpleGrid,
   useColorModeValue,
   useToast,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay,
+  useDisclosure,
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { TokenService } from '../../services/token/tokenService';
+import { useRef, useState } from 'react';
 import type { Database } from '../../types/supabase';
 
 interface VotePacksProps {
@@ -18,33 +26,51 @@ interface VotePacksProps {
 
 type VotePack = Database['public']['Tables']['vote_packs']['Row'];
 
+interface PurchaseDetails {
+  type: string;
+  amount: number;
+  title: string;
+  price: number;
+}
+
 export function VotePacks({ userId }: VotePacksProps) {
   const toast = useToast();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const [selectedPack, setSelectedPack] = useState<PurchaseDetails | null>(null);
 
   const { data: votePacks, isLoading } = useQuery({
     queryKey: ['userVotePacks', userId],
     queryFn: () => TokenService.getInstance().getUserVotePacks(userId),
   });
 
-  const handlePurchase = async (type: string, amount: number) => {
+  const handlePurchaseClick = (pack: PurchaseDetails) => {
+    setSelectedPack(pack);
+    onOpen();
+  };
+
+  const handleConfirmPurchase = async () => {
+    if (!selectedPack) return;
+
     try {
       const tokenService = TokenService.getInstance();
-      await tokenService.purchaseVotePack(userId, type as any, amount);
+      await tokenService.purchaseVotePack(userId, selectedPack.type as any, selectedPack.price);
       toast({
         title: 'Success',
         description: 'Vote pack purchased successfully',
         status: 'success',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
+      onClose();
     } catch (error) {
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to purchase vote pack',
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     }
@@ -83,7 +109,7 @@ export function VotePacks({ userId }: VotePacksProps) {
               </Text>
               <Button
                 colorScheme="blue"
-                onClick={() => handlePurchase(pack.type, pack.amount)}
+                onClick={() => handlePurchaseClick(pack)}
                 isLoading={isLoading}
               >
                 Purchase
@@ -92,6 +118,40 @@ export function VotePacks({ userId }: VotePacksProps) {
           </Box>
         ))}
       </SimpleGrid>
+
+      <AlertDialog
+        isOpen={isOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Confirm Purchase
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              {selectedPack && (
+                <>
+                  Are you sure you want to purchase {selectedPack.title}?
+                  <Text mt={2}>
+                    This will cost {selectedPack.price} tokens and give you {selectedPack.amount} votes.
+                  </Text>
+                </>
+              )}
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onClose}>
+                Cancel
+              </Button>
+              <Button colorScheme="blue" onClick={handleConfirmPurchase} ml={3}>
+                Confirm Purchase
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
 
       {votePacks && votePacks.length > 0 && (
         <Box mt={8}>

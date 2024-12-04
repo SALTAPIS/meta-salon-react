@@ -185,4 +185,77 @@ begin
             'connections', (select count(*) from pg_stat_activity)
         ) as details;
 end;
+$$ language plpgsql;
+
+-- Vote pack management functions
+create or replace function public.purchase_vote_pack(
+    p_user_id uuid,
+    p_type text,
+    p_amount numeric
+) returns uuid
+security definer
+as $$
+declare
+    v_vote_power integer;
+    v_votes_count integer;
+    v_pack_id uuid;
+    v_user_balance numeric;
+begin
+    -- Check user balance first
+    select balance into v_user_balance
+    from public.profiles
+    where id = p_user_id;
+
+    if v_user_balance < p_amount then
+        raise exception 'Insufficient balance to purchase vote pack';
+    end if;
+
+    -- Set vote pack parameters based on type
+    case p_type
+        when 'basic' then
+            v_vote_power := 1;
+            v_votes_count := 10;
+        when 'art_lover' then
+            v_vote_power := 1;
+            v_votes_count := 100;
+        when 'pro' then
+            v_vote_power := 2;
+            v_votes_count := 25;
+        when 'expert' then
+            v_vote_power := 5;
+            v_votes_count := 50;
+        when 'elite' then
+            v_vote_power := 10;
+            v_votes_count := 100;
+        else
+            raise exception 'Invalid vote pack type';
+    end case;
+
+    -- Process payment
+    perform public.process_transaction(
+        p_user_id,
+        'vote_pack'::text,
+        -p_amount,
+        'Purchase ' || p_type || ' vote pack'
+    );
+
+    -- Create vote pack
+    insert into public.vote_packs (
+        user_id,
+        type,
+        votes_remaining,
+        vote_power,
+        expires_at
+    )
+    values (
+        p_user_id,
+        p_type,
+        v_votes_count,
+        v_vote_power,
+        now() + interval '30 days'
+    )
+    returning id into v_pack_id;
+
+    return v_pack_id;
+end;
 $$ language plpgsql; 

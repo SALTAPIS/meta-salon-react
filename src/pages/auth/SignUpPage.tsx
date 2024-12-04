@@ -76,7 +76,7 @@ export default function SignUpPage() {
           title: 'Welcome!',
           description: 'Your account has been created successfully',
           status: 'success',
-          duration: 5000,
+          duration: 10000,
           isClosable: true,
         });
         // Navigation will be handled by AuthProvider
