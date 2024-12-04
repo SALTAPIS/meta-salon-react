@@ -7,11 +7,11 @@ import {
   IconButton,
   HStack,
   Button,
-  Image,
 } from '@chakra-ui/react';
 import { MoonIcon, SunIcon } from '@chakra-ui/icons';
 import { NavMenu } from './NavMenu';
 import { Link as RouterLink } from 'react-router-dom';
+import { Logo } from './Logo';
 
 export function Header() {
   const { colorMode, toggleColorMode } = useColorMode();
@@ -21,15 +21,7 @@ export function Header() {
       <Container maxW="7xl">
         <Flex align="center" justify="space-between">
           <HStack as={RouterLink} to="/" spacing={2} cursor="pointer">
-            <Image 
-              src="/import/salonio.drop.black.svg" 
-              alt="Meta.Salon" 
-              h="24px"
-              style={{
-                filter: colorMode === 'dark' ? 'invert(1)' : undefined,
-                transition: 'filter 0.2s'
-              }}
-            />
+            <Logo />
             <Text fontSize="lg" fontWeight="bold">
               Meta.Salon
             </Text>
