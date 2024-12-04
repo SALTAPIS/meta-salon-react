@@ -27,10 +27,24 @@ export class AuthService {
   }
 
   async signInWithPassword(email: string, password: string): Promise<AuthResponse> {
-    return await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      console.log('Attempting sign in with password for:', email);
+      const response = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (response.error) {
+        console.error('Sign in error:', response.error);
+      } else {
+        console.log('Sign in successful:', response.data.user?.id);
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Unexpected sign in error:', error);
+      throw error;
+    }
   }
 
   async signUpWithPassword(email: string, password: string): Promise<AuthResponse> {
@@ -78,7 +92,12 @@ export class AuthService {
 
   async getCurrentUser() {
     console.log('Getting current user...');
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('Error getting session:', sessionError);
+      return null;
+    }
     
     if (!session?.user) {
       console.log('No active session found');
@@ -90,14 +109,14 @@ export class AuthService {
 
     try {
       console.log('Fetching profile for user:', user.id);
-      const { data: profile, error } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
 
-      if (error) {
-        console.error('Error fetching profile:', error);
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
         // Return basic user without profile data rather than throwing
         return {
           ...user,

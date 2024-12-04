@@ -17,14 +17,25 @@ export class TokenService {
   }
 
   async getUserBalance(userId: string): Promise<number> {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('balance')
-      .eq('id', userId)
-      .single();
+    try {
+      console.log('Fetching balance for user:', userId);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('balance')
+        .eq('id', userId)
+        .single();
 
-    if (error) throw error;
-    return data?.balance ?? 0;
+      if (error) {
+        console.error('Error fetching balance:', error);
+        throw error;
+      }
+
+      console.log('Balance fetched:', data?.balance);
+      return data?.balance ?? 0;
+    } catch (error) {
+      console.error('Unexpected error fetching balance:', error);
+      throw error;
+    }
   }
 
   async processTransaction(
@@ -51,14 +62,25 @@ export class TokenService {
     type: VotePackType,
     amount: number
   ): Promise<string> {
-    const { data, error } = await supabase.rpc('purchase_vote_pack', {
-      p_user_id: userId,
-      p_type: type,
-      p_amount: amount,
-    });
+    try {
+      console.log('Attempting to purchase vote pack:', { userId, type, amount });
+      const { data, error } = await supabase.rpc('purchase_vote_pack', {
+        p_user_id: userId,
+        p_type: type,
+        p_amount: amount,
+      });
 
-    if (error) throw error;
-    return data;
+      if (error) {
+        console.error('Error purchasing vote pack:', error);
+        throw error;
+      }
+
+      console.log('Vote pack purchased successfully:', data);
+      return data;
+    } catch (error) {
+      console.error('Unexpected error purchasing vote pack:', error);
+      throw error;
+    }
   }
 
   async getUserTransactions(userId: string, limit = 10): Promise<Database['public']['Tables']['transactions']['Row'][]> {
