@@ -7,17 +7,20 @@
 - RoleManager: Handles role-based access
 
 ### Authentication Flow
-1. Wallet Connection
-   - Support for MetaMask
+
+1. Signup with email
+
+2. Wallet Connection optional
+   - Support for Yours Wallet
    - WalletConnect integration
    - Address validation
 
-2. User Recognition
+3. User Recognition
    - Address mapping
    - Profile creation
    - Session establishment
 
-3. Role Assignment
+4. Role Assignment
    - Default: guest
    - Verified: user
    - Premium: member

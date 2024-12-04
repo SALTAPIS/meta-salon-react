@@ -1,7 +1,7 @@
 ## Phase 1: Core Infrastructure
 
 ### Authentication System
-- Wallet Connection Integration
+- user sign up with email
 - User Recognition & Session Management
 - Role-based Access Control
 - Premium Status Tracking
@@ -10,7 +10,7 @@
 - SLN Token Implementation
 - Vault Management
 - Transaction Processing
-- Market Fee Handling (2.18%)
+- Market Fee Handling (2.18%, adjustable)
 
 ### Monitoring Setup
 - Real-time Balance Tracking

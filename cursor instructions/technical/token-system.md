@@ -6,7 +6,7 @@
 - TransactionProcessor: Processes and validates transactions
 
 ### Token Mechanics
-- Fixed Value: /bin/zsh.01 USD per SLN
+- Fixed Value: 0.01 USD per SLN
 - Market Fee: 2.18% on transactions
 - Minimum Vault Reserve: 20,000 SLN
 - New User Grant: 209 SLN
