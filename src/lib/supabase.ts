@@ -2,11 +2,13 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
 
 // Debug logging for environment variables
-console.log('Environment check:', {
+console.log('Environment variables loaded:', {
   VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 10) + '...',
+  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Present (length: ' + import.meta.env.VITE_SUPABASE_ANON_KEY.length + ')' : 'Not set',
   VITE_SITE_URL: import.meta.env.VITE_SITE_URL,
-  NODE_ENV: import.meta.env.MODE
+  MODE: import.meta.env.MODE,
+  DEV: import.meta.env.DEV,
+  PROD: import.meta.env.PROD
 });
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -14,11 +16,18 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Supabase configuration error:', {
-    url: supabaseUrl,
-    key: supabaseAnonKey?.substring(0, 10) + '...'
+    url: supabaseUrl || 'Missing URL',
+    keyPresent: supabaseAnonKey ? 'Yes (length: ' + supabaseAnonKey.length + ')' : 'No'
   });
   throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
+
+console.log('Initializing Supabase client with:', {
+  url: supabaseUrl,
+  keyLength: supabaseAnonKey.length,
+  keyStart: supabaseAnonKey.substring(0, 10) + '...',
+  keyEnd: '...' + supabaseAnonKey.substring(supabaseAnonKey.length - 10)
+});
 
 // Initialize Supabase client with debug mode
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
@@ -26,7 +35,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    debug: true // Enable debug mode
+    debug: true
   },
   db: {
     schema: 'public'

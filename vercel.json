@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
@@ -7,5 +8,9 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "env": {
+    "VITE_SUPABASE_URL": "https://jbpdlgpsakhxchqmtuwm.supabase.co",
+    "VITE_SITE_URL": "https://meta-salon-react-au82v932t-salontapiss-projects.vercel.app"
+  }
 }
