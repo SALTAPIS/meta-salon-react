@@ -40,7 +40,7 @@ export async function checkDatabaseSetup() {
     // Check RLS policies by trying to read own profile
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      const { data: profile, error: profileError } = await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
