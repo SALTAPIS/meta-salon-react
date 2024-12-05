@@ -64,17 +64,36 @@ export function useTokens() {
 
     setRealtimeStatus('connecting');
     toast({
-      title: 'Real-time Updates',
-      description: 'Connecting to real-time service...',
+      title: 'WebSocket Connection',
+      description: 'Initializing real-time connection...',
       status: 'info',
       duration: 3000,
       isClosable: true,
       position: 'top-right',
     });
 
+    // Create channel with debug logging
+    const channel = supabase.channel('profile-changes', {
+      config: {
+        broadcast: { self: true },
+        presence: { key: user.id },
+      },
+    });
+
+    // Add channel state change handler
+    channel.on('system', { event: '*' }, (payload) => {
+      toast({
+        title: 'WebSocket System Event',
+        description: `Event: ${payload.event}, Timestamp: ${new Date().toISOString()}`,
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+        position: 'bottom-right',
+      });
+    });
+
     // Subscribe to real-time changes
-    const subscription = supabase
-      .channel('profile-changes')
+    const subscription = channel
       .on(
         'postgres_changes',
         {
@@ -86,6 +105,15 @@ export function useTokens() {
         (payload: RealtimePostgresChangesPayload<Profile>) => {
           setRealtimeStatus('update-received');
           const newBalance = (payload.new as Profile)?.balance;
+          
+          toast({
+            title: 'Real-time Event Received',
+            description: `Type: ${payload.eventType}, Table: ${payload.table}`,
+            status: 'info',
+            duration: 3000,
+            isClosable: true,
+            position: 'top-right',
+          });
           
           // Show toast for balance change
           if (newBalance !== undefined && newBalance !== balance) {
@@ -107,7 +135,7 @@ export function useTokens() {
       .subscribe((status) => {
         setRealtimeStatus(status);
         toast({
-          title: 'Real-time Status',
+          title: 'WebSocket Status',
           description: `Connection status: ${status}`,
           status: status === 'SUBSCRIBED' ? 'success' : 'info',
           duration: 3000,
@@ -119,6 +147,14 @@ export function useTokens() {
     return () => {
       setRealtimeStatus('disconnecting');
       subscription.unsubscribe();
+      toast({
+        title: 'WebSocket Cleanup',
+        description: 'Cleaning up real-time connection',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+        position: 'bottom-right',
+      });
     };
   }, [user?.id, queryClient, balance, toast]);
 
@@ -139,6 +175,6 @@ export function useTokens() {
     transactions,
     votePacks,
     isLoading: isBalanceLoading || isTransactionsLoading || isVotePacksLoading,
-    realtimeStatus, // Expose status for debugging
+    realtimeStatus,
   };
 } 
