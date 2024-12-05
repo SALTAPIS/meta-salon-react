@@ -1,79 +1,74 @@
 -- Drop existing publications
-drop publication if exists salon_realtime;
-drop publication if exists meta_salon_realtime;
+DROP PUBLICATION IF EXISTS salon_realtime;
+DROP PUBLICATION IF EXISTS meta_salon_realtime;
 
 -- Create single publication for all tables
-create publication salon_realtime for all tables;
+CREATE PUBLICATION salon_realtime FOR ALL TABLES;
 
 -- Enable real-time tracking for the tables
-alter table profiles replica identity full;
-alter table transactions replica identity full;
-alter table vote_packs replica identity full;
+ALTER TABLE profiles REPLICA IDENTITY FULL;
+ALTER TABLE transactions REPLICA IDENTITY FULL;
+ALTER TABLE vote_packs REPLICA IDENTITY FULL;
 
 -- Enable real-time for all operations
-alter publication salon_realtime set (publish = 'insert,update,delete');
-
--- Ensure real-time is enabled for the database
-alter system set wal_level = logical;
-alter system set max_replication_slots = 10;
-alter system set max_wal_senders = 10;
+ALTER PUBLICATION salon_realtime SET (publish = 'insert,update,delete');
 
 -- Create function to handle balance updates
-create or replace function public.handle_balance_update()
-returns trigger
-security definer
-as $$
-begin
+CREATE OR REPLACE FUNCTION public.handle_balance_update()
+RETURNS TRIGGER
+SECURITY DEFINER
+AS $$
+BEGIN
     -- Update updated_at timestamp
-    new.updated_at = now();
+    NEW.updated_at = now();
     
     -- Notify about balance change
-    if old.balance is distinct from new.balance then
-        perform pg_notify(
+    IF OLD.balance IS DISTINCT FROM NEW.balance THEN
+        PERFORM pg_notify(
             'balance_updates',
             json_build_object(
-                'user_id', new.id,
-                'old_balance', old.balance,
-                'new_balance', new.balance,
+                'user_id', NEW.id,
+                'old_balance', OLD.balance,
+                'new_balance', NEW.balance,
                 'timestamp', extract(epoch from now())
             )::text
         );
-    end if;
-    return new;
-end;
-$$ language plpgsql;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 -- Create trigger for balance updates
-drop trigger if exists on_balance_update on public.profiles;
-create trigger on_balance_update
-    before update on public.profiles
-    for each row
-    execute function public.handle_balance_update();
+DROP TRIGGER IF EXISTS on_balance_update ON public.profiles;
+CREATE TRIGGER on_balance_update
+    BEFORE UPDATE ON public.profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_balance_update();
 
 -- Create function to handle transaction updates
-create or replace function public.handle_transaction_insert()
-returns trigger
-security definer
-as $$
-begin
+CREATE OR REPLACE FUNCTION public.handle_transaction_insert()
+RETURNS TRIGGER
+SECURITY DEFINER
+AS $$
+BEGIN
     -- Notify about new transaction
-    perform pg_notify(
+    PERFORM pg_notify(
         'transaction_updates',
         json_build_object(
-            'user_id', new.user_id,
-            'type', new.type,
-            'amount', new.amount,
+            'user_id', NEW.user_id,
+            'type', NEW.type,
+            'amount', NEW.amount,
             'timestamp', extract(epoch from now())
         )::text
     );
-    return new;
-end;
-$$ language plpgsql;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 -- Create trigger for transaction updates
-drop trigger if exists on_transaction_insert on public.transactions;
-create trigger on_transaction_insert
-    after insert on public.transactions
-    for each row
-    execute function public.handle_transaction_insert();
+DROP TRIGGER IF EXISTS on_transaction_insert ON public.transactions;
+CREATE TRIGGER on_transaction_insert
+    AFTER INSERT ON public.transactions
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_transaction_insert();
  
