@@ -6,6 +6,7 @@ import type { Database } from '../../types/supabase';
 
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 type VotePack = Database['public']['Tables']['vote_packs']['Row'];
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 export function useTokens() {
   const { user } = useAuth();
@@ -81,7 +82,7 @@ export function useTokens() {
           table: 'profiles',
           filter: `id=eq.${user.id}`,
         },
-        (payload) => {
+        (payload: { new: Profile; old: Profile }) => {
           console.log('👤 Profile change detected:', {
             type: payload.eventType,
             oldBalance: balance,
@@ -89,7 +90,7 @@ export function useTokens() {
             timestamp: new Date().toISOString()
           });
           
-          if (payload.new && 'balance' in payload.new) {
+          if (payload.new?.balance !== undefined) {
             const newBalance = payload.new.balance;
             console.log('💰 Setting balance from realtime:', {
               oldBalance: balance,

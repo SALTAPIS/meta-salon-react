@@ -9,11 +9,7 @@ import {
 } from '@chakra-ui/react';
 import { useTokens } from '../../hooks/token/useTokens';
 
-interface TokenBalanceProps {
-  userId: string;
-}
-
-export function TokenBalance({ userId }: TokenBalanceProps) {
+export function TokenBalance() {
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const { balance, isLoading } = useTokens();
