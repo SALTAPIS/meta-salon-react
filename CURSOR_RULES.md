@@ -63,5 +63,74 @@
    - Test thoroughly
    - Document solution
 
+## 10. Development Workflow
+
+### Git Workflow
+
+1. **Feature Development**
+   ```bash
+   # Create new feature branch
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Making Changes**
+   ```bash
+   # Stage and commit with descriptive message
+   git add .
+   git commit -m "feat: description of changes"
+   ```
+
+3. **Before Deploying**
+   ```bash
+   # Sync with main
+   git checkout main
+   git pull
+   git checkout feature/your-feature-name
+   git merge main
+
+   # Test and deploy
+   git checkout main
+   git merge feature/your-feature-name
+   git push
+   ```
+
+### Branch Naming
+- Features: `feature/feature-name`
+- Fixes: `fix/bug-description`
+- Docs: `docs/what-changed`
+
+### Commit Types
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation
+- `style`: Code style
+- `refactor`: Code restructuring
+- `test`: Testing
+- `chore`: Maintenance
+
+### Real-time Development
+1. **Database**
+   - Test triggers locally
+   - Verify publications
+   - Monitor real-time logs
+
+2. **Client**
+   - Handle connection states
+   - Implement proper cleanup
+   - Add detailed logging
+
+### Deployment Checklist
+1. **Pre-deployment**
+   - Tests passing
+   - No linting errors
+   - Real-time working
+   - Migrations ready
+
+2. **Post-deployment**
+   - Verify in Vercel
+   - Check logs
+   - Test features
+   - Monitor errors
+
 Remember: The smallest working change is often the best change.
 
