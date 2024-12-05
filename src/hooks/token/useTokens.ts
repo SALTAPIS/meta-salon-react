@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { TokenService } from '../../services/token/tokenService';
 import { useAuth } from '../auth/useAuth';
 import { supabase } from '../../lib/supabase';
@@ -18,7 +18,7 @@ export function useTokens() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastFetchRef = useRef<number>(0);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!user?.id) return;
 
     // Debounce fetches to prevent hammering the API
@@ -51,7 +51,17 @@ export function useTokens() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.id, balance]);
+
+  // Function to manually update balance
+  const updateBalance = useCallback((newBalance: number) => {
+    console.log('💰 Manual balance update:', {
+      oldBalance: balance,
+      newBalance,
+      source: 'manual'
+    });
+    setBalance(newBalance);
+  }, [balance]);
 
   // Set up real-time subscription
   useEffect(() => {
@@ -153,7 +163,7 @@ export function useTokens() {
         setRealtimeStatus('disconnected');
       }
     };
-  }, [user?.id]); // Only depend on user ID changes
+  }, [user?.id, balance, fetchData]); // Add balance and fetchData to dependencies
 
   return {
     balance,
@@ -161,5 +171,7 @@ export function useTokens() {
     votePacks,
     isLoading,
     realtimeStatus,
+    updateBalance, // Expose the manual update function
+    fetchData, // Expose the fetch function
   };
 }
