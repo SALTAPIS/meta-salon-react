@@ -1,22 +1,34 @@
-import { memo } from 'react';
-import { Badge } from '@chakra-ui/react';
+import { memo, useMemo } from 'react';
+import { Badge, Box } from '@chakra-ui/react';
 
 interface ConnectionStatusProps {
   status: string;
 }
 
 const ConnectionStatus = memo(({ status }: ConnectionStatusProps) => {
+  const badgeProps = useMemo(() => {
+    switch (status) {
+      case 'connected':
+        return { colorScheme: 'green', text: 'Connected' };
+      case 'disconnected':
+        return { colorScheme: 'red', text: 'Offline' };
+      case 'reconnecting':
+        return { colorScheme: 'yellow', text: 'Connecting' };
+      default:
+        return { colorScheme: 'gray', text: status };
+    }
+  }, [status]);
+
   return (
-    <Badge
-      ml={4}
-      colorScheme={status === 'connected' ? 'green' : 'yellow'}
-      variant="subtle"
-      sx={{
-        transition: 'background-color 0.2s ease-in-out',
-      }}
-    >
-      RT: {status}
-    </Badge>
+    <Box position="absolute" top={4} right={4}>
+      <Badge
+        colorScheme={badgeProps.colorScheme}
+        variant="subtle"
+        fontSize="xs"
+      >
+        {badgeProps.text}
+      </Badge>
+    </Box>
   );
 });
 
