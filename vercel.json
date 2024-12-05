@@ -11,6 +11,7 @@
   ],
   "env": {
     "VITE_SUPABASE_URL": "https://jbpdlgpsakhxchqmtuwm.supabase.co",
-    "VITE_SITE_URL": "https://meta-salon-react-au82v932t-salontapiss-projects.vercel.app"
+    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpicGRsZ3BzYWtoeGNocW10dXdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDE3MDI1NzAsImV4cCI6MjAxNzI3ODU3MH0.qDPDUWE_EX4_JxPyEkEuKyCzPAz_Qm8_gLLxKFE_Ais",
+    "VITE_SITE_URL": "https://meta-salon-react.vercel.app"
   }
 }
