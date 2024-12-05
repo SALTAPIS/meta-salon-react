@@ -104,6 +104,33 @@ begin
 end
 $$;
 
+-- Create trigger for balance updates
+create or replace function public.notify_balance_change()
+returns trigger
+security definer
+as $$
+begin
+    if old.balance is distinct from new.balance then
+        perform pg_notify(
+            'balance_updates',
+            json_build_object(
+                'user_id', new.id,
+                'old_balance', old.balance,
+                'new_balance', new.balance,
+                'timestamp', extract(epoch from now())
+            )::text
+        );
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists on_balance_change on public.profiles;
+create trigger on_balance_change
+    after update on public.profiles
+    for each row
+    execute function public.notify_balance_change();
+
 -- Transaction processing function
 create or replace function public.process_transaction(
     p_user_id uuid,

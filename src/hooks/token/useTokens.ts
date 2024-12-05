@@ -15,9 +15,17 @@ export function useTokens() {
   const [isLoading, setIsLoading] = useState(true);
   const [realtimeStatus, setRealtimeStatus] = useState('disconnected');
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const lastFetchRef = useRef<number>(0);
 
   const fetchData = async () => {
     if (!user?.id) return;
+
+    // Debounce fetches to prevent hammering the API
+    const now = Date.now();
+    if (now - lastFetchRef.current < 1000) {
+      return;
+    }
+    lastFetchRef.current = now;
 
     setIsLoading(true);
     try {
@@ -47,15 +55,15 @@ export function useTokens() {
   useEffect(() => {
     if (!user?.id) return;
 
+    // Only set up subscription if we don't already have one
+    if (channelRef.current) {
+      return;
+    }
+
     console.log('🔌 Setting up realtime subscription:', {
       userId: user.id,
       currentStatus: realtimeStatus
     });
-
-    // Clean up previous subscription if it exists
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-    }
 
     // Create new subscription
     const channel = supabase
@@ -107,6 +115,8 @@ export function useTokens() {
       if (status === 'SUBSCRIBED') {
         setRealtimeStatus('connected');
         await fetchData();
+      } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+        setRealtimeStatus('disconnected');
       } else {
         setRealtimeStatus(status.toLowerCase());
       }
@@ -121,9 +131,10 @@ export function useTokens() {
         console.log('🔌 Cleaning up subscription:', { userId: user.id });
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
+        setRealtimeStatus('disconnected');
       }
     };
-  }, [user?.id, realtimeStatus]); // Added realtimeStatus to dependencies
+  }, [user?.id]); // Only depend on user ID changes
 
   return {
     balance,
