@@ -59,6 +59,10 @@ export function useTokens() {
 
     // Only set up subscription if we don't already have one
     if (channelRef.current) {
+      console.log('🔌 Subscription already exists:', {
+        userId: user.id,
+        currentStatus: realtimeStatus
+      });
       return;
     }
 
@@ -81,6 +85,8 @@ export function useTokens() {
         (payload: RealtimePostgresChangesPayload<Profile>) => {
           console.log('👤 Profile change detected:', {
             event: payload.eventType,
+            oldRecord: payload.old,
+            newRecord: payload.new,
             oldBalance: balance,
             newBalance: (payload.new as Profile)?.balance,
             timestamp: new Date().toISOString()
@@ -92,7 +98,8 @@ export function useTokens() {
             console.log('💰 Setting balance from realtime:', {
               oldBalance: balance,
               newBalance,
-              source: 'realtime'
+              source: 'realtime',
+              timestamp: new Date().toISOString()
             });
             setBalance(newBalance);
             // Fetch updated transactions and vote packs
@@ -101,32 +108,15 @@ export function useTokens() {
               tokenService.getUserTransactions(user.id),
               tokenService.getUserVotePacks(user.id),
             ]).then(([newTransactions, newVotePacks]) => {
+              console.log('📦 Updated related data:', {
+                transactionCount: newTransactions.length,
+                votePackCount: newVotePacks.length,
+                timestamp: new Date().toISOString()
+              });
               setTransactions(newTransactions);
               setVotePacks(newVotePacks);
             });
           }
-        }
-      )
-      .on<VotePack>(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'vote_packs',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload: RealtimePostgresChangesPayload<VotePack>) => {
-          console.log('🎟️ Vote pack change detected:', {
-            event: payload.eventType,
-            packId: (payload.new as VotePack)?.id,
-            timestamp: new Date().toISOString()
-          });
-          
-          // Fetch updated vote packs
-          const tokenService = TokenService.getInstance();
-          tokenService.getUserVotePacks(user.id).then(newVotePacks => {
-            setVotePacks(newVotePacks);
-          });
         }
       )
       .on<Transaction>(
@@ -141,6 +131,8 @@ export function useTokens() {
           console.log('💸 Transaction change detected:', {
             event: payload.eventType,
             transactionId: (payload.new as Transaction)?.id,
+            amount: (payload.new as Transaction)?.amount,
+            type: (payload.new as Transaction)?.type,
             timestamp: new Date().toISOString()
           });
           
@@ -150,6 +142,12 @@ export function useTokens() {
             tokenService.getUserProfile(user.id),
             tokenService.getUserTransactions(user.id),
           ]).then(([userProfile, newTransactions]) => {
+            console.log('💰 Updating balance after transaction:', {
+              oldBalance: balance,
+              newBalance: userProfile?.balance,
+              source: 'transaction_change',
+              timestamp: new Date().toISOString()
+            });
             setBalance(userProfile?.balance || 0);
             setTransactions(newTransactions);
           });
@@ -171,6 +169,10 @@ export function useTokens() {
         setRealtimeStatus('connected');
         await fetchData();
       } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+        console.log('🔌 Channel closed or error:', {
+          status,
+          timestamp: new Date().toISOString()
+        });
         setRealtimeStatus('disconnected');
       } else {
         setRealtimeStatus(status.toLowerCase());
@@ -183,7 +185,10 @@ export function useTokens() {
     // Cleanup function
     return () => {
       if (channelRef.current) {
-        console.log('🔌 Cleaning up subscription:', { userId: user.id });
+        console.log('🔌 Cleaning up subscription:', {
+          userId: user.id,
+          timestamp: new Date().toISOString()
+        });
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
         setRealtimeStatus('disconnected');
