@@ -16,6 +16,7 @@ import {
   useDisclosure,
   Stack,
   Divider,
+  Portal,
 } from '@chakra-ui/react';
 import { useState, useCallback, useEffect } from 'react';
 import { TokenService } from '../../services/token/tokenService';
@@ -44,7 +45,7 @@ export function VotePacks({ userId }: VotePackProps) {
 
   // Debug logs for component state
   useEffect(() => {
-    console.log('VotePacks component state:', {
+    console.log('🎁 VotePacks component state:', {
       isOpen,
       selectedPack,
       balance,
@@ -53,24 +54,30 @@ export function VotePacks({ userId }: VotePackProps) {
   }, [isOpen, selectedPack, balance, votePacks.length]);
 
   const handlePurchaseClick = useCallback((pack: VotePackDefinition) => {
-    console.log('Purchase button clicked:', { pack });
-    setSelectedPack(pack);
-    onOpen();
+    try {
+      console.log('🛍️ Purchase button clicked:', { pack });
+      setSelectedPack(pack);
+      console.log('🎯 Opening modal...');
+      onOpen();
+      console.log('🚀 Modal should be open:', { isOpen: true });
+    } catch (error) {
+      console.error('❌ Error in handlePurchaseClick:', error);
+    }
   }, [onOpen]);
 
   const handlePurchaseConfirm = async () => {
     if (!selectedPack) {
-      console.error('No pack selected for purchase');
+      console.error('❌ No pack selected for purchase');
       return;
     }
     
     const { type, votes, votePower } = selectedPack;
     const price = calculatePackPrice(votes, votePower);
     
-    console.log('Confirming purchase:', { type, votes, votePower, price, balance });
+    console.log('💳 Confirming purchase:', { type, votes, votePower, price, balance });
     
     if (balance < price) {
-      console.log('Insufficient balance:', { required: price, available: balance });
+      console.log('⚠️ Insufficient balance:', { required: price, available: balance });
       toast({
         title: 'Insufficient Balance',
         description: `You need ${price} tokens. Current balance: ${balance}`,
@@ -85,7 +92,7 @@ export function VotePacks({ userId }: VotePackProps) {
       const tokenService = TokenService.getInstance();
       await tokenService.purchaseVotePack(userId, type, price);
       
-      console.log('Purchase successful');
+      console.log('✅ Purchase successful');
       toast({
         title: 'Purchase Successful',
         description: `You've purchased ${votes} votes with ${votePower}× power for ${price} tokens`,
@@ -93,7 +100,7 @@ export function VotePacks({ userId }: VotePackProps) {
       });
       onClose();
     } catch (error) {
-      console.error('Purchase failed:', error);
+      console.error('❌ Purchase failed:', error);
       toast({
         title: 'Purchase Failed',
         description: error instanceof Error ? error.message : 'Failed to purchase vote pack',
@@ -148,7 +155,10 @@ export function VotePacks({ userId }: VotePackProps) {
                     <Button
                       colorScheme="blue"
                       width="full"
-                      onClick={() => handlePurchaseClick(pack)}
+                      onClick={() => {
+                        console.log('🖱️ Button clicked for pack:', pack.type);
+                        handlePurchaseClick(pack);
+                      }}
                       isLoading={isLoading === pack.type}
                       isDisabled={balance < price}
                     >
@@ -202,49 +212,51 @@ export function VotePacks({ userId }: VotePackProps) {
         )}
       </Stack>
 
-      <Modal 
-        isOpen={isOpen} 
-        onClose={onClose} 
-        isCentered
-        closeOnOverlayClick={false}
-      >
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Confirm Purchase</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            {selectedPack && (
-              <>
-                <Text mb={4}>
-                  You are about to purchase:
-                </Text>
-                <Box p={4} borderWidth="1px" borderRadius="md" bg="gray.50">
-                  <Text fontWeight="bold" mb={2}>
-                    {selectedPack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
+      <Portal>
+        <Modal 
+          isOpen={isOpen} 
+          onClose={onClose} 
+          isCentered
+          closeOnOverlayClick={false}
+        >
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Confirm Purchase</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              {selectedPack && (
+                <>
+                  <Text mb={4}>
+                    You are about to purchase:
                   </Text>
-                  <Text mb={2}>• {selectedPack.votes} votes</Text>
-                  <Text mb={2}>• {selectedPack.votePower}× vote power</Text>
-                  <Text mb={2}>• Total price: {calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
-                  <Text fontSize="sm" color="gray.600">Your balance after purchase will be: {balance - calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
-                </Box>
-              </>
-            )}
-          </ModalBody>
+                  <Box p={4} borderWidth="1px" borderRadius="md" bg="gray.50">
+                    <Text fontWeight="bold" mb={2}>
+                      {selectedPack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
+                    </Text>
+                    <Text mb={2}>• {selectedPack.votes} votes</Text>
+                    <Text mb={2}>• {selectedPack.votePower}× vote power</Text>
+                    <Text mb={2}>• Total price: {calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
+                    <Text fontSize="sm" color="gray.600">Your balance after purchase will be: {balance - calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
+                  </Box>
+                </>
+              )}
+            </ModalBody>
 
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onClose}>
-              Cancel
-            </Button>
-            <Button 
-              colorScheme="blue" 
-              onClick={handlePurchaseConfirm}
-              isLoading={isLoading === selectedPack?.type}
-            >
-              Confirm Purchase
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onClose}>
+                Cancel
+              </Button>
+              <Button 
+                colorScheme="blue" 
+                onClick={handlePurchaseConfirm}
+                isLoading={isLoading === selectedPack?.type}
+              >
+                Confirm Purchase
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+      </Portal>
     </Box>
   );
 } 

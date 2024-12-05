@@ -95,7 +95,28 @@ export function useTokens() {
               source: 'realtime'
             });
             setBalance(newBalance);
+            // Fetch updated vote packs when balance changes
+            fetchData();
           }
+        }
+      )
+      .on<VotePack>(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vote_packs',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload: RealtimePostgresChangesPayload<VotePack>) => {
+          console.log('🎟️ Vote pack change detected:', {
+            event: payload.eventType,
+            packId: (payload.new as VotePack)?.id,
+            timestamp: new Date().toISOString()
+          });
+          
+          // Fetch updated vote packs when they change
+          fetchData();
         }
       );
 
