@@ -32,6 +32,13 @@ export function VotePacks({ userId }: VotePackProps) {
   const { balance = 0 } = useTokens();
 
   const handlePurchaseClick = (pack: VotePackDefinition) => {
+    console.log('Initiating vote pack purchase:', {
+      type: pack.type,
+      votes: pack.votes,
+      votePower: pack.votePower,
+      price: calculatePackPrice(pack.votes, pack.votePower),
+      currentBalance: balance
+    });
     setSelectedPack(pack);
     onOpen();
   };
@@ -42,7 +49,21 @@ export function VotePacks({ userId }: VotePackProps) {
     const { type, votes, votePower } = selectedPack;
     const price = calculatePackPrice(votes, votePower);
     
+    console.log('Confirming vote pack purchase:', {
+      userId,
+      type,
+      votes,
+      votePower,
+      price,
+      currentBalance: balance
+    });
+    
     if (balance < price) {
+      console.log('Purchase rejected: Insufficient balance', {
+        required: price,
+        available: balance,
+        difference: price - balance
+      });
       toast({
         title: 'Insufficient Balance',
         description: `You need ${price} tokens. Current balance: ${balance}`,
@@ -56,8 +77,17 @@ export function VotePacks({ userId }: VotePackProps) {
 
     try {
       setIsLoading(type);
+      console.log('Calling purchaseVotePack:', { userId, type, price });
       const tokenService = TokenService.getInstance();
       await tokenService.purchaseVotePack(userId, type, price);
+      
+      console.log('Purchase successful:', {
+        type,
+        votes,
+        votePower,
+        price,
+        newBalance: balance - price
+      });
       
       toast({
         title: 'Purchase Successful',
@@ -68,7 +98,13 @@ export function VotePacks({ userId }: VotePackProps) {
       });
       onClose();
     } catch (error) {
-      console.error('Error purchasing vote pack:', error);
+      console.error('Vote pack purchase failed:', {
+        error,
+        userId,
+        type,
+        price,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error'
+      });
       toast({
         title: 'Purchase Failed',
         description: error instanceof Error ? error.message : 'Failed to purchase vote pack',
@@ -77,6 +113,7 @@ export function VotePacks({ userId }: VotePackProps) {
         isClosable: true,
       });
     } finally {
+      console.log('Purchase attempt completed');
       setIsLoading(null);
     }
   };

@@ -74,7 +74,13 @@ export class TokenService {
     amount: number
   ): Promise<string> {
     try {
-      console.log('Attempting to purchase vote pack:', { userId, type, amount });
+      console.log('TokenService: Starting vote pack purchase:', {
+        userId,
+        type,
+        amount,
+        timestamp: new Date().toISOString()
+      });
+
       const { data, error } = await supabase.rpc('purchase_vote_pack', {
         p_user_id: userId,
         p_type: type,
@@ -82,14 +88,35 @@ export class TokenService {
       });
 
       if (error) {
-        console.error('Error purchasing vote pack:', error);
+        console.error('TokenService: Error purchasing vote pack:', {
+          error,
+          userId,
+          type,
+          amount,
+          errorCode: error.code,
+          errorMessage: error.message,
+          timestamp: new Date().toISOString()
+        });
         throw error;
       }
 
-      console.log('Vote pack purchased successfully:', data);
+      console.log('TokenService: Vote pack purchased successfully:', {
+        userId,
+        type,
+        amount,
+        transactionId: data,
+        timestamp: new Date().toISOString()
+      });
       return data;
     } catch (error) {
-      console.error('Unexpected error purchasing vote pack:', error);
+      console.error('TokenService: Unexpected error purchasing vote pack:', {
+        error,
+        userId,
+        type,
+        amount,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
       throw error;
     }
   }
