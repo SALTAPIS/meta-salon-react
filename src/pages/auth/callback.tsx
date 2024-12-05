@@ -10,162 +10,82 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Log full URL for debugging
-        console.log('Callback URL:', window.location.href);
-        
-        // Check for email confirmation success
-        const params = new URLSearchParams(window.location.search);
-        console.log('URL Search params:', Object.fromEntries(params.entries()));
-        
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
-        const type = params.get('type');
-        
-        console.log('Auth type:', type);
-        console.log('Has access token:', !!accessToken);
-        console.log('Has refresh token:', !!refreshToken);
+        // Clear any existing session first
+        await supabase.auth.signOut();
 
-        toast({
-          title: 'Processing Auth Callback',
-          description: `Type: ${type || 'unknown'}, Has tokens: ${!!(accessToken || refreshToken)}`,
-          status: 'info',
-          duration: 5000,
-          isClosable: true,
-        });
+        // Get URL parameters
+        const params = new URLSearchParams(window.location.search);
+        const type = params.get('type');
+        const email = params.get('email');
+        
+        console.log('Auth callback type:', type);
+        console.log('Email from params:', email);
 
         // Handle email confirmation
         if (type === 'email_confirmation' || type === 'signup' || type === 'recovery') {
-          console.log('Handling email confirmation/signup/recovery');
+          // Get the token from the URL
+          const token = params.get('token') || params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+
+          if (!token) {
+            throw new Error('No authentication token found');
+          }
+
+          // Set the session with the provided tokens
+          const { data: { session }, error: sessionError } = await supabase.auth.setSession({
+            access_token: token,
+            refresh_token: refreshToken || ''
+          });
+
+          if (sessionError) {
+            console.error('Session error:', sessionError);
+            throw sessionError;
+          }
+
+          if (!session) {
+            throw new Error('No session established after confirmation');
+          }
+
+          // Verify the session is for the correct user
+          if (email && session.user.email !== email) {
+            console.error('Session user mismatch:', {
+              expected: email,
+              got: session.user.email
+            });
+            await supabase.auth.signOut();
+            throw new Error('Session user mismatch');
+          }
+
           toast({
-            title: 'Email Confirmed',
-            description: 'Attempting to sign in automatically...',
-            status: 'info',
+            title: 'Email Verified',
+            description: 'Your email has been verified. Welcome to Meta.Salon!',
+            status: 'success',
             duration: 5000,
             isClosable: true,
           });
 
-          const { data: { session }, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error('Error getting session:', error);
-            toast({
-              title: 'Error',
-              description: error.message,
-              status: 'error',
-              duration: 5000,
-              isClosable: true,
-            });
-            throw error;
-          }
-          
-          if (session) {
-            console.log('Session found after confirmation:', session);
-            toast({
-              title: 'Success',
-              description: 'Signed in successfully!',
-              status: 'success',
-              duration: 5000,
-              isClosable: true,
-            });
-            navigate('/dashboard', { replace: true });
-            return;
-          } else {
-            console.log('No session found after confirmation');
-            toast({
-              title: 'Warning',
-              description: 'No session found after confirmation',
-              status: 'warning',
-              duration: 5000,
-              isClosable: true,
-            });
-          }
+          navigate('/dashboard', { replace: true });
+          return;
         }
 
-        // Handle OAuth or other callbacks
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        console.log('Hash params:', Object.fromEntries(hashParams.entries()));
-        
-        const hashAccessToken = hashParams.get('access_token');
-        const hashRefreshToken = hashParams.get('refresh_token');
-
-        if ((accessToken && refreshToken) || (hashAccessToken && hashRefreshToken)) {
-          console.log('Setting session with tokens');
-          const tokens = {
-            access_token: accessToken || hashAccessToken!,
-            refresh_token: refreshToken || hashRefreshToken!
-          };
-
-          const { data: { session }, error } = await supabase.auth.setSession(tokens);
-          if (error) {
-            console.error('Error setting session:', error);
-            toast({
-              title: 'Error',
-              description: error.message,
-              status: 'error',
-              duration: 5000,
-              isClosable: true,
-            });
-            throw error;
-          }
-
-          if (session) {
-            console.log('Session set successfully:', session);
-            toast({
-              title: 'Success',
-              description: 'Session set successfully',
-              status: 'success',
-              duration: 5000,
-              isClosable: true,
-            });
-            navigate('/dashboard', { replace: true });
-            return;
-          }
-        }
-
-        // Fallback to getting current session
-        console.log('Falling back to current session check');
+        // Handle other auth types (OAuth, etc.)
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Error getting fallback session:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to get session',
-            status: 'error',
-            duration: 5000,
-            isClosable: true,
-          });
-          navigate('/auth/signin', { replace: true });
-          return;
+          throw error;
         }
 
         if (!session) {
-          console.log('No fallback session found');
-          toast({
-            title: 'Warning',
-            description: 'No session found, please sign in',
-            status: 'warning',
-            duration: 5000,
-            isClosable: true,
-          });
           navigate('/auth/signin', { replace: true });
           return;
         }
 
-        console.log('Fallback session found:', session);
-        toast({
-          title: 'Success',
-          description: 'Session found, redirecting to dashboard',
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
         navigate('/dashboard', { replace: true });
       } catch (error) {
-        console.error('Unexpected error in auth callback:', error);
+        console.error('Auth callback error:', error);
         toast({
-          title: 'Error',
-          description: error instanceof Error ? error.message : 'An unexpected error occurred',
+          title: 'Authentication Error',
+          description: error instanceof Error ? error.message : 'Failed to complete authentication',
           status: 'error',
           duration: 5000,
           isClosable: true,
@@ -178,10 +98,10 @@ export default function AuthCallback() {
   }, [navigate, toast]);
 
   return (
-    <Container maxW="md" py={16}>
+    <Container centerContent py={10}>
       <VStack spacing={4}>
         <Spinner size="xl" />
-        <Text>Completing sign in...</Text>
+        <Text>Completing authentication...</Text>
       </VStack>
     </Container>
   );

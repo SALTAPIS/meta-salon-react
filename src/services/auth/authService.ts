@@ -50,7 +50,7 @@ export class AuthService {
   async signUpWithPassword(email: string, password: string): Promise<AuthResponse> {
     try {
       console.log('Starting signup process for:', email);
-      const redirectTo = `${SITE_URL}/auth/callback`;
+      const redirectTo = `${SITE_URL}/auth/callback?email=${encodeURIComponent(email)}`;
 
       const response = await supabase.auth.signUp({
         email,
@@ -87,7 +87,16 @@ export class AuthService {
   }
 
   async signOut(): Promise<void> {
-    await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Unexpected error during sign out:', error);
+      throw error;
+    }
   }
 
   async getCurrentUser() {
@@ -151,5 +160,24 @@ export class AuthService {
 
   async getSession() {
     return await supabase.auth.getSession();
+  }
+
+  async setSession(access_token: string, refresh_token: string) {
+    try {
+      const { data, error } = await supabase.auth.setSession({
+        access_token,
+        refresh_token
+      });
+      
+      if (error) {
+        console.error('Error setting session:', error);
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Unexpected error setting session:', error);
+      throw error;
+    }
   }
 } 

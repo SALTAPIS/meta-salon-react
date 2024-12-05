@@ -1,18 +1,32 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
 
+// Debug logging for environment variables
+console.log('Environment check:', {
+  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 10) + '...',
+  VITE_SITE_URL: import.meta.env.VITE_SITE_URL,
+  NODE_ENV: import.meta.env.MODE
+});
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Supabase configuration error:', {
+    url: supabaseUrl,
+    key: supabaseAnonKey?.substring(0, 10) + '...'
+  });
   throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
+// Initialize Supabase client with debug mode
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    debug: true // Enable debug mode
   },
   db: {
     schema: 'public'
