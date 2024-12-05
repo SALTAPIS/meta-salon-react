@@ -9,16 +9,20 @@ import {
   Button,
   useToast,
   Badge,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  StatGroup,
 } from '@chakra-ui/react';
 import { VotePacks } from '../../components/token/VotePacks';
-import { UserStats } from '../../components/profile/UserStats';
 import { useAuth } from '../../hooks/auth/useAuth';
 import { useTokens } from '../../hooks/token/useTokens';
 import { checkDatabaseSetup } from '../../lib/supabase';
 
 const DashboardPage = () => {
   const { user } = useAuth();
-  const { realtimeStatus } = useTokens();
+  const { balance, votePacks, transactions, realtimeStatus } = useTokens();
   const toast = useToast();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -78,7 +82,7 @@ const DashboardPage = () => {
             </Button>
             <Badge 
               ml={4} 
-              colorScheme={realtimeStatus === 'SUBSCRIBED' ? 'green' : 'yellow'}
+              colorScheme={realtimeStatus === 'connected' ? 'green' : 'yellow'}
               variant="subtle"
             >
               RT: {realtimeStatus}
@@ -93,7 +97,25 @@ const DashboardPage = () => {
             borderRadius="lg"
             shadow="sm"
           >
-            <UserStats userId={user.id} />
+            <StatGroup>
+              <Stat>
+                <StatLabel>Balance</StatLabel>
+                <StatNumber>{balance}</StatNumber>
+                <StatHelpText>Available tokens</StatHelpText>
+              </Stat>
+              <Stat>
+                <StatLabel>Votes</StatLabel>
+                <StatNumber>
+                  {votePacks.reduce((total, pack) => total + pack.votes_remaining, 0)}
+                </StatNumber>
+                <StatHelpText>Available votes</StatHelpText>
+              </Stat>
+              <Stat>
+                <StatLabel>Transactions</StatLabel>
+                <StatNumber>{transactions.length}</StatNumber>
+                <StatHelpText>Total transactions</StatHelpText>
+              </Stat>
+            </StatGroup>
           </Box>
         </SimpleGrid>
 
