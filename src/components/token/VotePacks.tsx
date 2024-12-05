@@ -116,7 +116,7 @@ export function VotePacks({ userId }: VotePackProps) {
       <Stack spacing={8}>
         <Box>
           <Heading size="md" mb={4}>
-            Available Vote Packs
+            🎁 Available Vote Packs
           </Heading>
           <Text mb={6} color="gray.500">
             Purchase vote packs to participate in artwork voting
