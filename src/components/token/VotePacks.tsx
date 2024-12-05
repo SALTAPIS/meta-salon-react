@@ -26,6 +26,11 @@ interface VotePackProps {
   userId: string;
 }
 
+const formatExpiryDate = (expiryDate: string | null): string => {
+  if (!expiryDate) return 'No expiration';
+  return new Date(expiryDate).toLocaleDateString();
+};
+
 export function VotePacks({ userId }: VotePackProps) {
   const [isLoading, setIsLoading] = useState<VotePackDefinition['type'] | null>(null);
   const [selectedPack, setSelectedPack] = useState<VotePackDefinition | null>(null);
@@ -166,7 +171,7 @@ export function VotePacks({ userId }: VotePackProps) {
                     {pack.vote_power}× voting power
                   </Text>
                   <Text fontSize="sm" color="gray.500" mb={4}>
-                    Expires: {new Date(pack.expires_at).toLocaleDateString()}
+                    Expires: {formatExpiryDate(pack.expires_at)}
                   </Text>
                   <Button
                     colorScheme="green"
