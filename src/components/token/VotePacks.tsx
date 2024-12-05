@@ -17,7 +17,7 @@ import {
   Stack,
   Divider,
 } from '@chakra-ui/react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { TokenService } from '../../services/token/tokenService';
 import { useTokens } from '../../hooks/token/useTokens';
 import { VOTE_PACK_DEFINITIONS, calculatePackPrice, VotePackDefinition } from '../../config/votePackConfig';
@@ -42,10 +42,23 @@ export function VotePacks({ userId }: VotePackProps) {
   });
   const { balance = 0, votePacks = [] } = useTokens();
 
+  // Debug logs for component state
+  useEffect(() => {
+    console.log('VotePacks component state:', {
+      isOpen,
+      selectedPack,
+      balance,
+      votePacks: votePacks.length
+    });
+  }, [isOpen, selectedPack, balance, votePacks.length]);
+
   const handlePurchaseClick = useCallback((pack: VotePackDefinition) => {
-    console.log('Purchase clicked:', { pack, isOpen });
+    console.log('Purchase button clicked:', { pack });
     setSelectedPack(pack);
-    onOpen();
+    setTimeout(() => {
+      console.log('Opening modal...');
+      onOpen();
+    }, 0);
   }, [onOpen]);
 
   const handlePurchaseConfirm = async () => {
@@ -57,7 +70,10 @@ export function VotePacks({ userId }: VotePackProps) {
     const { type, votes, votePower } = selectedPack;
     const price = calculatePackPrice(votes, votePower);
     
+    console.log('Confirming purchase:', { type, votes, votePower, price, balance });
+    
     if (balance < price) {
+      console.log('Insufficient balance:', { required: price, available: balance });
       toast({
         title: 'Insufficient Balance',
         description: `You need ${price} tokens. Current balance: ${balance}`,
@@ -72,6 +88,7 @@ export function VotePacks({ userId }: VotePackProps) {
       const tokenService = TokenService.getInstance();
       await tokenService.purchaseVotePack(userId, type, price);
       
+      console.log('Purchase successful');
       toast({
         title: 'Purchase Successful',
         description: `You've purchased ${votes} votes with ${votePower}× power for ${price} tokens`,
@@ -79,6 +96,7 @@ export function VotePacks({ userId }: VotePackProps) {
       });
       onClose();
     } catch (error) {
+      console.error('Purchase failed:', error);
       toast({
         title: 'Purchase Failed',
         description: error instanceof Error ? error.message : 'Failed to purchase vote pack',
