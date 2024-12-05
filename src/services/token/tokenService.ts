@@ -7,13 +7,24 @@ type VotePackType = Database['public']['Tables']['vote_packs']['Row']['type'];
 export class TokenService {
   private static instance: TokenService;
 
-  protected constructor() {}
+  private constructor() {}
 
   public static getInstance(): TokenService {
     if (!TokenService.instance) {
       TokenService.instance = new TokenService();
     }
     return TokenService.instance;
+  }
+
+  async getUserProfile(userId: string) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error) throw error;
+    return data;
   }
 
   async getUserBalance(userId: string): Promise<number> {

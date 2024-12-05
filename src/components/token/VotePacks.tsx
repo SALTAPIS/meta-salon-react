@@ -29,7 +29,7 @@ export function VotePacks({ userId }: VotePackProps) {
   const [selectedPack, setSelectedPack] = useState<VotePackDefinition | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
-  const { balance = 0, refetch } = useTokens();
+  const { balance = 0 } = useTokens();
 
   const handlePurchaseClick = (pack: VotePackDefinition) => {
     setSelectedPack(pack);
@@ -58,9 +58,6 @@ export function VotePacks({ userId }: VotePackProps) {
       setIsLoading(type);
       const tokenService = TokenService.getInstance();
       await tokenService.purchaseVotePack(userId, type, price);
-      
-      // Refetch balance after successful purchase
-      await refetch();
       
       toast({
         title: 'Purchase Successful',
