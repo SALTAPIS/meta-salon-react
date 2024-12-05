@@ -1,4 +1,7 @@
--- Create a table for trigger logs
+-- Drop existing trigger if it exists
+DROP TRIGGER IF EXISTS on_balance_update ON public.profiles;
+
+-- Create a table for trigger logs if it doesn't exist
 CREATE TABLE IF NOT EXISTS public.trigger_logs (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     trigger_name text NOT NULL,
@@ -9,8 +12,11 @@ CREATE TABLE IF NOT EXISTS public.trigger_logs (
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Enable RLS
+-- Enable RLS if not already enabled
 ALTER TABLE public.trigger_logs ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policy if it exists
+DROP POLICY IF EXISTS "Admins can view trigger logs" ON public.trigger_logs;
 
 -- Create policy for admins to view logs
 CREATE POLICY "Admins can view trigger logs"
@@ -63,4 +69,11 @@ BEGIN
     
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql; 
+$$ LANGUAGE plpgsql;
+
+-- Create trigger for balance updates
+CREATE TRIGGER on_balance_update
+    BEFORE UPDATE ON public.profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_balance_update();
+  
