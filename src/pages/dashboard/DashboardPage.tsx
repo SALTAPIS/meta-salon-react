@@ -8,7 +8,6 @@ import {
   VStack,
   Button,
   useToast,
-  Badge,
   Stat,
   StatLabel,
   StatNumber,
@@ -19,6 +18,7 @@ import { VotePacks } from '../../components/token/VotePacks';
 import { useAuth } from '../../hooks/auth/useAuth';
 import { useTokens } from '../../hooks/token/useTokens';
 import { checkDatabaseSetup } from '../../lib/supabase';
+import ConnectionStatus from '../../components/token/ConnectionStatus';
 
 const DashboardPage = () => {
   const { user } = useAuth();
@@ -80,13 +80,7 @@ const DashboardPage = () => {
             >
               Test Database Setup
             </Button>
-            <Badge 
-              ml={4} 
-              colorScheme={realtimeStatus === 'connected' ? 'green' : 'yellow'}
-              variant="subtle"
-            >
-              RT: {realtimeStatus}
-            </Badge>
+            <ConnectionStatus status={realtimeStatus} />
           </Box>
 
           <Box
