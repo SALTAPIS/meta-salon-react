@@ -32,23 +32,28 @@ const clientConfig = {
   url: supabaseUrl,
   keyLength: supabaseAnonKey.length,
   keyPreview: supabaseAnonKey.substring(0, 20) + '...',
-  keyValid: supabaseAnonKey.includes('eyJ') && supabaseAnonKey.split('.').length === 3
+  keyValid: supabaseAnonKey.includes('eyJ') && supabaseAnonKey.split('.').length === 3,
+  keyActual: supabaseAnonKey
 };
 
 console.log('Initializing Supabase client with:', JSON.stringify(clientConfig, null, 2));
 
 // Initialize Supabase client with debug mode
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    debug: true
-  },
-  db: {
-    schema: 'public'
+export const supabase = createClient<Database>(
+  supabaseUrl,
+  supabaseAnonKey,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      debug: true
+    },
+    db: {
+      schema: 'public'
+    }
   }
-});
+);
 
 // Helper to check database connection and tables
 export async function checkDatabaseSetup() {
