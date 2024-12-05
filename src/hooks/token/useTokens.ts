@@ -6,7 +6,6 @@ import type { Database } from '../../types/supabase';
 
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 type VotePack = Database['public']['Tables']['vote_packs']['Row'];
-type Profile = Database['public']['Tables']['profiles']['Row'];
 
 export function useTokens() {
   const { user } = useAuth();
@@ -74,4 +73,4 @@ export function useTokens() {
     isLoading,
     realtimeStatus,
   };
-} 
+}
