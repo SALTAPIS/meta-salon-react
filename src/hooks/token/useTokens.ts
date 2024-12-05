@@ -3,10 +3,16 @@ import { TokenService } from '../../services/token/tokenService';
 import { useAuth } from '../auth/useAuth';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../types/supabase';
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 type VotePack = Database['public']['Tables']['vote_packs']['Row'];
 type Profile = Database['public']['Tables']['profiles']['Row'];
+type ProfileChanges = RealtimePostgresChangesPayload<{
+  [key: string]: any;
+  old_record: Profile;
+  record: Profile;
+}>;
 
 export function useTokens() {
   const { user } = useAuth();
@@ -68,13 +74,8 @@ export function useTokens() {
 
     // Create new subscription
     const channel = supabase
-      .channel(`token-updates-${user.id}`, {
-        config: {
-          broadcast: { self: true },
-          presence: { key: user.id },
-        }
-      })
-      .on(
+      .channel(`token-updates-${user.id}`)
+      .on<Profile>(
         'postgres_changes',
         {
           event: '*',
@@ -82,9 +83,9 @@ export function useTokens() {
           table: 'profiles',
           filter: `id=eq.${user.id}`,
         },
-        (payload: { new: Profile; old: Profile }) => {
+        (payload) => {
           console.log('👤 Profile change detected:', {
-            type: payload.eventType,
+            type: payload.type,
             oldBalance: balance,
             newBalance: payload.new?.balance,
             timestamp: new Date().toISOString()
