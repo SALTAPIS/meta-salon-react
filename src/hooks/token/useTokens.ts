@@ -8,11 +8,6 @@ import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 type VotePack = Database['public']['Tables']['vote_packs']['Row'];
 type Profile = Database['public']['Tables']['profiles']['Row'];
-type ProfileChanges = RealtimePostgresChangesPayload<{
-  [key: string]: any;
-  old_record: Profile;
-  record: Profile;
-}>;
 
 export function useTokens() {
   const { user } = useAuth();
@@ -83,16 +78,17 @@ export function useTokens() {
           table: 'profiles',
           filter: `id=eq.${user.id}`,
         },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Profile>) => {
           console.log('👤 Profile change detected:', {
-            type: payload.type,
+            event: payload.eventType,
             oldBalance: balance,
-            newBalance: payload.new?.balance,
+            newBalance: (payload.new as Profile)?.balance,
             timestamp: new Date().toISOString()
           });
           
-          if (payload.new?.balance !== undefined) {
-            const newBalance = payload.new.balance;
+          const newProfile = payload.new as Profile;
+          if (newProfile?.balance !== undefined) {
+            const newBalance = newProfile.balance;
             console.log('💰 Setting balance from realtime:', {
               oldBalance: balance,
               newBalance,
