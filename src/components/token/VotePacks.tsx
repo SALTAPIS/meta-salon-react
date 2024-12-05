@@ -32,19 +32,24 @@ export function VotePacks({ userId }: VotePackProps) {
   const { balance = 0 } = useTokens();
 
   const handlePurchaseClick = (pack: VotePackDefinition) => {
-    console.log('Initiating vote pack purchase:', {
-      type: pack.type,
-      votes: pack.votes,
-      votePower: pack.votePower,
-      price: calculatePackPrice(pack.votes, pack.votePower),
-      currentBalance: balance
+    console.log('Purchase clicked:', {
+      pack,
+      isOpen,
+      selectedPack
     });
     setSelectedPack(pack);
     onOpen();
+    console.log('Modal should be open:', {
+      isOpenAfter: isOpen,
+      selectedPackAfter: selectedPack
+    });
   };
 
   const handlePurchaseConfirm = async () => {
-    if (!selectedPack) return;
+    if (!selectedPack) {
+      console.error('No pack selected for purchase');
+      return;
+    }
     
     const { type, votes, votePower } = selectedPack;
     const price = calculatePackPrice(votes, votePower);
@@ -172,7 +177,7 @@ export function VotePacks({ userId }: VotePackProps) {
         })}
       </SimpleGrid>
 
-      <Modal isOpen={isOpen} onClose={onClose}>
+      <Modal isOpen={isOpen} onClose={onClose} isCentered>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Confirm Purchase</ModalHeader>
