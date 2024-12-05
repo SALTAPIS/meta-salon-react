@@ -2,14 +2,19 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
 
 // Debug logging for environment variables
-console.log('Environment variables loaded:', {
+const envVars = {
   VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Present (length: ' + import.meta.env.VITE_SUPABASE_ANON_KEY.length + ')' : 'Not set',
+  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? {
+    length: import.meta.env.VITE_SUPABASE_ANON_KEY.length,
+    preview: import.meta.env.VITE_SUPABASE_ANON_KEY.substring(0, 20) + '...'
+  } : 'Not set',
   VITE_SITE_URL: import.meta.env.VITE_SITE_URL,
   MODE: import.meta.env.MODE,
   DEV: import.meta.env.DEV,
   PROD: import.meta.env.PROD
-});
+};
+
+console.log('Environment variables loaded:', JSON.stringify(envVars, null, 2));
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -22,12 +27,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
-console.log('Initializing Supabase client with:', {
+// Enhanced debug logging
+const clientConfig = {
   url: supabaseUrl,
   keyLength: supabaseAnonKey.length,
-  keyStart: supabaseAnonKey.substring(0, 10) + '...',
-  keyEnd: '...' + supabaseAnonKey.substring(supabaseAnonKey.length - 10)
-});
+  keyPreview: supabaseAnonKey.substring(0, 20) + '...',
+  keyValid: supabaseAnonKey.includes('eyJ') && supabaseAnonKey.split('.').length === 3
+};
+
+console.log('Initializing Supabase client with:', JSON.stringify(clientConfig, null, 2));
 
 // Initialize Supabase client with debug mode
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
