@@ -55,10 +55,7 @@ export function VotePacks({ userId }: VotePackProps) {
   const handlePurchaseClick = useCallback((pack: VotePackDefinition) => {
     console.log('Purchase button clicked:', { pack });
     setSelectedPack(pack);
-    setTimeout(() => {
-      console.log('Opening modal...');
-      onOpen();
-    }, 0);
+    onOpen();
   }, [onOpen]);
 
   const handlePurchaseConfirm = async () => {
