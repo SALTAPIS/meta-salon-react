@@ -99,11 +99,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUpWithPassword = async (email: string, password: string): Promise<AuthResponse> => {
     setState(prev => ({ ...prev, isLoading: true }));
     try {
+      const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+      console.log('Using redirect URL:', `${siteUrl}/auth/callback`);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          emailRedirectTo: `${siteUrl}/auth/callback`
         }
       });
 
