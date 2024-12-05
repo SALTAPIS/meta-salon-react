@@ -3,11 +3,10 @@ import { TokenService } from '../../services/token/tokenService';
 import { useAuth } from '../auth/useAuth';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../types/supabase';
-import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
+type Profile = Database['public']['Tables']['profiles']['Row'];
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 type VotePack = Database['public']['Tables']['vote_packs']['Row'];
-type Profile = Database['public']['Tables']['profiles']['Row'];
 
 export function useTokens() {
   const { user } = useAuth();
@@ -54,16 +53,18 @@ export function useTokens() {
     }
   };
 
+  // Set up real-time subscription
   useEffect(() => {
     if (!user?.id) return;
 
-    // Only set up subscription if we don't already have one
+    // Clean up any existing subscription
     if (channelRef.current) {
-      console.log('🔌 Subscription already exists:', {
+      console.log('🔌 Cleaning up existing subscription:', {
         userId: user.id,
         currentStatus: realtimeStatus
       });
-      return;
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
     }
 
     console.log('🔌 Setting up realtime subscription:', {
@@ -74,85 +75,33 @@ export function useTokens() {
     // Create new subscription
     const channel = supabase
       .channel(`token-updates-${user.id}`)
-      .on<Profile>(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${user.id}`,
-        },
-        (payload: RealtimePostgresChangesPayload<Profile>) => {
-          console.log('👤 Profile change detected:', {
-            event: payload.eventType,
-            oldRecord: payload.old,
-            newRecord: payload.new,
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'profiles',
+        filter: `id=eq.${user.id}`,
+      }, (payload) => {
+        console.log('👤 Profile change detected:', {
+          event: payload.eventType,
+          oldRecord: payload.old,
+          newRecord: payload.new,
+          oldBalance: balance,
+          newBalance: (payload.new as Profile)?.balance,
+          timestamp: new Date().toISOString()
+        });
+        
+        const newProfile = payload.new as Profile;
+        if (newProfile?.balance !== undefined && newProfile.balance !== balance) {
+          console.log('💰 Setting balance from realtime:', {
             oldBalance: balance,
-            newBalance: (payload.new as Profile)?.balance,
+            newBalance: newProfile.balance,
+            source: 'realtime',
             timestamp: new Date().toISOString()
           });
-          
-          const newProfile = payload.new as Profile;
-          if (newProfile?.balance !== undefined) {
-            const newBalance = newProfile.balance;
-            console.log('💰 Setting balance from realtime:', {
-              oldBalance: balance,
-              newBalance,
-              source: 'realtime',
-              timestamp: new Date().toISOString()
-            });
-            setBalance(newBalance);
-            // Fetch updated transactions and vote packs
-            const tokenService = TokenService.getInstance();
-            Promise.all([
-              tokenService.getUserTransactions(user.id),
-              tokenService.getUserVotePacks(user.id),
-            ]).then(([newTransactions, newVotePacks]) => {
-              console.log('📦 Updated related data:', {
-                transactionCount: newTransactions.length,
-                votePackCount: newVotePacks.length,
-                timestamp: new Date().toISOString()
-              });
-              setTransactions(newTransactions);
-              setVotePacks(newVotePacks);
-            });
-          }
+          setBalance(newProfile.balance);
+          fetchData(); // Refresh related data
         }
-      )
-      .on<Transaction>(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'transactions',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload: RealtimePostgresChangesPayload<Transaction>) => {
-          console.log('💸 Transaction change detected:', {
-            event: payload.eventType,
-            transactionId: (payload.new as Transaction)?.id,
-            amount: (payload.new as Transaction)?.amount,
-            type: (payload.new as Transaction)?.type,
-            timestamp: new Date().toISOString()
-          });
-          
-          // Fetch updated transactions and balance
-          const tokenService = TokenService.getInstance();
-          Promise.all([
-            tokenService.getUserProfile(user.id),
-            tokenService.getUserTransactions(user.id),
-          ]).then(([userProfile, newTransactions]) => {
-            console.log('💰 Updating balance after transaction:', {
-              oldBalance: balance,
-              newBalance: userProfile?.balance,
-              source: 'transaction_change',
-              timestamp: new Date().toISOString()
-            });
-            setBalance(userProfile?.balance || 0);
-            setTransactions(newTransactions);
-          });
-        }
-      );
+      });
 
     // Store channel reference
     channelRef.current = channel;
@@ -174,6 +123,16 @@ export function useTokens() {
           timestamp: new Date().toISOString()
         });
         setRealtimeStatus('disconnected');
+        
+        // Attempt to reconnect after a brief delay
+        setTimeout(() => {
+          if (channelRef.current === channel) {
+            console.log('🔄 Attempting to reconnect...', {
+              timestamp: new Date().toISOString()
+            });
+            channel.subscribe();
+          }
+        }, 1000);
       } else {
         setRealtimeStatus(status.toLowerCase());
       }
