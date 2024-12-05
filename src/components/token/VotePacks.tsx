@@ -6,6 +6,14 @@ import {
   SimpleGrid,
   useToast,
   Tooltip,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure,
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import { TokenService } from '../../services/token/tokenService';
@@ -18,10 +26,20 @@ interface VotePackProps {
 
 export function VotePacks({ userId }: VotePackProps) {
   const [isLoading, setIsLoading] = useState<VotePackDefinition['type'] | null>(null);
+  const [selectedPack, setSelectedPack] = useState<VotePackDefinition | null>(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
-  const { balance = 0 } = useTokens();
+  const { balance = 0, refetch } = useTokens();
 
-  const handlePurchase = async (packType: VotePackDefinition['type'], votes: number, votePower: number) => {
+  const handlePurchaseClick = (pack: VotePackDefinition) => {
+    setSelectedPack(pack);
+    onOpen();
+  };
+
+  const handlePurchaseConfirm = async () => {
+    if (!selectedPack) return;
+    
+    const { type, votes, votePower } = selectedPack;
     const price = calculatePackPrice(votes, votePower);
     
     if (balance < price) {
@@ -32,13 +50,17 @@ export function VotePacks({ userId }: VotePackProps) {
         duration: 5000,
         isClosable: true,
       });
+      onClose();
       return;
     }
 
     try {
-      setIsLoading(packType);
+      setIsLoading(type);
       const tokenService = TokenService.getInstance();
-      await tokenService.purchaseVotePack(userId, packType, price);
+      await tokenService.purchaseVotePack(userId, type, price);
+      
+      // Refetch balance after successful purchase
+      await refetch();
       
       toast({
         title: 'Purchase Successful',
@@ -47,6 +69,7 @@ export function VotePacks({ userId }: VotePackProps) {
         duration: 5000,
         isClosable: true,
       });
+      onClose();
     } catch (error) {
       console.error('Error purchasing vote pack:', error);
       toast({
@@ -103,7 +126,7 @@ export function VotePacks({ userId }: VotePackProps) {
                 <Button
                   colorScheme="blue"
                   width="full"
-                  onClick={() => handlePurchase(pack.type, pack.votes, pack.votePower)}
+                  onClick={() => handlePurchaseClick(pack)}
                   isLoading={isLoading === pack.type}
                   isDisabled={balance < price}
                 >
@@ -114,6 +137,45 @@ export function VotePacks({ userId }: VotePackProps) {
           )
         })}
       </SimpleGrid>
+
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Confirm Purchase</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {selectedPack && (
+              <>
+                <Text mb={4}>
+                  You are about to purchase:
+                </Text>
+                <Box p={4} borderWidth="1px" borderRadius="md" bg="gray.50">
+                  <Text fontWeight="bold" mb={2}>
+                    {selectedPack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
+                  </Text>
+                  <Text mb={2}>• {selectedPack.votes} votes</Text>
+                  <Text mb={2}>• {selectedPack.votePower}× vote power</Text>
+                  <Text mb={2}>• Total price: {calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
+                  <Text fontSize="sm" color="gray.600">Your balance after purchase will be: {balance - calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
+                </Box>
+              </>
+            )}
+          </ModalBody>
+
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onClose}>
+              Cancel
+            </Button>
+            <Button 
+              colorScheme="blue" 
+              onClick={handlePurchaseConfirm}
+              isLoading={isLoading === selectedPack?.type}
+            >
+              Confirm Purchase
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 } 
