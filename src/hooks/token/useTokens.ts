@@ -27,6 +27,12 @@ export function useTokens() {
         tokenService.getUserVotePacks(user.id),
       ]);
 
+      console.log('Fetched user data:', {
+        balance: userProfile?.balance,
+        transactionCount: userTransactions.length,
+        votePackCount: userVotePacks.length
+      });
+
       setBalance(userProfile?.balance || 0);
       setTransactions(userTransactions);
       setVotePacks(userVotePacks);
@@ -51,17 +57,55 @@ export function useTokens() {
           table: 'profiles',
           filter: `id=eq.${user?.id}`,
         },
-        () => {
-          console.log('Profile changed, refetching data...');
+        (payload) => {
+          console.log('Profile changed:', payload);
+          if (payload.new && 'balance' in payload.new) {
+            console.log('Updating balance:', payload.new.balance);
+            setBalance(payload.new.balance);
+          }
+          fetchData(); // Fetch all data to ensure consistency
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `user_id=eq.${user?.id}`,
+        },
+        (payload) => {
+          console.log('Transaction changed:', payload);
           fetchData();
         }
       )
-      .subscribe((status) => {
-        console.log('Realtime subscription status:', status);
-        setRealtimeStatus(status);
-      });
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vote_packs',
+          filter: `user_id=eq.${user?.id}`,
+        },
+        (payload) => {
+          console.log('Vote packs changed:', payload);
+          fetchData();
+        }
+      );
+
+    // Subscribe and handle connection status
+    channel.subscribe(async (status) => {
+      console.log('Realtime subscription status:', status);
+      if (status === 'SUBSCRIBED') {
+        setRealtimeStatus('connected');
+        await fetchData(); // Fetch initial data when connected
+      } else {
+        setRealtimeStatus(status.toLowerCase());
+      }
+    });
 
     return () => {
+      console.log('Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [user?.id]);
