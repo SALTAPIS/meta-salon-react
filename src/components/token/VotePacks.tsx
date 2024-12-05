@@ -10,49 +10,24 @@ import {
 import { useState } from 'react';
 import { TokenService } from '../../services/token/tokenService';
 import { useTokens } from '../../hooks/token/useTokens';
+import { VOTE_PACK_DEFINITIONS, calculatePackPrice, VotePackDefinition } from '../../config/votePackConfig';
 
 interface VotePackProps {
   userId: string;
 }
 
-interface PackOption {
-  type: 'basic' | 'pro' | 'elite';
-  votes: number;
-  price: number;
-  description?: string;
-}
-
-const packOptions: PackOption[] = [
-  {
-    type: 'basic',
-    votes: 10,
-    price: 100,
-    description: 'Good for casual voters',
-  },
-  {
-    type: 'pro',
-    votes: 25,
-    price: 200,
-    description: 'Perfect for art enthusiasts',
-  },
-  {
-    type: 'elite',
-    votes: 50,
-    price: 350,
-    description: 'For serious collectors',
-  },
-];
-
 export function VotePacks({ userId }: VotePackProps) {
-  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<VotePackDefinition['type'] | null>(null);
   const toast = useToast();
   const { balance = 0 } = useTokens();
 
-  const handlePurchase = async (pack: PackOption) => {
-    if (balance < pack.price) {
+  const handlePurchase = async (packType: VotePackDefinition['type'], votes: number, votePower: number) => {
+    const price = calculatePackPrice(votes, votePower);
+    
+    if (balance < price) {
       toast({
         title: 'Insufficient Balance',
-        description: `You need ${pack.price} tokens. Current balance: ${balance}`,
+        description: `You need ${price} tokens. Current balance: ${balance}`,
         status: 'warning',
         duration: 5000,
         isClosable: true,
@@ -61,13 +36,13 @@ export function VotePacks({ userId }: VotePackProps) {
     }
 
     try {
-      setIsLoading(pack.type);
+      setIsLoading(packType);
       const tokenService = TokenService.getInstance();
-      await tokenService.purchaseVotePack(userId, pack.type, pack.price);
+      await tokenService.purchaseVotePack(userId, packType, price);
       
       toast({
         title: 'Purchase Successful',
-        description: `You've purchased ${pack.votes} votes for ${pack.price} tokens`,
+        description: `You've purchased ${votes} votes with ${votePower}× power for ${price} tokens`,
         status: 'success',
         duration: 5000,
         isClosable: true,
@@ -96,42 +71,48 @@ export function VotePacks({ userId }: VotePackProps) {
       </Text>
 
       <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-        {packOptions.map((pack) => (
-          <Box
-            key={pack.type}
-            p={6}
-            borderWidth="1px"
-            borderRadius="lg"
-            position="relative"
-          >
-            <Heading size="md" mb={2}>
-              {pack.type.charAt(0).toUpperCase() + pack.type.slice(1)} Pack
-            </Heading>
-            <Text mb={4}>
-              {pack.votes} votes for {pack.price} tokens
-            </Text>
-            {pack.description && (
-              <Text fontSize="sm" color="gray.500" mb={4}>
-                {pack.description}
-              </Text>
-            )}
-            <Tooltip
-              isDisabled={balance >= pack.price}
-              label={`Insufficient balance. You need ${pack.price} tokens`}
-              placement="top"
+        {VOTE_PACK_DEFINITIONS.map((pack) => {
+          const price = calculatePackPrice(pack.votes, pack.votePower);
+          return (
+            <Box
+              key={pack.type}
+              p={6}
+              borderWidth="1px"
+              borderRadius="lg"
+              position="relative"
             >
-              <Button
-                colorScheme="blue"
-                width="full"
-                onClick={() => handlePurchase(pack)}
-                isLoading={isLoading === pack.type}
-                isDisabled={balance < pack.price}
+              <Heading size="md" mb={2}>
+                {pack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
+              </Heading>
+              <Text mb={2}>
+                {pack.votes} votes × {pack.votePower} SLN each
+              </Text>
+              <Text fontSize="md" color="blue.500" mb={4}>
+                Total Price: {price} SLN
+              </Text>
+              {pack.description && (
+                <Text fontSize="sm" color="gray.500" mb={4}>
+                  {pack.description}
+                </Text>
+              )}
+              <Tooltip
+                isDisabled={balance >= price}
+                label={`Insufficient balance. You need ${price} tokens`}
+                placement="top"
               >
-                Purchase
-              </Button>
-            </Tooltip>
-          </Box>
-        ))}
+                <Button
+                  colorScheme="blue"
+                  width="full"
+                  onClick={() => handlePurchase(pack.type, pack.votes, pack.votePower)}
+                  isLoading={isLoading === pack.type}
+                  isDisabled={balance < price}
+                >
+                  Purchase
+                </Button>
+              </Tooltip>
+            </Box>
+          )
+        })}
       </SimpleGrid>
     </Box>
   );
