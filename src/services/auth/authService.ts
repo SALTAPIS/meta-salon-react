@@ -1,7 +1,11 @@
 import { supabase } from '../../lib/supabase';
 import type { AuthError, AuthResponse } from '@supabase/supabase-js';
 
-const SITE_URL = import.meta.env.VITE_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://meta-salon-react.vercel.app');
+const SITE_URL = import.meta.env.VITE_SITE_URL;
+
+if (!SITE_URL) {
+  throw new Error('VITE_SITE_URL environment variable is not set');
+}
 
 export class AuthService {
   private static instance: AuthService;

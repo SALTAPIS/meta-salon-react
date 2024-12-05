@@ -17,9 +17,6 @@ export default function AuthCallback() {
         const params = new URLSearchParams(window.location.search);
         const type = params.get('type');
         const email = params.get('email');
-        
-        console.log('Auth callback type:', type);
-        console.log('Email from params:', email);
 
         // Handle email confirmation
         if (type === 'email_confirmation' || type === 'signup' || type === 'recovery') {
@@ -37,28 +34,18 @@ export default function AuthCallback() {
             refresh_token: refreshToken || ''
           });
 
-          if (sessionError) {
-            console.error('Session error:', sessionError);
-            throw sessionError;
-          }
-
-          if (!session) {
-            throw new Error('No session established after confirmation');
-          }
+          if (sessionError) throw sessionError;
+          if (!session) throw new Error('No session established after confirmation');
 
           // Verify the session is for the correct user
           if (email && session.user.email !== email) {
-            console.error('Session user mismatch:', {
-              expected: email,
-              got: session.user.email
-            });
             await supabase.auth.signOut();
             throw new Error('Session user mismatch');
           }
 
           toast({
-            title: 'Email Verified',
-            description: 'Your email has been verified. Welcome to Meta.Salon!',
+            title: 'Welcome!',
+            description: 'Your account is ready to use.',
             status: 'success',
             duration: 5000,
             isClosable: true,
@@ -71,9 +58,7 @@ export default function AuthCallback() {
         // Handle other auth types (OAuth, etc.)
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         if (!session) {
           navigate('/auth/signin', { replace: true });
@@ -82,7 +67,6 @@ export default function AuthCallback() {
 
         navigate('/dashboard', { replace: true });
       } catch (error) {
-        console.error('Auth callback error:', error);
         toast({
           title: 'Authentication Error',
           description: error instanceof Error ? error.message : 'Failed to complete authentication',
