@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { TokenService } from '../../services/token/tokenService';
 import { useAuth } from '../auth/useAuth';
 import { supabase } from '../../lib/supabase';
@@ -14,6 +14,7 @@ export function useTokens() {
   const [votePacks, setVotePacks] = useState<VotePack[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [realtimeStatus, setRealtimeStatus] = useState('disconnected');
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const fetchData = async () => {
     if (!user?.id) return;
@@ -27,10 +28,10 @@ export function useTokens() {
         tokenService.getUserVotePacks(user.id),
       ]);
 
-      console.log('Fetched user data:', {
-        balance: userProfile?.balance,
-        transactionCount: userTransactions.length,
-        votePackCount: userVotePacks.length
+      console.log('💰 Balance update:', {
+        oldBalance: balance,
+        newBalance: userProfile?.balance,
+        source: 'fetchData'
       });
 
       setBalance(userProfile?.balance || 0);
@@ -44,71 +45,85 @@ export function useTokens() {
   };
 
   useEffect(() => {
-    fetchData();
+    if (!user?.id) return;
 
-    // Set up realtime subscription
+    console.log('🔌 Setting up realtime subscription:', {
+      userId: user.id,
+      currentStatus: realtimeStatus
+    });
+
+    // Clean up previous subscription if it exists
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    // Create new subscription
     const channel = supabase
-      .channel('token-updates')
+      .channel(`token-updates-${user.id}`, {
+        config: {
+          broadcast: { self: true },
+          presence: { key: user.id },
+        }
+      })
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'profiles',
-          filter: `id=eq.${user?.id}`,
+          filter: `id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Profile changed:', payload);
+          console.log('👤 Profile change detected:', {
+            type: payload.eventType,
+            oldBalance: balance,
+            newBalance: payload.new?.balance,
+            timestamp: new Date().toISOString()
+          });
+          
           if (payload.new && 'balance' in payload.new) {
-            console.log('Updating balance:', payload.new.balance);
-            setBalance(payload.new.balance);
+            const newBalance = payload.new.balance;
+            console.log('💰 Setting balance from realtime:', {
+              oldBalance: balance,
+              newBalance,
+              source: 'realtime'
+            });
+            setBalance(newBalance);
           }
-          fetchData(); // Fetch all data to ensure consistency
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'transactions',
-          filter: `user_id=eq.${user?.id}`,
-        },
-        (payload) => {
-          console.log('Transaction changed:', payload);
-          fetchData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'vote_packs',
-          filter: `user_id=eq.${user?.id}`,
-        },
-        (payload) => {
-          console.log('Vote packs changed:', payload);
-          fetchData();
         }
       );
 
+    // Store channel reference
+    channelRef.current = channel;
+
     // Subscribe and handle connection status
     channel.subscribe(async (status) => {
-      console.log('Realtime subscription status:', status);
+      console.log('🔌 Realtime status change:', {
+        oldStatus: realtimeStatus,
+        newStatus: status,
+        timestamp: new Date().toISOString()
+      });
+
       if (status === 'SUBSCRIBED') {
         setRealtimeStatus('connected');
-        await fetchData(); // Fetch initial data when connected
+        await fetchData();
       } else {
         setRealtimeStatus(status.toLowerCase());
       }
     });
 
+    // Initial data fetch
+    fetchData();
+
+    // Cleanup function
     return () => {
-      console.log('Cleaning up realtime subscription');
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        console.log('🔌 Cleaning up subscription:', { userId: user.id });
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
-  }, [user?.id]);
+  }, [user?.id, realtimeStatus]); // Added realtimeStatus to dependencies
 
   return {
     balance,
