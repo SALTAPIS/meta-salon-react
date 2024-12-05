@@ -17,6 +17,7 @@ export function useTokens() {
   const [realtimeStatus, setRealtimeStatus] = useState('disconnected');
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastFetchRef = useRef<number>(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!user?.id) return;
@@ -63,19 +64,31 @@ export function useTokens() {
     setBalance(newBalance);
   }, [balance]);
 
+  // Clean up function for channel
+  const cleanupChannel = useCallback(() => {
+    if (channelRef.current) {
+      console.log('🔌 Cleaning up subscription:', {
+        userId: user?.id,
+        timestamp: new Date().toISOString()
+      });
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+      setRealtimeStatus('disconnected');
+    }
+    
+    // Clear any pending reconnect timeout
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+  }, [user?.id]);
+
   // Set up real-time subscription
   useEffect(() => {
     if (!user?.id) return;
 
     // Clean up any existing subscription
-    if (channelRef.current) {
-      console.log('🔌 Cleaning up existing subscription:', {
-        userId: user.id,
-        currentStatus: realtimeStatus
-      });
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
+    cleanupChannel();
 
     console.log('🔌 Setting up realtime subscription:', {
       userId: user.id,
@@ -134,15 +147,19 @@ export function useTokens() {
         });
         setRealtimeStatus('disconnected');
         
-        // Attempt to reconnect after a brief delay
-        setTimeout(() => {
-          if (channelRef.current === channel) {
+        // Clean up the existing channel before attempting to reconnect
+        cleanupChannel();
+        
+        // Attempt to reconnect after a brief delay, but only if we haven't already scheduled a reconnect
+        if (!reconnectTimeoutRef.current) {
+          reconnectTimeoutRef.current = setTimeout(() => {
             console.log('🔄 Attempting to reconnect...', {
               timestamp: new Date().toISOString()
             });
-            channel.subscribe();
-          }
-        }, 1000);
+            // The effect will run again due to the status change
+            setRealtimeStatus('reconnecting');
+          }, 1000);
+        }
       } else {
         setRealtimeStatus(status.toLowerCase());
       }
@@ -152,18 +169,8 @@ export function useTokens() {
     fetchData();
 
     // Cleanup function
-    return () => {
-      if (channelRef.current) {
-        console.log('🔌 Cleaning up subscription:', {
-          userId: user.id,
-          timestamp: new Date().toISOString()
-        });
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-        setRealtimeStatus('disconnected');
-      }
-    };
-  }, [user?.id, balance, fetchData]); // Add balance and fetchData to dependencies
+    return cleanupChannel;
+  }, [user?.id, balance, fetchData, cleanupChannel, realtimeStatus]);
 
   return {
     balance,
@@ -171,7 +178,7 @@ export function useTokens() {
     votePacks,
     isLoading,
     realtimeStatus,
-    updateBalance, // Expose the manual update function
-    fetchData, // Expose the fetch function
+    updateBalance,
+    fetchData,
   };
 }
