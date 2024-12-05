@@ -46,8 +46,8 @@ function ErrorFallback() {
   return (
     <Container maxW="xl" py={16}>
       <VStack spacing={6} align="center" textAlign="center">
-        <Heading size="xl">Oops! Something went wrong</Heading>
-        <Text fontSize="lg">We apologize for the inconvenience. Please try again.</Text>
+        <Heading size="xl">We'll be right back</Heading>
+        <Text fontSize="lg">The page is temporarily unavailable. Please try again.</Text>
         <Button colorScheme="blue" onClick={handleRetry}>
           Return to Home
         </Button>
