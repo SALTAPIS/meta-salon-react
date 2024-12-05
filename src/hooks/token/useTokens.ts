@@ -95,8 +95,15 @@ export function useTokens() {
               source: 'realtime'
             });
             setBalance(newBalance);
-            // Fetch updated vote packs when balance changes
-            fetchData();
+            // Fetch updated transactions and vote packs
+            const tokenService = TokenService.getInstance();
+            Promise.all([
+              tokenService.getUserTransactions(user.id),
+              tokenService.getUserVotePacks(user.id),
+            ]).then(([newTransactions, newVotePacks]) => {
+              setTransactions(newTransactions);
+              setVotePacks(newVotePacks);
+            });
           }
         }
       )
@@ -115,8 +122,37 @@ export function useTokens() {
             timestamp: new Date().toISOString()
           });
           
-          // Fetch updated vote packs when they change
-          fetchData();
+          // Fetch updated vote packs
+          const tokenService = TokenService.getInstance();
+          tokenService.getUserVotePacks(user.id).then(newVotePacks => {
+            setVotePacks(newVotePacks);
+          });
+        }
+      )
+      .on<Transaction>(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload: RealtimePostgresChangesPayload<Transaction>) => {
+          console.log('💸 Transaction change detected:', {
+            event: payload.eventType,
+            transactionId: (payload.new as Transaction)?.id,
+            timestamp: new Date().toISOString()
+          });
+          
+          // Fetch updated transactions and balance
+          const tokenService = TokenService.getInstance();
+          Promise.all([
+            tokenService.getUserProfile(user.id),
+            tokenService.getUserTransactions(user.id),
+          ]).then(([userProfile, newTransactions]) => {
+            setBalance(userProfile?.balance || 0);
+            setTransactions(newTransactions);
+          });
         }
       );
 
