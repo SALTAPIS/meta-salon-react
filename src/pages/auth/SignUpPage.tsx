@@ -84,12 +84,17 @@ export default function SignUpPage() {
         console.log('Signup successful, email confirmation required');
         toast({
           title: 'Check your email',
-          description: 'Please check your email to confirm your account',
+          description: 'Please check your email to confirm your account. The confirmation link will expire in 24 hours.',
           status: 'info',
-          duration: 5000,
+          duration: 20000,
           isClosable: true,
+          position: 'bottom',
+          variant: 'solid',
         });
-        window.location.href = '/auth/signin';
+        // Add a delay before redirecting
+        setTimeout(() => {
+          window.location.href = '/auth/signin';
+        }, 3000);
       }
     } catch (error) {
       console.error('Sign up error:', error);
@@ -107,8 +112,10 @@ export default function SignUpPage() {
         title: 'Error',
         description: errorMessage,
         status: 'error',
-        duration: 5000,
+        duration: 10000,
         isClosable: true,
+        position: 'bottom',
+        variant: 'solid',
       });
       setIsSubmitting(false);
     }
