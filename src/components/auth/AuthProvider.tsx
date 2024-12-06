@@ -1,5 +1,5 @@
 import { User } from '@supabase/supabase-js';
-import { createContext, useEffect, useState } from 'react';
+import { createContext, useEffect, useState, useContext } from 'react';
 import { AuthService } from '../../services/auth/authService';
 
 export interface ExtendedUser extends Omit<User, 'role'> {
@@ -15,9 +15,10 @@ export interface ExtendedUser extends Omit<User, 'role'> {
 
 interface AuthContextType {
   user: ExtendedUser | null;
+  isLoading: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithEmail: (email: string) => Promise<{ error: Error | null }>;
-  signUpWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUpWithPassword: (email: string, password: string) => Promise<{ data: { user: ExtendedUser | null } | null; error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -25,6 +26,7 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<ExtendedUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const authService = AuthService.getInstance();
 
   useEffect(() => {
@@ -35,6 +37,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('Error checking user:', error);
         setUser(null);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -55,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = {
     user,
+    isLoading,
     signInWithPassword: authService.signInWithPassword.bind(authService),
     signInWithEmail: authService.signInWithEmail.bind(authService),
     signUpWithPassword: authService.signUpWithPassword.bind(authService),
@@ -66,4 +71,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 } 

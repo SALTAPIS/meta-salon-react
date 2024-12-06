@@ -69,7 +69,23 @@ export class AuthService {
     return supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         const extendedUser = await this.loadUserProfile(session.user);
-        callback(event, { ...session, user: extendedUser });
+        callback(event, {
+          ...session,
+          user: {
+            ...session.user,
+            role: extendedUser.role || undefined,
+            user_metadata: {
+              ...session.user.user_metadata,
+              balance: extendedUser.balance,
+              username: extendedUser.username,
+              display_name: extendedUser.display_name,
+              bio: extendedUser.bio,
+              avatar_url: extendedUser.avatar_url,
+              email_verified: extendedUser.email_verified,
+              email_notifications: extendedUser.email_notifications,
+            }
+          }
+        });
       } else {
         callback(event, session);
       }
@@ -112,7 +128,7 @@ export class AuthService {
 
   async signUpWithPassword(email: string, password: string) {
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -121,11 +137,19 @@ export class AuthService {
       });
       
       if (error) throw error;
+
+      const extendedUser = data.user ? await this.loadUserProfile(data.user) : null;
       
-      return { error: null };
+      return { 
+        data: { user: extendedUser },
+        error: null 
+      };
     } catch (error) {
       console.error('Sign up error:', error);
-      return { error: error as AuthError };
+      return { 
+        data: null,
+        error: error as AuthError 
+      };
     }
   }
 
