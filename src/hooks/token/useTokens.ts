@@ -21,69 +21,24 @@ export function useTokens() {
   const lastFetchRef = useRef<number>(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchData = useCallback(async () => {
-    if (!user?.id) return;
-
-    // Debounce fetches to prevent hammering the API
-    const now = Date.now();
-    if (now - lastFetchRef.current < 1000) {
-      return;
-    }
-    lastFetchRef.current = now;
-
-    setIsLoading(true);
-    try {
-      const tokenService = TokenService.getInstance();
-      const [userProfile, userTransactions, userVotePacks] = await Promise.all([
-        tokenService.getUserProfile(user.id),
-        tokenService.getUserTransactions(user.id),
-        tokenService.getUserVotePacks(user.id),
-      ]);
-
-      if (isDev) {
-        console.log('💰 Balance update:', {
-          oldBalance: balance,
-          newBalance: userProfile?.balance,
-        });
-      }
-
-      if (userProfile?.balance !== undefined) {
-        setBalance(userProfile.balance);
-      }
-      setTransactions(userTransactions);
-      setVotePacks(userVotePacks);
-    } catch (error) {
-      console.error('Error fetching token data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.id]);
-
-  // Function to manually update balance
-  const updateBalance = useCallback((newBalance: number) => {
-    if (isDev) {
-      console.log('💰 Manual balance update:', {
-        oldBalance: balance,
-        newBalance,
-      });
-    }
-    setBalance(newBalance);
-  }, [balance]);
-
   // Clean up function for channel
   const cleanupChannel = useCallback(() => {
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-      setRealtimeStatus('disconnected');
-    }
-    
+    const currentChannel = channelRef.current;
+    if (!currentChannel) return;
+
+    // Clear the ref immediately to prevent recursive cleanup
+    channelRef.current = null;
+
     // Clear any pending reconnect timeout
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
-  }, [user?.id]);
+
+    // Remove the channel
+    supabase.removeChannel(currentChannel).catch(console.error);
+    setRealtimeStatus('disconnected');
+  }, []);
 
   // Set up real-time subscription
   useEffect(() => {
@@ -103,14 +58,7 @@ export function useTokens() {
       }, (payload) => {
         const newProfile = payload.new as Profile;
         if (newProfile?.balance !== undefined) {
-          if (isDev) {
-            console.log('💰 Balance updated:', {
-              oldBalance: balance,
-              newBalance: newProfile.balance,
-            });
-          }
           setBalance(newProfile.balance);
-          fetchData(); // Refresh related data
         }
       });
 
@@ -121,12 +69,8 @@ export function useTokens() {
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         setRealtimeStatus('connected');
-        fetchData();
       } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
         setRealtimeStatus('disconnected');
-        
-        // Clean up the existing channel before attempting to reconnect
-        cleanupChannel();
         
         // Attempt to reconnect after a brief delay
         if (!reconnectTimeoutRef.current) {
@@ -139,14 +83,42 @@ export function useTokens() {
       }
     });
 
-    // Initial data fetch
-    fetchData();
-
     // Cleanup function
-    return () => {
-      cleanupChannel();
+    return cleanupChannel;
+  }, [user?.id, cleanupChannel]);
+
+  // Fetch data effect
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const fetchData = async () => {
+      const now = Date.now();
+      if (now - lastFetchRef.current < 1000) return;
+      lastFetchRef.current = now;
+
+      setIsLoading(true);
+      try {
+        const tokenService = TokenService.getInstance();
+        const [userProfile, userTransactions, userVotePacks] = await Promise.all([
+          tokenService.getUserProfile(user.id),
+          tokenService.getUserTransactions(user.id),
+          tokenService.getUserVotePacks(user.id),
+        ]);
+
+        if (userProfile?.balance !== undefined) {
+          setBalance(userProfile.balance);
+        }
+        setTransactions(userTransactions);
+        setVotePacks(userVotePacks);
+      } catch (error) {
+        console.error('Error fetching token data:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
-  }, [user?.id, fetchData, cleanupChannel]);
+
+    fetchData();
+  }, [user?.id]);
 
   return {
     balance,
@@ -154,7 +126,5 @@ export function useTokens() {
     votePacks,
     isLoading,
     realtimeStatus,
-    updateBalance,
-    fetchData,
   };
 }

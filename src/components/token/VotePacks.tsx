@@ -135,63 +135,8 @@ export function VotePacks({ userId }: VotePackProps) {
   return (
     <Box>
       <Stack spacing={8}>
-        <Box>
-          <Heading size="md" mb={4}>
-            🎁 Available Vote Packs
-          </Heading>
-          <Text mb={6} color="gray.500">
-            Purchase vote packs to participate in artwork voting
-          </Text>
-
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-            {VOTE_PACK_DEFINITIONS.map((pack) => {
-              const price = calculatePackPrice(pack.votes, pack.votePower);
-              return (
-                <Box
-                  key={pack.type}
-                  p={6}
-                  borderWidth="1px"
-                  borderRadius="lg"
-                  position="relative"
-                >
-                  <Heading size="md" mb={2}>
-                    {pack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
-                  </Heading>
-                  <Text mb={2}>
-                    {pack.votes} votes × {pack.votePower} SLN each
-                  </Text>
-                  <Text fontSize="md" color="blue.500" mb={4}>
-                    Total Price: {price} SLN
-                  </Text>
-                  {pack.description && (
-                    <Text fontSize="sm" color="gray.500" mb={4}>
-                      {pack.description}
-                    </Text>
-                  )}
-                  <Tooltip
-                    isDisabled={balance >= price}
-                    label={`Insufficient balance. You need ${price} tokens`}
-                    placement="top"
-                  >
-                    <Button
-                      colorScheme="blue"
-                      width="full"
-                      onClick={() => handlePurchaseClick(pack)}
-                      isLoading={isLoading === pack.type}
-                      isDisabled={balance < price}
-                    >
-                      Purchase
-                    </Button>
-                  </Tooltip>
-                </Box>
-              );
-            })}
-          </SimpleGrid>
-        </Box>
-
         {votePacks.length > 0 && (
           <Box>
-            <Divider my={8} />
             <Heading size="md" mb={4}>
               Your Vote Packs
             </Heading>
@@ -228,6 +173,61 @@ export function VotePacks({ userId }: VotePackProps) {
             </SimpleGrid>
           </Box>
         )}
+
+        <Box>
+          <Heading size="md" mb={4}>
+            Available Vote Packs
+          </Heading>
+          <Text mb={6} color="gray.500">
+            Purchase vote packs to participate in artwork voting
+          </Text>
+
+          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
+            {VOTE_PACK_DEFINITIONS.map((pack) => {
+              const price = calculatePackPrice(pack.votes, pack.votePower);
+              const isBasicPack = pack.type === 'basic';
+              return (
+                <Box
+                  key={pack.type}
+                  p={6}
+                  borderWidth="1px"
+                  borderRadius="lg"
+                  position="relative"
+                >
+                  <Heading size="md" mb={2}>
+                    {isBasicPack ? '🎁 ' : ''}{pack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
+                  </Heading>
+                  <Text mb={2}>
+                    {pack.votes} votes × {pack.votePower} SLN each
+                  </Text>
+                  <Text fontSize="md" color="blue.500" mb={4}>
+                    Total Price: {price} SLN
+                  </Text>
+                  {pack.description && (
+                    <Text fontSize="sm" color="gray.500" mb={4}>
+                      {isBasicPack ? '🎁 Welcome gift for new users! ' : ''}{pack.description}
+                    </Text>
+                  )}
+                  <Tooltip
+                    isDisabled={balance >= price}
+                    label={`Insufficient balance. You need ${price} tokens`}
+                    placement="top"
+                  >
+                    <Button
+                      colorScheme="blue"
+                      width="full"
+                      onClick={() => handlePurchaseClick(pack)}
+                      isLoading={isLoading === pack.type}
+                      isDisabled={balance < price}
+                    >
+                      {isBasicPack ? 'Claim Gift' : 'Purchase'}
+                    </Button>
+                  </Tooltip>
+                </Box>
+              );
+            })}
+          </SimpleGrid>
+        </Box>
       </Stack>
 
       <Portal>
@@ -245,16 +245,16 @@ export function VotePacks({ userId }: VotePackProps) {
               {selectedPack && (
                 <>
                   <Text mb={4}>
-                    You are about to purchase:
+                    You are about to {selectedPack.type === 'basic' ? 'claim' : 'purchase'}:
                   </Text>
                   <Box p={4} borderWidth="1px" borderRadius="md" bg="gray.50">
                     <Text fontWeight="bold" mb={2}>
-                      {selectedPack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
+                      {selectedPack.type === 'basic' ? '🎁 ' : ''}{selectedPack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
                     </Text>
                     <Text mb={2}>• {selectedPack.votes} votes</Text>
                     <Text mb={2}>• {selectedPack.votePower}× vote power</Text>
                     <Text mb={2}>• Total price: {calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
-                    <Text fontSize="sm" color="gray.600">Your balance after purchase will be: {balance - calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
+                    <Text fontSize="sm" color="gray.600">Your balance after {selectedPack.type === 'basic' ? 'claiming' : 'purchase'} will be: {balance - calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
                   </Box>
                 </>
               )}
@@ -274,7 +274,7 @@ export function VotePacks({ userId }: VotePackProps) {
                 onClick={handlePurchaseConfirm}
                 isLoading={isLoading === selectedPack?.type}
               >
-                Confirm Purchase
+                {selectedPack?.type === 'basic' ? 'Claim Gift' : 'Confirm Purchase'}
               </Button>
             </ModalFooter>
           </ModalContent>
