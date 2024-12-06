@@ -8,7 +8,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 type VotePack = Database['public']['Tables']['vote_packs']['Row'];
-type ChannelState = 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR';
+type ChannelState = 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR' | 'JOINED' | 'JOINING';
 
 export function useTokens() {
   const { user } = useAuth();
@@ -20,7 +20,10 @@ export function useTokens() {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const lastFetchRef = useRef<number>(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const retryCountRef = useRef(0);
   const mountedRef = useRef(true);
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 2000;
 
   // Clean up function for channel
   const cleanupChannel = useCallback(async () => {
@@ -45,6 +48,7 @@ export function useTokens() {
       console.error('Error during channel cleanup:', error);
     } finally {
       channelRef.current = null;
+      retryCountRef.current = 0;
       if (mountedRef.current) {
         setRealtimeStatus('disconnected');
       }
@@ -123,40 +127,62 @@ export function useTokens() {
 
       channelRef.current = channel;
 
-      try {
-        const result = await channel.subscribe();
-        const channelState = (result.state as unknown) as ChannelState;
-        
-        if (!subscriptionActive || !mountedRef.current) {
-          await cleanupChannel();
-          return;
-        }
+      const handleSubscription = async () => {
+        try {
+          const result = await channel.subscribe();
+          const channelState = (result.state as unknown) as ChannelState;
+          
+          if (!subscriptionActive || !mountedRef.current) {
+            await cleanupChannel();
+            return;
+          }
 
-        console.log('Initial subscription status:', channelState);
-        
-        switch (channelState) {
-          case 'SUBSCRIBED':
-            setRealtimeStatus('connected');
-            await fetchData();
-            break;
-          case 'CLOSED':
-            setRealtimeStatus('disconnected');
-            break;
-          case 'CHANNEL_ERROR':
+          console.log('Initial subscription status:', channelState);
+          
+          switch (channelState) {
+            case 'SUBSCRIBED':
+              setRealtimeStatus('connected');
+              retryCountRef.current = 0;
+              await fetchData();
+              break;
+            case 'JOINING':
+              setRealtimeStatus('connecting');
+              break;
+            case 'JOINED':
+              setRealtimeStatus('connected');
+              retryCountRef.current = 0;
+              await fetchData();
+              break;
+            case 'CLOSED':
+            case 'CHANNEL_ERROR':
+            case 'TIMED_OUT':
+              console.warn(`Subscription ${channelState}, attempt ${retryCountRef.current + 1}/${MAX_RETRIES}`);
+              if (retryCountRef.current < MAX_RETRIES && subscriptionActive) {
+                retryCountRef.current++;
+                setRealtimeStatus('reconnecting');
+                // Schedule retry
+                reconnectTimeoutRef.current = setTimeout(() => {
+                  if (subscriptionActive && mountedRef.current) {
+                    handleSubscription();
+                  }
+                }, RETRY_DELAY);
+              } else {
+                setRealtimeStatus('error');
+                console.error('Max retries reached or subscription inactive');
+              }
+              break;
+            default:
+              setRealtimeStatus('unknown');
+          }
+        } catch (error) {
+          console.error('Error during channel setup:', error);
+          if (subscriptionActive && mountedRef.current) {
             setRealtimeStatus('error');
-            break;
-          case 'TIMED_OUT':
-            setRealtimeStatus('timeout');
-            break;
-          default:
-            setRealtimeStatus('unknown');
+          }
         }
-      } catch (error) {
-        console.error('Error during channel setup:', error);
-        if (subscriptionActive && mountedRef.current) {
-          setRealtimeStatus('error');
-        }
-      }
+      };
+
+      await handleSubscription();
     };
 
     setupChannel();
