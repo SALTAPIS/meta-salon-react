@@ -6,10 +6,12 @@ import {
   StatNumber,
   StatHelpText,
   useColorModeValue,
+  Spinner,
+  Center,
+  Text,
 } from '@chakra-ui/react';
-import { useQuery } from '@tanstack/react-query';
-import { TokenService } from '../../services/token/tokenService';
-import type { Database } from '../../types/supabase';
+import { useTokenQueries } from '../../hooks/token/useTokenQueries';
+import type { Database } from '../../types/database.types';
 
 interface UserStatsProps {
   userId: string;
@@ -21,20 +23,23 @@ export function UserStats({ userId }: UserStatsProps) {
   const bgColor = useColorModeValue('gray.50', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
 
-  const { data: balance } = useQuery({
-    queryKey: ['userBalance', userId],
-    queryFn: () => TokenService.getInstance().getUserBalance(userId),
-  });
+  const { balance, votePacks, transactions, isLoading, error } = useTokenQueries(userId);
 
-  const { data: transactions } = useQuery({
-    queryKey: ['userTransactions', userId],
-    queryFn: () => TokenService.getInstance().getUserTransactions(userId),
-  });
+  if (isLoading) {
+    return (
+      <Center py={8}>
+        <Spinner />
+      </Center>
+    );
+  }
 
-  const { data: votePacks } = useQuery({
-    queryKey: ['userVotePacks', userId],
-    queryFn: () => TokenService.getInstance().getUserVotePacks(userId),
-  });
+  if (error) {
+    return (
+      <Center py={8}>
+        <Text color="red.500">Error loading stats</Text>
+      </Center>
+    );
+  }
 
   const totalVotes = votePacks?.reduce((sum: number, pack: VotePack) => sum + pack.votes_remaining, 0) || 0;
   const totalTransactions = transactions?.length || 0;
