@@ -9,6 +9,12 @@ export interface Database {
           created_at: string;
           balance: number;
           updated_at: string;
+          username: string | null;
+          display_name: string | null;
+          bio: string | null;
+          avatar_url: string | null;
+          email_verified: boolean;
+          email_notifications: boolean;
         };
         Insert: {
           id: string;
@@ -17,6 +23,12 @@ export interface Database {
           created_at?: string;
           balance?: number;
           updated_at?: string;
+          username?: string | null;
+          display_name?: string | null;
+          bio?: string | null;
+          avatar_url?: string | null;
+          email_verified?: boolean;
+          email_notifications?: boolean;
         };
         Update: {
           id?: string;
@@ -25,6 +37,12 @@ export interface Database {
           created_at?: string;
           balance?: number;
           updated_at?: string;
+          username?: string | null;
+          display_name?: string | null;
+          bio?: string | null;
+          avatar_url?: string | null;
+          email_verified?: boolean;
+          email_notifications?: boolean;
         };
       };
     };
