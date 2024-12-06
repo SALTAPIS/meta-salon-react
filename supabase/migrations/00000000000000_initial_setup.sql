@@ -23,6 +23,39 @@ create table if not exists public.transactions (
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Enable Row Level Security
+alter table public.profiles enable row level security;
+alter table public.transactions enable row level security;
+
+-- Drop existing policies
+drop policy if exists "Profiles are viewable by owner" on profiles;
+drop policy if exists "Profiles are viewable by admin" on profiles;
+drop policy if exists "Users can view their own profile" on profiles;
+drop policy if exists "Public profiles are viewable by everyone" on profiles;
+
+-- Create unified profile access policy
+create policy "Profiles access policy"
+on profiles for select
+to authenticated
+using (
+  auth.uid() = id OR
+  EXISTS (
+    SELECT 1
+    FROM profiles
+    WHERE profiles.id = auth.uid()
+    AND profiles.role = 'admin'
+  )
+);
+
+-- Transaction policies
+create policy "Users can view their own transactions"
+on transactions for select
+using (auth.uid() = user_id);
+
+create policy "System can create transactions"
+on transactions for insert
+with check (true);
+
 -- Create vote packs table
 create table if not exists public.vote_packs (
     id uuid default uuid_generate_v4() primary key,
@@ -92,22 +125,10 @@ left join challenges c on c.id = e.challenge_id
 group by p.id;
 
 -- Enable Row Level Security
-alter table public.profiles enable row level security;
 alter table public.challenges enable row level security;
 alter table public.votes enable row level security;
 alter table public.entries enable row level security;
-alter table public.transactions enable row level security;
 alter table public.vote_packs enable row level security;
-
--- Profiles policies
-create policy "Public profiles are viewable by everyone"
-on public.profiles for select
-using (true);
-
-create policy "Users can update own profile"
-on public.profiles for update
-using (auth.uid() = id)
-with check (auth.uid() = id);
 
 -- Challenges policies
 create policy "Challenges are viewable by everyone"
@@ -166,15 +187,6 @@ with check (
 create policy "Users cannot update votes"
 on public.votes for update
 using (false);
-
--- Transaction policies
-create policy "Users can view their own transactions"
-on public.transactions for select
-using (auth.uid() = user_id);
-
-create policy "System can create transactions"
-on public.transactions for insert
-with check (true);
 
 -- Vote packs policies
 create policy "Users can view their own vote packs"

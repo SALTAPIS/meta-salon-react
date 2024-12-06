@@ -79,6 +79,14 @@ export function NavMenu() {
         <MenuItem as={RouterLink} to="/profile">
           Profile
         </MenuItem>
+        {user.role === 'admin' && (
+          <>
+            <MenuDivider />
+            <MenuItem as={RouterLink} to="/admin">
+              Admin Dashboard
+            </MenuItem>
+          </>
+        )}
         <MenuDivider />
         <MenuItem onClick={handleSignOut}>
           Sign Out

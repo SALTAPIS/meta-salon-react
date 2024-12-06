@@ -11,6 +11,7 @@ import GamePage from './pages/game/GamePage';
 import ArtworksPage from './pages/artworks/ArtworksPage';
 import ClassementPage from './pages/classement/ClassementPage';
 import SubmitArtPage from './pages/submit/SubmitArtPage';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
 
 export const router = createBrowserRouter([
   {
@@ -80,6 +81,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <SubmitArtPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin',
+        element: (
+          <ProtectedRoute requiredRoles={['admin']}>
+            <AdminDashboard />
           </ProtectedRoute>
         ),
       },
