@@ -14,6 +14,13 @@ create index if not exists idx_vote_packs_user_id on vote_packs(user_id);
 -- Enable RLS
 alter table vote_packs enable row level security;
 
+-- Drop existing policies if they exist
+drop policy if exists "Users can view their own vote packs" on vote_packs;
+drop policy if exists "Users can update their own vote packs" on vote_packs;
+drop policy if exists "System can insert vote packs" on vote_packs;
+drop policy if exists "Admins can view all vote packs" on vote_packs;
+drop policy if exists "Admins can update all vote packs" on vote_packs;
+
 -- Create RLS policies
 create policy "Users can view their own vote packs"
   on vote_packs for select
