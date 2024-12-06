@@ -8,6 +8,8 @@ type Profile = Database['public']['Tables']['profiles']['Row'];
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 type VotePack = Database['public']['Tables']['vote_packs']['Row'];
 
+const isDev = process.env.NODE_ENV === 'development';
+
 export function useTokens() {
   const { user } = useAuth();
   const [balance, setBalance] = useState(0);
@@ -38,11 +40,12 @@ export function useTokens() {
         tokenService.getUserVotePacks(user.id),
       ]);
 
-      console.log('💰 Balance update:', {
-        oldBalance: balance,
-        newBalance: userProfile?.balance,
-        source: 'fetchData'
-      });
+      if (isDev) {
+        console.log('💰 Balance update:', {
+          oldBalance: balance,
+          newBalance: userProfile?.balance,
+        });
+      }
 
       setBalance(userProfile?.balance || 0);
       setTransactions(userTransactions);
@@ -56,21 +59,18 @@ export function useTokens() {
 
   // Function to manually update balance
   const updateBalance = useCallback((newBalance: number) => {
-    console.log('💰 Manual balance update:', {
-      oldBalance: balance,
-      newBalance,
-      source: 'manual'
-    });
+    if (isDev) {
+      console.log('💰 Manual balance update:', {
+        oldBalance: balance,
+        newBalance,
+      });
+    }
     setBalance(newBalance);
   }, [balance]);
 
   // Clean up function for channel
   const cleanupChannel = useCallback(() => {
     if (channelRef.current) {
-      console.log('🔌 Cleaning up subscription:', {
-        userId: user?.id,
-        timestamp: new Date().toISOString()
-      });
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
       setRealtimeStatus('disconnected');
@@ -90,11 +90,6 @@ export function useTokens() {
     // Clean up any existing subscription
     cleanupChannel();
 
-    console.log('🔌 Setting up realtime subscription:', {
-      userId: user.id,
-      currentStatus: realtimeStatus
-    });
-
     // Create new subscription
     const channel = supabase
       .channel(`token-updates-${user.id}`)
@@ -104,23 +99,14 @@ export function useTokens() {
         table: 'profiles',
         filter: `id=eq.${user.id}`,
       }, (payload) => {
-        console.log('👤 Profile change detected:', {
-          event: payload.eventType,
-          oldRecord: payload.old,
-          newRecord: payload.new,
-          oldBalance: balance,
-          newBalance: (payload.new as Profile)?.balance,
-          timestamp: new Date().toISOString()
-        });
-        
         const newProfile = payload.new as Profile;
         if (newProfile?.balance !== undefined && newProfile.balance !== balance) {
-          console.log('💰 Setting balance from realtime:', {
-            oldBalance: balance,
-            newBalance: newProfile.balance,
-            source: 'realtime',
-            timestamp: new Date().toISOString()
-          });
+          if (isDev) {
+            console.log('💰 Balance updated:', {
+              oldBalance: balance,
+              newBalance: newProfile.balance,
+            });
+          }
           setBalance(newProfile.balance);
           fetchData(); // Refresh related data
         }
@@ -130,21 +116,11 @@ export function useTokens() {
     channelRef.current = channel;
 
     // Subscribe and handle connection status
-    channel.subscribe(async (status) => {
-      console.log('🔌 Realtime status change:', {
-        oldStatus: realtimeStatus,
-        newStatus: status,
-        timestamp: new Date().toISOString()
-      });
-
+    channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         setRealtimeStatus('connected');
-        await fetchData();
+        fetchData();
       } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-        console.log('🔌 Channel closed or error:', {
-          status,
-          timestamp: new Date().toISOString()
-        });
         setRealtimeStatus('disconnected');
         
         // Clean up the existing channel before attempting to reconnect
@@ -153,9 +129,6 @@ export function useTokens() {
         // Attempt to reconnect after a brief delay, but only if we haven't already scheduled a reconnect
         if (!reconnectTimeoutRef.current) {
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('🔄 Attempting to reconnect...', {
-              timestamp: new Date().toISOString()
-            });
             // The effect will run again due to the status change
             setRealtimeStatus('reconnecting');
           }, 1000);

@@ -1,8 +1,41 @@
-import { extendTheme, type ThemeConfig } from '@chakra-ui/react';
+import { extendTheme } from '@chakra-ui/react';
 
-const config: ThemeConfig = {
-  initialColorMode: 'light',
-  useSystemColorMode: false,
-};
+const theme = extendTheme({
+  config: {
+    initialColorMode: 'light',
+    useSystemColorMode: false,
+    disableTransitionOnChange: true,
+  },
+  styles: {
+    global: {
+      body: {
+        minHeight: '100vh',
+        overscrollBehavior: 'none',
+        WebkitTapHighlightColor: 'transparent',
+      },
+    },
+  },
+  components: {
+    Button: {
+      baseStyle: {
+        _hover: {
+          transform: 'none',
+        },
+      },
+    },
+    Badge: {
+      baseStyle: {
+        textTransform: 'none',
+      },
+    },
+  },
+  breakpoints: {
+    sm: '30em',
+    md: '48em',
+    lg: '62em',
+    xl: '80em',
+    '2xl': '96em',
+  },
+});
 
-export const theme = extendTheme({ config }); 
+export default theme; 
