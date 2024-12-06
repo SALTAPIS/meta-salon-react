@@ -36,21 +36,31 @@
 - **Component Hierarchy**: Respect component hierarchy.
 - **Service Layer**: Keep service layer clean and focused.
 
-## 7. Common Pitfalls to Avoid
+## 7. React Router and Auth Hierarchy
+- **Core Structure**: Maintain the established hierarchy:
+  - `App.tsx`: Provides core providers (ChakraUI, Auth)
+  - `routes.tsx`: Defines route structure
+  - `Layout.tsx`: Route element, not route container
+- **Auth Context**: Keep at root level for global availability
+- **Route Changes**: Never move routes from `App.tsx` to `Layout.tsx`
+- **Working Nav**: If navigation works, be extremely cautious about restructuring
+- **Safe Changes**: Create new branch for routing changes to avoid breaking navigation
+
+## 8. Common Pitfalls to Avoid
 - Don't modify working code to fix unrelated issues
 - Don't rewrite entire components for small fixes
 - Don't change core providers without thorough testing
 - Don't ignore TypeScript errors - fix them properly
 - Don't mix database and UI changes in the same fix
 
-## 8. Best Practices
+## 9. Best Practices
 - Start with the smallest possible fix
 - Add logging for debugging
 - Test with fresh database state
 - Keep type definitions up to date
 - Document significant changes
 
-## 9. Emergency Procedures
+## 10. Emergency Procedures
 1. **When Things Break**:
    - Stop making changes
    - Review recent modifications
@@ -63,7 +73,7 @@
    - Test thoroughly
    - Document solution
 
-## 10. Development Workflow
+## 11. Development Workflow
 
 ### Git Workflow
 

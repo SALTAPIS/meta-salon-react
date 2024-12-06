@@ -57,7 +57,7 @@ export function NavMenu() {
       <MenuButton
         as={Button}
         variant="ghost"
-        rightIcon={<ChevronDownIcon />}
+        rightIcon={<ChevronDownIcon color="currentColor" />}
       >
         <HStack spacing={2}>
           <Avatar 
