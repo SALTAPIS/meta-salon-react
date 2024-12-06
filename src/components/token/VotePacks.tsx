@@ -15,7 +15,6 @@ import {
   ModalCloseButton,
   useDisclosure,
   Stack,
-  Divider,
   Portal,
 } from '@chakra-ui/react';
 import { useState, useCallback, useEffect } from 'react';

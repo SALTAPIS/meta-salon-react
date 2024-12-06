@@ -6,23 +6,16 @@ import {
   Text,
   useColorModeValue,
   VStack,
-  Button,
-  useToast,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
-  StatGroup,
 } from '@chakra-ui/react';
 import { VotePacks } from '../../components/token/VotePacks';
+import { TokenBalance } from '../../components/token/TokenBalance';
 import { useAuth } from '../../hooks/auth/useAuth';
 import { useTokens } from '../../hooks/token/useTokens';
-import { checkDatabaseSetup } from '../../lib/supabase';
 import ConnectionStatus from '../../components/token/ConnectionStatus';
 
 const DashboardPage = () => {
   const { user } = useAuth();
-  const { balance, votePacks, transactions, realtimeStatus } = useTokens();
+  const { realtimeStatus } = useTokens();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 

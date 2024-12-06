@@ -8,8 +8,6 @@ type Profile = Database['public']['Tables']['profiles']['Row'];
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 type VotePack = Database['public']['Tables']['vote_packs']['Row'];
 
-const isDev = process.env.NODE_ENV === 'development';
-
 export function useTokens() {
   const { user } = useAuth();
   const [balance, setBalance] = useState(0);
@@ -40,6 +38,35 @@ export function useTokens() {
     setRealtimeStatus('disconnected');
   }, []);
 
+  // Fetch data function
+  const fetchData = useCallback(async () => {
+    if (!user?.id) return;
+    
+    const now = Date.now();
+    if (now - lastFetchRef.current < 1000) return;
+    lastFetchRef.current = now;
+
+    setIsLoading(true);
+    try {
+      const tokenService = TokenService.getInstance();
+      const [userProfile, userTransactions, userVotePacks] = await Promise.all([
+        tokenService.getUserProfile(user.id),
+        tokenService.getUserTransactions(user.id),
+        tokenService.getUserVotePacks(user.id),
+      ]);
+
+      if (userProfile?.balance !== undefined) {
+        setBalance(userProfile.balance);
+      }
+      setTransactions(userTransactions);
+      setVotePacks(userVotePacks);
+    } catch (error) {
+      console.error('Error fetching token data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id]);
+
   // Set up real-time subscription
   useEffect(() => {
     if (!user?.id) return;
@@ -59,6 +86,7 @@ export function useTokens() {
         const newProfile = payload.new as Profile;
         if (newProfile?.balance !== undefined) {
           setBalance(newProfile.balance);
+          fetchData(); // Refresh related data when balance changes
         }
       });
 
@@ -69,6 +97,7 @@ export function useTokens() {
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         setRealtimeStatus('connected');
+        fetchData(); // Initial data fetch on subscription
       } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
         setRealtimeStatus('disconnected');
         
@@ -85,40 +114,13 @@ export function useTokens() {
 
     // Cleanup function
     return cleanupChannel;
-  }, [user?.id, cleanupChannel]);
+  }, [user?.id, cleanupChannel, fetchData]);
 
-  // Fetch data effect
+  // Initial data fetch
   useEffect(() => {
     if (!user?.id) return;
-    
-    const fetchData = async () => {
-      const now = Date.now();
-      if (now - lastFetchRef.current < 1000) return;
-      lastFetchRef.current = now;
-
-      setIsLoading(true);
-      try {
-        const tokenService = TokenService.getInstance();
-        const [userProfile, userTransactions, userVotePacks] = await Promise.all([
-          tokenService.getUserProfile(user.id),
-          tokenService.getUserTransactions(user.id),
-          tokenService.getUserVotePacks(user.id),
-        ]);
-
-        if (userProfile?.balance !== undefined) {
-          setBalance(userProfile.balance);
-        }
-        setTransactions(userTransactions);
-        setVotePacks(userVotePacks);
-      } catch (error) {
-        console.error('Error fetching token data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchData();
-  }, [user?.id]);
+  }, [user?.id, fetchData]);
 
   return {
     balance,
@@ -126,5 +128,6 @@ export function useTokens() {
     votePacks,
     isLoading,
     realtimeStatus,
+    fetchData,
   };
 }
