@@ -1,4 +1,4 @@
-import { AuthError, User } from '@supabase/supabase-js';
+import { AuthError, User, Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { ExtendedUser } from '../../components/auth/AuthProvider';
 
@@ -65,7 +65,7 @@ export class AuthService {
     }
   }
 
-  onAuthStateChange(callback: (event: string, session: any) => void) {
+  onAuthStateChange(callback: (event: string, session: Session | null) => void) {
     return supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         const extendedUser = await this.loadUserProfile(session.user);
@@ -78,7 +78,7 @@ export class AuthService {
 
   async signInWithPassword(email: string, password: string) {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ 
+      const { error } = await supabase.auth.signInWithPassword({ 
         email, 
         password 
       });

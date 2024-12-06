@@ -2,7 +2,7 @@ import { User } from '@supabase/supabase-js';
 import { createContext, useEffect, useState } from 'react';
 import { AuthService } from '../../services/auth/authService';
 
-export interface ExtendedUser extends User {
+export interface ExtendedUser extends Omit<User, 'role'> {
   role: string | null;
   balance: number;
   username: string | null;
@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkUser = async () => {
       try {
         const currentUser = await authService.getCurrentUser();
-        setUser(currentUser as ExtendedUser | null);
+        setUser(currentUser);
       } catch (error) {
         console.error('Error checking user:', error);
         setUser(null);
