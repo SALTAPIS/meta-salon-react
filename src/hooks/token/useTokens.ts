@@ -3,10 +3,12 @@ import { TokenService } from '../../services/token/tokenService';
 import { useAuth } from '../auth/useAuth';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../types/supabase';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 type VotePack = Database['public']['Tables']['vote_packs']['Row'];
+type ChannelState = 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR';
 
 export function useTokens() {
   const { user } = useAuth();
@@ -15,32 +17,43 @@ export function useTokens() {
   const [votePacks, setVotePacks] = useState<VotePack[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [realtimeStatus, setRealtimeStatus] = useState('disconnected');
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const lastFetchRef = useRef<number>(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
 
   // Clean up function for channel
-  const cleanupChannel = useCallback(() => {
+  const cleanupChannel = useCallback(async () => {
     const currentChannel = channelRef.current;
     if (!currentChannel) return;
 
-    // Clear the ref immediately to prevent recursive cleanup
-    channelRef.current = null;
-
+    console.log('Cleaning up channel subscription');
+    
     // Clear any pending reconnect timeout
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
 
-    // Remove the channel
-    supabase.removeChannel(currentChannel).catch(console.error);
-    setRealtimeStatus('disconnected');
+    try {
+      // Unsubscribe first
+      await currentChannel.unsubscribe();
+      
+      // Then remove the channel
+      await supabase.removeChannel(currentChannel);
+    } catch (error) {
+      console.error('Error during channel cleanup:', error);
+    } finally {
+      channelRef.current = null;
+      if (mountedRef.current) {
+        setRealtimeStatus('disconnected');
+      }
+    }
   }, []);
 
   // Fetch data function
   const fetchData = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id || !mountedRef.current) return;
     
     const now = Date.now();
     if (now - lastFetchRef.current < 1000) return;
@@ -55,71 +68,115 @@ export function useTokens() {
         tokenService.getUserVotePacks(user.id),
       ]);
 
-      if (userProfile?.balance !== undefined) {
+      if (userProfile?.balance !== undefined && mountedRef.current) {
         setBalance(userProfile.balance);
       }
-      setTransactions(userTransactions);
-      setVotePacks(userVotePacks);
+      if (mountedRef.current) {
+        setTransactions(userTransactions);
+        setVotePacks(userVotePacks);
+      }
     } catch (error) {
       console.error('Error fetching token data:', error);
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [user?.id]);
 
   // Set up real-time subscription
   useEffect(() => {
     if (!user?.id) return;
+    
+    mountedRef.current = true;
+    let subscriptionActive = true;
+    
+    const setupChannel = async () => {
+      if (!subscriptionActive) return;
+      
+      // Clean up any existing subscription
+      await cleanupChannel();
+      
+      if (!subscriptionActive) return;
 
-    // Clean up any existing subscription
-    cleanupChannel();
+      console.log('Setting up real-time subscription for user:', user.id);
 
-    // Create new subscription
-    const channel = supabase
-      .channel(`token-updates-${user.id}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'profiles',
-        filter: `id=eq.${user.id}`,
-      }, (payload) => {
-        const newProfile = payload.new as Profile;
-        if (newProfile?.balance !== undefined) {
-          setBalance(newProfile.balance);
-          fetchData(); // Refresh related data when balance changes
-        }
-      });
+      // Create new subscription
+      const channel = supabase
+        .channel(`token-updates-${user.id}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        }, (payload) => {
+          if (!subscriptionActive || !mountedRef.current) return;
+          
+          console.log('Received real-time update:', payload);
+          const newProfile = payload.new as Profile;
+          if (newProfile?.balance !== undefined) {
+            console.log('Updating balance to:', newProfile.balance);
+            setBalance(newProfile.balance);
+            fetchData();
+          }
+        });
 
-    // Store channel reference
-    channelRef.current = channel;
+      channelRef.current = channel;
 
-    // Subscribe and handle connection status
-    channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        setRealtimeStatus('connected');
-        fetchData(); // Initial data fetch on subscription
-      } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-        setRealtimeStatus('disconnected');
+      try {
+        const result = await channel.subscribe();
+        const channelState = (result.state as unknown) as ChannelState;
         
-        // Attempt to reconnect after a brief delay
-        if (!reconnectTimeoutRef.current) {
-          reconnectTimeoutRef.current = setTimeout(() => {
-            setRealtimeStatus('reconnecting');
-          }, 1000);
+        if (!subscriptionActive || !mountedRef.current) {
+          await cleanupChannel();
+          return;
         }
-      } else {
-        setRealtimeStatus(status.toLowerCase());
+
+        console.log('Initial subscription status:', channelState);
+        
+        switch (channelState) {
+          case 'SUBSCRIBED':
+            setRealtimeStatus('connected');
+            await fetchData();
+            break;
+          case 'CLOSED':
+            setRealtimeStatus('disconnected');
+            break;
+          case 'CHANNEL_ERROR':
+            setRealtimeStatus('error');
+            break;
+          case 'TIMED_OUT':
+            setRealtimeStatus('timeout');
+            break;
+          default:
+            setRealtimeStatus('unknown');
+        }
+      } catch (error) {
+        console.error('Error during channel setup:', error);
+        if (subscriptionActive && mountedRef.current) {
+          setRealtimeStatus('error');
+        }
       }
-    });
+    };
+
+    setupChannel();
 
     // Cleanup function
-    return cleanupChannel;
+    return () => {
+      console.log('Cleaning up subscription effect');
+      subscriptionActive = false;
+      mountedRef.current = false;
+      cleanupChannel();
+    };
   }, [user?.id, cleanupChannel, fetchData]);
 
   // Initial data fetch
   useEffect(() => {
     if (!user?.id) return;
     fetchData();
+    return () => {
+      mountedRef.current = false;
+    };
   }, [user?.id, fetchData]);
 
   return {

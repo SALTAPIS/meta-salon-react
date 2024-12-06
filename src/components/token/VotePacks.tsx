@@ -120,7 +120,7 @@ export function VotePacks({ userId }: VotePackProps) {
                   shadow="sm"
                 >
                   <Heading size="md" mb={2}>
-                    {isBasicPack ? '��� ' : ''}{pack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
+                    {isBasicPack ? '🎁 ' : ''}{pack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
                   </Heading>
                   <Text mb={2}>
                     {pack.votes_remaining} votes remaining

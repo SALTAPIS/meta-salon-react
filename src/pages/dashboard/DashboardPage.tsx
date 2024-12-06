@@ -24,11 +24,11 @@ const DashboardPage = () => {
   if (!user?.id) return null;
 
   return (
-    <Box minH="100vh" bg={pageBgColor}>
+    <Box bg={pageBgColor} minH="100vh">
       <Container maxW="7xl" py={8}>
         <VStack spacing={8} align="stretch">
-          {/* Welcome and Balance Section */}
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8}>
+            {/* Welcome Section */}
             <Box
               p={6}
               bg={bgColor}
@@ -36,10 +36,6 @@ const DashboardPage = () => {
               borderColor={borderColor}
               borderRadius="lg"
               shadow="sm"
-              height="full"
-              display="flex"
-              flexDirection="column"
-              justifyContent="center"
             >
               <Heading size="md" mb={4}>
                 Welcome Back
@@ -49,6 +45,8 @@ const DashboardPage = () => {
                 join the community.
               </Text>
             </Box>
+
+            {/* Balance Section */}
             <Box
               p={6}
               bg={bgColor}
@@ -68,7 +66,6 @@ const DashboardPage = () => {
             borderColor={borderColor}
             borderRadius="lg"
             shadow="sm"
-            overflow="hidden"
           >
             <VotePacks userId={user.id} />
           </Box>
