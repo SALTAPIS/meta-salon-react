@@ -229,65 +229,68 @@ export function VotePacks({ userId }: VotePackProps) {
         </Box>
       </Stack>
 
-      <Portal>
-        <Modal 
-          isOpen={isOpen} 
-          onClose={handleModalClose}
-          isCentered
-          closeOnOverlayClick={!isLoading}
-          blockScrollOnMount={false}
-          motionPreset="slideInBottom"
+      <Modal 
+        isOpen={isOpen} 
+        onClose={handleModalClose}
+        isCentered
+        closeOnOverlayClick={!isLoading}
+        blockScrollOnMount={false}
+        motionPreset="scale"
+        size="md"
+      >
+        <ModalOverlay 
+          bg="blackAlpha.600"
+          backdropFilter="auto"
+          backdropBlur="8px"
+        />
+        <ModalContent
+          bg="white"
+          boxShadow="xl"
+          borderRadius="lg"
+          mx={4}
+          position="relative"
+          zIndex="modal"
         >
-          <ModalOverlay 
-            bg="blackAlpha.300"
-            backdropFilter="blur(10px)"
-          />
-          <ModalContent
-            mx={4}
-            my="auto"
-            maxW="md"
-          >
-            <ModalHeader>Confirm Purchase</ModalHeader>
-            {!isLoading && <ModalCloseButton />}
-            <ModalBody>
-              {selectedPack && (
-                <>
-                  <Text mb={4}>
-                    You are about to {selectedPack.type === 'basic' ? 'claim' : 'purchase'}:
+          <ModalHeader>Confirm Purchase</ModalHeader>
+          {!isLoading && <ModalCloseButton />}
+          <ModalBody>
+            {selectedPack && (
+              <>
+                <Text mb={4}>
+                  You are about to {selectedPack.type === 'basic' ? 'claim' : 'purchase'}:
+                </Text>
+                <Box p={4} borderWidth="1px" borderRadius="md" bg="gray.50">
+                  <Text fontWeight="bold" mb={2}>
+                    {selectedPack.type === 'basic' ? '🎁 ' : ''}{selectedPack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
                   </Text>
-                  <Box p={4} borderWidth="1px" borderRadius="md" bg="gray.50">
-                    <Text fontWeight="bold" mb={2}>
-                      {selectedPack.type === 'basic' ? '🎁 ' : ''}{selectedPack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
-                    </Text>
-                    <Text mb={2}>• {selectedPack.votes} votes</Text>
-                    <Text mb={2}>• {selectedPack.votePower}× vote power</Text>
-                    <Text mb={2}>• Total price: {calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
-                    <Text fontSize="sm" color="gray.600">Your balance after {selectedPack.type === 'basic' ? 'claiming' : 'purchase'} will be: {balance - calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
-                  </Box>
-                </>
-              )}
-            </ModalBody>
+                  <Text mb={2}>• {selectedPack.votes} votes</Text>
+                  <Text mb={2}>• {selectedPack.votePower}× vote power</Text>
+                  <Text mb={2}>• Total price: {calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
+                  <Text fontSize="sm" color="gray.600">Your balance after {selectedPack.type === 'basic' ? 'claiming' : 'purchase'} will be: {balance - calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
+                </Box>
+              </>
+            )}
+          </ModalBody>
 
-            <ModalFooter>
-              <Button 
-                variant="ghost" 
-                mr={3} 
-                onClick={handleModalClose}
-                isDisabled={!!isLoading}
-              >
-                Cancel
-              </Button>
-              <Button 
-                colorScheme="blue" 
-                onClick={handlePurchaseConfirm}
-                isLoading={isLoading === selectedPack?.type}
-              >
-                {selectedPack?.type === 'basic' ? 'Claim Gift' : 'Confirm Purchase'}
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
-      </Portal>
+          <ModalFooter>
+            <Button 
+              variant="ghost" 
+              mr={3} 
+              onClick={handleModalClose}
+              isDisabled={!!isLoading}
+            >
+              Cancel
+            </Button>
+            <Button 
+              colorScheme="blue" 
+              onClick={handlePurchaseConfirm}
+              isLoading={isLoading === selectedPack?.type}
+            >
+              {selectedPack?.type === 'basic' ? 'Claim Gift' : 'Confirm Purchase'}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 } 
