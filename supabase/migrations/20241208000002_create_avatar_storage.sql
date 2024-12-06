@@ -1,6 +1,3 @@
--- Enable storage if not already enabled
-create extension if not exists "storage" schema "extensions";
-
 -- Create bucket for avatars if it doesn't exist
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
