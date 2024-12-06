@@ -19,11 +19,12 @@ const DashboardPage = () => {
   const { realtimeStatus } = useTokens();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const pageBgColor = useColorModeValue('gray.50', 'gray.900');
 
   if (!user?.id) return null;
 
   return (
-    <Box minH="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
+    <Box minH="100vh" bg={pageBgColor}>
       <Container maxW="7xl" py={8}>
         <VStack spacing={8} align="stretch">
           {/* Welcome and Balance Section */}
