@@ -1,45 +1,64 @@
--- Enable storage if not already enabled
-CREATE EXTENSION IF NOT EXISTS "storage" SCHEMA "extensions";
+-- Check if storage extension is available
+DO $$ 
+BEGIN
+    IF EXISTS (
+        SELECT 1 
+        FROM pg_available_extensions 
+        WHERE name = 'storage'
+    ) THEN
+        -- Enable storage if available
+        CREATE EXTENSION IF NOT EXISTS "storage" SCHEMA "extensions";
+    END IF;
+END $$;
 
--- Create avatars bucket
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('avatars', 'avatars', true)
-ON CONFLICT (id) DO NOTHING;
+-- Create avatars bucket if storage is available
+DO $$ 
+BEGIN
+    IF EXISTS (
+        SELECT 1 
+        FROM pg_extension 
+        WHERE extname = 'storage'
+    ) THEN
+        INSERT INTO storage.buckets (id, name, public)
+        VALUES ('avatars', 'avatars', true)
+        ON CONFLICT (id) DO NOTHING;
 
--- Create album-images bucket
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('album-images', 'album-images', true)
-ON CONFLICT (id) DO NOTHING;
+        -- Create album-images bucket
+        INSERT INTO storage.buckets (id, name, public)
+        VALUES ('album-images', 'album-images', true)
+        ON CONFLICT (id) DO NOTHING;
 
--- Set up security policies for avatars
-CREATE POLICY "Avatar images are publicly accessible"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'avatars');
+        -- Set up security policies for avatars
+        CREATE POLICY "Avatar images are publicly accessible"
+        ON storage.objects FOR SELECT
+        USING (bucket_id = 'avatars');
 
-CREATE POLICY "Users can upload their own avatar"
-ON storage.objects FOR INSERT
-WITH CHECK (
-    bucket_id = 'avatars' AND
-    (storage.foldername(name))[1] = auth.uid()::text
-);
+        CREATE POLICY "Users can upload their own avatar"
+        ON storage.objects FOR INSERT
+        WITH CHECK (
+            bucket_id = 'avatars' AND
+            (storage.foldername(name))[1] = auth.uid()::text
+        );
 
-CREATE POLICY "Users can update their own avatar"
-ON storage.objects FOR UPDATE
-USING (
-    bucket_id = 'avatars' AND
-    (storage.foldername(name))[1] = auth.uid()::text
-)
-WITH CHECK (
-    bucket_id = 'avatars' AND
-    (storage.foldername(name))[1] = auth.uid()::text
-);
+        CREATE POLICY "Users can update their own avatar"
+        ON storage.objects FOR UPDATE
+        USING (
+            bucket_id = 'avatars' AND
+            (storage.foldername(name))[1] = auth.uid()::text
+        )
+        WITH CHECK (
+            bucket_id = 'avatars' AND
+            (storage.foldername(name))[1] = auth.uid()::text
+        );
 
-CREATE POLICY "Users can delete their own avatar"
-ON storage.objects FOR DELETE
-USING (
-    bucket_id = 'avatars' AND
-    (storage.foldername(name))[1] = auth.uid()::text
-);
+        CREATE POLICY "Users can delete their own avatar"
+        ON storage.objects FOR DELETE
+        USING (
+            bucket_id = 'avatars' AND
+            (storage.foldername(name))[1] = auth.uid()::text
+        );
+    END IF;
+END $$;
 
 -- Set up security policies for album images
 CREATE POLICY "Album images are accessible based on album privacy"
