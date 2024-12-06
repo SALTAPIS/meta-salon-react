@@ -14,9 +14,6 @@ import {
   ModalBody,
   ModalCloseButton,
   useDisclosure,
-  Stack,
-  VStack,
-  Divider,
   useColorModeValue,
 } from '@chakra-ui/react';
 import { useState, useCallback } from 'react';
@@ -97,48 +94,45 @@ export function VotePacks({ userId }: VotePackProps) {
   }, [selectedPack, balance, userId, handleModalClose, toast]);
 
   return (
-    <VStack spacing={8} p={6} align="stretch">
+    <Box p={6}>
       {/* Owned Vote Packs */}
       {votePacks.length > 0 && (
-        <Box>
+        <Box mb={8}>
           <Heading size="md" mb={4}>
             Your Vote Packs
           </Heading>
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-            {votePacks.map((pack) => {
-              const isBasicPack = pack.type === 'basic';
-              return (
-                <Box
-                  key={pack.id}
-                  p={6}
-                  borderWidth="1px"
-                  borderColor={borderColor}
-                  borderRadius="lg"
-                  bg={bgColor}
-                  shadow="sm"
+          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+            {votePacks.map((pack) => (
+              <Box
+                key={pack.id}
+                p={6}
+                borderWidth="1px"
+                borderColor={borderColor}
+                borderRadius="lg"
+                bg={bgColor}
+                shadow="sm"
+              >
+                <Heading size="md" mb={4}>
+                  {pack.type === 'basic' ? '🎁 ' : ''}{pack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
+                </Heading>
+                <Text color="blue.500" fontSize="lg" fontWeight="bold" mb={2}>
+                  {pack.votes_remaining} votes remaining
+                </Text>
+                <Text mb={2}>
+                  {pack.vote_power}× voting power
+                </Text>
+                <Text fontSize="sm" color="gray.500" mb={4}>
+                  Expires: {formatExpiryDate(pack.expires_at)}
+                </Text>
+                <Button
+                  colorScheme="blue"
+                  width="full"
+                  isDisabled={pack.votes_remaining === 0}
                 >
-                  <Heading size="md" mb={2}>
-                    {isBasicPack ? '🎁 ' : ''}{pack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
-                  </Heading>
-                  <Text mb={2}>
-                    {pack.votes_remaining} votes remaining
-                  </Text>
-                  <Text mb={2}>
-                    {pack.vote_power}× voting power
-                  </Text>
-                  <Text fontSize="sm" color="gray.500" mb={4}>
-                    Expires: {formatExpiryDate(pack.expires_at)}
-                  </Text>
-                  <Button
-                    colorScheme="green"
-                    width="full"
-                    isDisabled={pack.votes_remaining === 0}
-                  >
-                    {pack.votes_remaining > 0 ? 'Use Pack' : 'Expired'}
-                  </Button>
-                </Box>
-              );
-            })}
+                  {pack.votes_remaining > 0 ? 'Use Pack' : 'Expired'}
+                </Button>
+              </Box>
+            ))}
           </SimpleGrid>
         </Box>
       )}
@@ -151,7 +145,7 @@ export function VotePacks({ userId }: VotePackProps) {
         <Text mb={6} color="gray.500">
           Purchase vote packs to participate in artwork voting
         </Text>
-        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
           {VOTE_PACK_DEFINITIONS.map((pack) => {
             const price = calculatePackPrice(pack.votes, pack.votePower);
             return (
@@ -164,20 +158,21 @@ export function VotePacks({ userId }: VotePackProps) {
                 bg={bgColor}
                 shadow="sm"
               >
-                <Heading size="md" mb={2}>
+                <Heading size="md" mb={4}>
                   {pack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
                 </Heading>
+                <Text color="blue.500" fontSize="lg" fontWeight="bold" mb={2}>
+                  {pack.votes} votes
+                </Text>
                 <Text mb={2}>
-                  {pack.votes} votes × {pack.votePower} SLN each
+                  {pack.votePower}× voting power
                 </Text>
-                <Text fontSize="md" color="blue.500" mb={4}>
-                  Total Price: {price} SLN
+                <Text color="green.500" fontSize="lg" fontWeight="bold" mb={2}>
+                  {price} SLN
                 </Text>
-                {pack.description && (
-                  <Text fontSize="sm" color="gray.500" mb={4}>
-                    {pack.description}
-                  </Text>
-                )}
+                <Text fontSize="sm" color="gray.500" mb={4}>
+                  {pack.description}
+                </Text>
                 <Tooltip
                   isDisabled={balance >= price}
                   label={`Insufficient balance. You need ${price} tokens`}
@@ -199,62 +194,41 @@ export function VotePacks({ userId }: VotePackProps) {
         </SimpleGrid>
       </Box>
 
-      {/* Purchase Modal */}
-      <Modal
-        isOpen={isOpen}
+      {/* Purchase Confirmation Modal */}
+      <Modal 
+        isOpen={isOpen} 
         onClose={handleModalClose}
         isCentered
-        closeOnOverlayClick={!isLoading}
-        motionPreset="scale"
       >
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>
-            Confirm Purchase
-          </ModalHeader>
-          {!isLoading && <ModalCloseButton />}
+          <ModalHeader>Confirm Purchase</ModalHeader>
+          <ModalCloseButton />
           <ModalBody>
             {selectedPack && (
-              <VStack spacing={4} align="stretch">
-                <Text>
-                  You are about to purchase:
-                </Text>
-                <Box p={4} borderWidth="1px" borderRadius="md" bg="gray.50">
-                  <Stack spacing={3}>
-                    <Text fontWeight="bold">
-                      {selectedPack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
-                    </Text>
-                    <Text>• {selectedPack.votes} votes</Text>
-                    <Text>• {selectedPack.votePower}× vote power</Text>
-                    <Text>• Total price: {calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
-                    <Divider />
-                    <Text fontSize="sm" color="gray.600">
-                      Your balance after purchase will be: {balance - calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN
-                    </Text>
-                  </Stack>
+              <Box>
+                <Text mb={4}>You are about to purchase:</Text>
+                <Box p={4} borderWidth="1px" borderRadius="md">
+                  <Text fontWeight="bold" mb={2}>
+                    {selectedPack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
+                  </Text>
+                  <Text>• {selectedPack.votes} votes</Text>
+                  <Text>• {selectedPack.votePower}× vote power</Text>
+                  <Text>• Total price: {calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
                 </Box>
-              </VStack>
+              </Box>
             )}
           </ModalBody>
           <ModalFooter>
-            <Button
-              variant="ghost"
-              mr={3}
-              onClick={handleModalClose}
-              isDisabled={!!isLoading}
-            >
+            <Button mr={3} onClick={handleModalClose}>
               Cancel
             </Button>
-            <Button
-              colorScheme="blue"
-              onClick={handlePurchaseConfirm}
-              isLoading={isLoading === selectedPack?.type}
-            >
+            <Button colorScheme="blue" onClick={handlePurchaseConfirm}>
               Confirm Purchase
             </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </VStack>
+    </Box>
   );
 } 

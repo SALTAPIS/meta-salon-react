@@ -7,23 +7,38 @@ const optimizedTheme = extendTheme({
     cssVarPrefix: 'salon',
   },
   styles: {
-    global: {
-      'html, body': {
-        backgroundColor: 'white',
-        color: 'gray.800',
+    global: (props: { colorMode: 'light' | 'dark' }) => ({
+      body: {
+        bg: props.colorMode === 'light' ? 'white' : 'gray.900',
+        color: props.colorMode === 'light' ? 'gray.800' : 'whiteAlpha.900',
       },
-      '*': {
-        // Disable animations and transitions globally
-        transition: 'none !important',
-        animation: 'none !important',
-        // Use hardware acceleration
-        transform: 'translateZ(0)',
-        backfaceVisibility: 'hidden',
-        perspective: 1000,
+      '*::placeholder': {
+        color: props.colorMode === 'light' ? 'gray.400' : 'whiteAlpha.400',
       },
-    },
+      '*, *::before, &::after': {
+        borderColor: props.colorMode === 'light' ? 'gray.200' : 'whiteAlpha.300',
+      },
+    }),
   },
   components: {
+    Modal: {
+      baseStyle: (props: { colorMode: 'light' | 'dark' }) => ({
+        overlay: {
+          bg: 'blackAlpha.600',
+          zIndex: 1400,
+        },
+        dialogContainer: {
+          zIndex: 1500,
+        },
+        dialog: {
+          bg: props.colorMode === 'light' ? 'white' : 'gray.800',
+          zIndex: 1500,
+        },
+        closeButton: {
+          zIndex: 1501,
+        },
+      }),
+    },
     Button: {
       defaultProps: {
         variant: 'solid',
@@ -42,6 +57,12 @@ const optimizedTheme = extendTheme({
       baseStyle: {
         maxW: 'container.xl',
       },
+    },
+  },
+  semanticTokens: {
+    colors: {
+      'chakra-body-bg': { _light: 'white', _dark: 'gray.900' },
+      'chakra-body-text': { _light: 'gray.800', _dark: 'whiteAlpha.900' },
     },
   },
 });
