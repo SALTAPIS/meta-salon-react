@@ -15,7 +15,6 @@ import {
   ModalCloseButton,
   useDisclosure,
   Stack,
-  Portal,
 } from '@chakra-ui/react';
 import { useState, useCallback, useEffect } from 'react';
 import { TokenService } from '../../services/token/tokenService';
