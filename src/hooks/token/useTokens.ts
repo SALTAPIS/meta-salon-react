@@ -129,5 +129,6 @@ export function useTokens() {
     isLoading,
     realtimeStatus,
     fetchData,
+    setBalance,
   };
 }

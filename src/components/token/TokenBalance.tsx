@@ -6,13 +6,43 @@ import {
   StatHelpText,
   useColorModeValue,
   Skeleton,
+  chakra,
 } from '@chakra-ui/react';
 import { useTokens } from '../../hooks/token/useTokens';
+import { useEffect, useRef } from 'react';
+import { animate } from 'framer-motion';
+
+const MotionStatNumber = chakra(StatNumber, {
+  shouldComponentUpdate: true,
+  baseStyle: {
+    display: 'block',
+  },
+});
 
 export function TokenBalance() {
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const { balance, isLoading } = useTokens();
+  const prevBalanceRef = useRef(balance || 0);
+  const numberRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isLoading && balance !== undefined && numberRef.current) {
+      const controls = animate(prevBalanceRef.current, balance, {
+        duration: 0.5,
+        onUpdate: (value) => {
+          if (numberRef.current) {
+            numberRef.current.textContent = Math.round(value).toString();
+          }
+        },
+        onComplete: () => {
+          prevBalanceRef.current = balance;
+        },
+      });
+
+      return () => controls.stop();
+    }
+  }, [balance, isLoading]);
 
   return (
     <Box
@@ -26,7 +56,9 @@ export function TokenBalance() {
       <Stat>
         <StatLabel>Token Balance</StatLabel>
         <Skeleton isLoaded={!isLoading}>
-          <StatNumber>{balance || 0}</StatNumber>
+          <MotionStatNumber ref={numberRef}>
+            {balance || 0}
+          </MotionStatNumber>
         </Skeleton>
         <StatHelpText>Available tokens</StatHelpText>
       </Stat>

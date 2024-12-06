@@ -42,7 +42,7 @@ export function VotePacks({ userId }: VotePackProps) {
     duration: 5000,
     isClosable: true,
   });
-  const { balance = 0, votePacks = [] } = useTokens();
+  const { balance = 0, votePacks = [], setBalance } = useTokens();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
@@ -78,6 +78,8 @@ export function VotePacks({ userId }: VotePackProps) {
       setIsLoading(type);
       const tokenService = TokenService.getInstance();
       await tokenService.purchaseVotePack(userId, type, price);
+      
+      setBalance(prev => prev - price);
       
       toast({
         title: 'Purchase Successful',
@@ -118,7 +120,7 @@ export function VotePacks({ userId }: VotePackProps) {
                   shadow="sm"
                 >
                   <Heading size="md" mb={2}>
-                    {isBasicPack ? '🎁 ' : ''}{pack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
+                    {isBasicPack ? '��� ' : ''}{pack.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
                   </Heading>
                   <Text mb={2}>
                     {pack.votes_remaining} votes remaining
