@@ -16,7 +16,6 @@ import {
   useDisclosure,
   Stack,
   Portal,
-  createStandaloneToast,
 } from '@chakra-ui/react';
 import { useState, useCallback, useEffect } from 'react';
 import { TokenService } from '../../services/token/tokenService';
