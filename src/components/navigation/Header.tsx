@@ -22,7 +22,7 @@ export function Header() {
         <Flex align="center" justify="space-between">
           <HStack as={RouterLink} to="/" spacing={2} cursor="pointer">
             <Logo />
-            <Text fontSize="lg" fontWeight="bold">
+            <Text fontSize="xl" fontWeight="bold" fontFamily="Allan">
               Meta.Salon
             </Text>
           </HStack>
