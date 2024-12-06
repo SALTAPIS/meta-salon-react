@@ -8,9 +8,6 @@ export interface Database {
           role: string | null;
           created_at: string;
           balance: number;
-          username: string | null;
-          full_name: string | null;
-          avatar_url: string | null;
           updated_at: string;
         };
         Insert: {
@@ -19,9 +16,6 @@ export interface Database {
           role?: string | null;
           created_at?: string;
           balance?: number;
-          username?: string | null;
-          full_name?: string | null;
-          avatar_url?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -30,9 +24,6 @@ export interface Database {
           role?: string | null;
           created_at?: string;
           balance?: number;
-          username?: string | null;
-          full_name?: string | null;
-          avatar_url?: string | null;
           updated_at?: string;
         };
       };
@@ -42,13 +33,10 @@ export interface Database {
         Args: Record<string, never>;
         Returns: {
           id: string;
-          email: string | null;
-          role: string | null;
+          email: string;
+          role: string;
           created_at: string;
           balance: number;
-          username: string | null;
-          full_name: string | null;
-          avatar_url: string | null;
           updated_at: string;
         }[];
       };
