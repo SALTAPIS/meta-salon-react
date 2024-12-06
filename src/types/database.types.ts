@@ -45,6 +45,32 @@ export interface Database {
           email_notifications?: boolean;
         };
       };
+      vote_packs: {
+        Row: {
+          id: string;
+          user_id: string;
+          votes_remaining: number;
+          vote_power: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          votes_remaining?: number;
+          vote_power?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          votes_remaining?: number;
+          vote_power?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Functions: {
       get_all_profiles_admin: {

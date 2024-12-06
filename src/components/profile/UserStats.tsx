@@ -11,13 +11,19 @@ import {
   Text,
 } from '@chakra-ui/react';
 import { useTokenQueries } from '../../hooks/token/useTokenQueries';
-import type { Database } from '../../types/database.types';
 
 interface UserStatsProps {
   userId: string;
 }
 
-type VotePack = Database['public']['Tables']['vote_packs']['Row'];
+interface VotePack {
+  id: string;
+  user_id: string;
+  votes_remaining: number;
+  vote_power: number;
+  created_at: string;
+  updated_at: string;
+}
 
 export function UserStats({ userId }: UserStatsProps) {
   const bgColor = useColorModeValue('gray.50', 'gray.700');
@@ -41,7 +47,7 @@ export function UserStats({ userId }: UserStatsProps) {
     );
   }
 
-  const totalVotes = votePacks?.reduce((sum: number, pack: VotePack) => sum + pack.votes_remaining, 0) || 0;
+  const totalVotes = votePacks?.reduce((sum: number, pack: VotePack) => sum + (pack.votes_remaining || 0), 0) || 0;
   const totalTransactions = transactions?.length || 0;
 
   return (
