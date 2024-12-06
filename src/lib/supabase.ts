@@ -9,28 +9,4 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
-
-// Extend the Database type to include our RPC functions
-declare module '../types/database.types' {
-  interface Database {
-    public: {
-      Functions: {
-        get_all_profiles_admin: {
-          Args: Record<string, never>;
-          Returns: {
-            id: string;
-            email: string | null;
-            role: string | null;
-            created_at: string;
-            balance: number;
-            username: string | null;
-            full_name: string | null;
-            avatar_url: string | null;
-            updated_at: string;
-          }[];
-        };
-      } & Database['public']['Functions'];
-    };
-  }
-}
  
