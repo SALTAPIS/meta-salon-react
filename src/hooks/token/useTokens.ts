@@ -47,7 +47,9 @@ export function useTokens() {
         });
       }
 
-      setBalance(userProfile?.balance || 0);
+      if (userProfile?.balance !== undefined) {
+        setBalance(userProfile.balance);
+      }
       setTransactions(userTransactions);
       setVotePacks(userVotePacks);
     } catch (error) {
@@ -55,7 +57,7 @@ export function useTokens() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, balance]);
+  }, [user?.id]);
 
   // Function to manually update balance
   const updateBalance = useCallback((newBalance: number) => {
@@ -100,7 +102,7 @@ export function useTokens() {
         filter: `id=eq.${user.id}`,
       }, (payload) => {
         const newProfile = payload.new as Profile;
-        if (newProfile?.balance !== undefined && newProfile.balance !== balance) {
+        if (newProfile?.balance !== undefined) {
           if (isDev) {
             console.log('💰 Balance updated:', {
               oldBalance: balance,
@@ -126,10 +128,9 @@ export function useTokens() {
         // Clean up the existing channel before attempting to reconnect
         cleanupChannel();
         
-        // Attempt to reconnect after a brief delay, but only if we haven't already scheduled a reconnect
+        // Attempt to reconnect after a brief delay
         if (!reconnectTimeoutRef.current) {
           reconnectTimeoutRef.current = setTimeout(() => {
-            // The effect will run again due to the status change
             setRealtimeStatus('reconnecting');
           }, 1000);
         }
@@ -142,8 +143,10 @@ export function useTokens() {
     fetchData();
 
     // Cleanup function
-    return cleanupChannel;
-  }, [user?.id, balance, fetchData, cleanupChannel, realtimeStatus]);
+    return () => {
+      cleanupChannel();
+    };
+  }, [user?.id, fetchData, cleanupChannel]);
 
   return {
     balance,

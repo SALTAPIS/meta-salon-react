@@ -32,6 +32,8 @@ const formatExpiryDate = (expiryDate: string | null): string => {
   return new Date(expiryDate).toLocaleDateString();
 };
 
+const isDev = process.env.NODE_ENV === 'development';
+
 export function VotePacks({ userId }: VotePackProps) {
   const [isLoading, setIsLoading] = useState<VotePackDefinition['type'] | null>(null);
   const [selectedPack, setSelectedPack] = useState<VotePackDefinition | null>(null);
@@ -41,31 +43,40 @@ export function VotePacks({ userId }: VotePackProps) {
     duration: 5000,
     isClosable: true,
   });
-  const { balance = 0, votePacks = [] } = useTokens();
+  const { balance = 0, votePacks = [], fetchData } = useTokens();
 
-  // Debug logs for component state
+  // Debug logs for component state - only in development
   useEffect(() => {
-    console.log('🎁 VotePacks component state:', {
-      isOpen,
-      selectedPack,
-      balance,
-      votePacks: votePacks.length
-    });
+    if (isDev) {
+      console.log('🎁 VotePacks component state:', {
+        isOpen,
+        selectedPack,
+        balance,
+        votePacks: votePacks.length
+      });
+    }
   }, [isOpen, selectedPack, balance, votePacks.length]);
+
+  const handleModalClose = useCallback(() => {
+    if (!isLoading) {
+      onClose();
+      setSelectedPack(null);
+    }
+  }, [isLoading, onClose]);
 
   const handlePurchaseClick = useCallback((pack: VotePackDefinition) => {
     try {
-      console.log('🛍️ Purchase button clicked:', { pack });
+      if (isDev) {
+        console.log('🛍️ Purchase button clicked:', { pack });
+      }
       setSelectedPack(pack);
-      console.log('🎯 Opening modal...');
       onOpen();
-      console.log('🚀 Modal should be open:', { isOpen: true });
     } catch (error) {
       console.error('❌ Error in handlePurchaseClick:', error);
     }
   }, [onOpen]);
 
-  const handlePurchaseConfirm = async () => {
+  const handlePurchaseConfirm = useCallback(async () => {
     if (!selectedPack) {
       console.error('❌ No pack selected for purchase');
       return;
@@ -74,16 +85,20 @@ export function VotePacks({ userId }: VotePackProps) {
     const { type, votes, votePower } = selectedPack;
     const price = calculatePackPrice(votes, votePower);
     
-    console.log('💳 Confirming purchase:', { type, votes, votePower, price, balance });
+    if (isDev) {
+      console.log('💳 Confirming purchase:', { type, votes, votePower, price, balance });
+    }
     
     if (balance < price) {
-      console.log('⚠️ Insufficient balance:', { required: price, available: balance });
+      if (isDev) {
+        console.log('⚠️ Insufficient balance:', { required: price, available: balance });
+      }
       toast({
         title: 'Insufficient Balance',
         description: `You need ${price} tokens. Current balance: ${balance}`,
         status: 'warning',
       });
-      onClose();
+      handleModalClose();
       return;
     }
 
@@ -92,13 +107,18 @@ export function VotePacks({ userId }: VotePackProps) {
       const tokenService = TokenService.getInstance();
       await tokenService.purchaseVotePack(userId, type, price);
       
-      console.log('✅ Purchase successful');
+      if (isDev) {
+        console.log('✅ Purchase successful');
+      }
+      
       toast({
         title: 'Purchase Successful',
         description: `You've purchased ${votes} votes with ${votePower}× power for ${price} tokens`,
         status: 'success',
       });
-      onClose();
+      
+      // Refresh data after successful purchase
+      await fetchData();
     } catch (error) {
       console.error('❌ Purchase failed:', error);
       toast({
@@ -108,8 +128,9 @@ export function VotePacks({ userId }: VotePackProps) {
       });
     } finally {
       setIsLoading(null);
+      handleModalClose();
     }
-  };
+  }, [selectedPack, balance, userId, handleModalClose, toast, fetchData]);
 
   return (
     <Box>
@@ -155,10 +176,7 @@ export function VotePacks({ userId }: VotePackProps) {
                     <Button
                       colorScheme="blue"
                       width="full"
-                      onClick={() => {
-                        console.log('🖱️ Button clicked for pack:', pack.type);
-                        handlePurchaseClick(pack);
-                      }}
+                      onClick={() => handlePurchaseClick(pack)}
                       isLoading={isLoading === pack.type}
                       isDisabled={balance < price}
                     >
@@ -166,7 +184,7 @@ export function VotePacks({ userId }: VotePackProps) {
                     </Button>
                   </Tooltip>
                 </Box>
-              )
+              );
             })}
           </SimpleGrid>
         </Box>
@@ -215,14 +233,14 @@ export function VotePacks({ userId }: VotePackProps) {
       <Portal>
         <Modal 
           isOpen={isOpen} 
-          onClose={onClose} 
+          onClose={handleModalClose}
           isCentered
-          closeOnOverlayClick={false}
+          closeOnOverlayClick={!isLoading}
         >
           <ModalOverlay />
           <ModalContent>
             <ModalHeader>Confirm Purchase</ModalHeader>
-            <ModalCloseButton />
+            {!isLoading && <ModalCloseButton />}
             <ModalBody>
               {selectedPack && (
                 <>
@@ -243,7 +261,12 @@ export function VotePacks({ userId }: VotePackProps) {
             </ModalBody>
 
             <ModalFooter>
-              <Button variant="ghost" mr={3} onClick={onClose}>
+              <Button 
+                variant="ghost" 
+                mr={3} 
+                onClick={handleModalClose}
+                isDisabled={!!isLoading}
+              >
                 Cancel
               </Button>
               <Button 
