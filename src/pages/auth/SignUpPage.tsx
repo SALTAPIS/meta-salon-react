@@ -35,7 +35,7 @@ export default function SignUpPage() {
 
     try {
       console.log('Attempting to sign up with email:', email);
-      const { data, error } = await signUpWithPassword(email, password);
+      const { error } = await signUpWithPassword(email, password);
 
       if (error) {
         setError(error.message);

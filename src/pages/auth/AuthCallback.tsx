@@ -7,7 +7,8 @@ export default function AuthCallback() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.onAuthStateChange((event, session) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    supabase.auth.onAuthStateChange((event, _session) => {
       if (event === 'SIGNED_IN') {
         navigate('/dashboard');
       } else if (event === 'SIGNED_OUT') {
