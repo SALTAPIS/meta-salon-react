@@ -1,0 +1,46 @@
+name: Auto-reject major updates
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  auto-reject:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check if major version update
+        id: check-version
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          if [[ $PR_TITLE =~ "bump ".*" from ".* ]] && [[ $PR_TITLE =~ " to "[0-9]+\. ]]; then
+            MAJOR_VERSION_CHANGE=true
+          else
+            MAJOR_VERSION_CHANGE=false
+          fi
+          echo "is_major=$MAJOR_VERSION_CHANGE" >> $GITHUB_OUTPUT
+
+      - name: Close PR if major update
+        if: steps.check-version.outputs.is_major == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: 'Automatically closing this PR as it contains a major version update. Major updates need to be manually reviewed and tested.'
+            });
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              state: 'closed'
+            }); 
