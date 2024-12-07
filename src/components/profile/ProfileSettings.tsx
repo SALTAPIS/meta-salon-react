@@ -29,7 +29,6 @@ export function ProfileSettings() {
   const [bio, setBio] = useState(user?.bio || '');
   const [emailNotifications, setEmailNotifications] = useState(user?.email_notifications ?? true);
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -37,7 +36,6 @@ export function ProfileSettings() {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarFile(file);
     
     try {
       if (!user?.id) throw new Error('User not found');
@@ -58,7 +56,6 @@ export function ProfileSettings() {
     try {
       if (!user?.id) throw new Error('User not found');
       setAvatarUrl('');
-      setAvatarFile(null);
       
       const { error: updateError } = await supabase
         .from('profiles')
