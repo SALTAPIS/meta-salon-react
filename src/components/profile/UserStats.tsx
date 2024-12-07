@@ -41,7 +41,7 @@ export function UserStats({ userId }: UserStatsProps) {
     );
   }
 
-  const totalVotes = votePacks?.reduce((sum: number, pack: VotePack) => sum + (pack.votes_remaining || 0), 0) || 0;
+  const totalVotes = votePacks?.reduce<number>((sum, pack) => sum + (pack.votes_remaining || 0), 0) || 0;
   const totalTransactions = transactions?.length || 0;
 
   return (
