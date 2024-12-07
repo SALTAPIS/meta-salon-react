@@ -27,6 +27,8 @@ export function Header() {
               fontWeight="bold"
               fontFamily="'Allan', cursive"
               letterSpacing="wide"
+              textTransform="none"
+              style={{ fontWeight: 700 }}
             >
               Meta.Salon
             </Text>

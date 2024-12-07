@@ -1,8 +1,7 @@
-import { Box } from '@chakra-ui/react';
-import { useColorMode } from '@chakra-ui/react';
+import { Box, useColorModeValue } from '@chakra-ui/react';
 
 export function Logo() {
-  const { colorMode } = useColorMode();
+  const color = useColorModeValue('gray.800', 'whiteAlpha.900');
   
   return (
     <Box as="svg" 
@@ -11,10 +10,7 @@ export function Logo() {
       viewBox="0 0 177 250" 
       fill="none" 
       xmlns="http://www.w3.org/2000/svg"
-      style={{
-        filter: colorMode === 'dark' ? 'invert(1)' : undefined,
-        transition: 'filter 0.2s'
-      }}
+      color={color}
     >
       <path 
         fillRule="evenodd" 

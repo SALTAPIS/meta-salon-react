@@ -19,6 +19,7 @@ export function NavMenu() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const menuBg = useColorModeValue('white', 'gray.800');
+  const iconColor = useColorModeValue('gray.600', 'whiteAlpha.900');
 
   const handleSignOut = async () => {
     try {
@@ -57,7 +58,7 @@ export function NavMenu() {
       <MenuButton
         as={Button}
         variant="ghost"
-        rightIcon={<ChevronDownIcon />}
+        rightIcon={<ChevronDownIcon color={iconColor} />}
       >
         <HStack spacing={2}>
           <Avatar 
