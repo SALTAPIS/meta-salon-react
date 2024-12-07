@@ -17,8 +17,6 @@ interface UserStatsProps {
   userId: string;
 }
 
-type VotePack = Database['public']['Tables']['vote_packs']['Row'];
-
 export function UserStats({ userId }: UserStatsProps) {
   const bgColor = useColorModeValue('gray.50', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
