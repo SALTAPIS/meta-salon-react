@@ -24,9 +24,15 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const CACHED_USER_KEY = 'cached_user';
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<ExtendedUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Try to get cached user first
+  const cachedUser = localStorage.getItem(CACHED_USER_KEY);
+  const initialUser = cachedUser ? JSON.parse(cachedUser) as ExtendedUser : null;
+  
+  const [user, setUser] = useState<ExtendedUser | null>(initialUser);
+  const [isLoading, setIsLoading] = useState(!initialUser);
   const authService = AuthService.getInstance();
 
   useEffect(() => {
@@ -34,9 +40,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const currentUser = await authService.getCurrentUser();
         setUser(currentUser);
+        if (currentUser) {
+          localStorage.setItem(CACHED_USER_KEY, JSON.stringify(currentUser));
+        } else {
+          localStorage.removeItem(CACHED_USER_KEY);
+        }
       } catch (error) {
         console.error('Error checking user:', error);
         setUser(null);
+        localStorage.removeItem(CACHED_USER_KEY);
       } finally {
         setIsLoading(false);
       }
@@ -46,9 +58,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = authService.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setUser(session.user as ExtendedUser);
+        const extendedUser = session.user as ExtendedUser;
+        setUser(extendedUser);
+        localStorage.setItem(CACHED_USER_KEY, JSON.stringify(extendedUser));
       } else {
         setUser(null);
+        localStorage.removeItem(CACHED_USER_KEY);
       }
     });
 
@@ -63,7 +78,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithPassword: authService.signInWithPassword.bind(authService),
     signInWithEmail: authService.signInWithEmail.bind(authService),
     signUpWithPassword: authService.signUpWithPassword.bind(authService),
-    signOut: authService.signOut.bind(authService),
+    signOut: async () => {
+      await authService.signOut();
+      localStorage.removeItem(CACHED_USER_KEY);
+    },
   };
 
   return (

@@ -12,7 +12,7 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
-  if (isLoading && !location.pathname.startsWith('/auth/')) {
+  if (isLoading && !user && !location.pathname.startsWith('/auth/')) {
     return (
       <Center h="calc(100vh - 64px)" p={8}>
         <VStack spacing={4}>
