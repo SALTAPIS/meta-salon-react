@@ -39,36 +39,45 @@ export default function SignUpPage() {
 
       if (error) {
         setError(error.message);
+        toast({
+          title: 'Error',
+          description: error.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
         return;
       }
 
-      if (data?.user) {
-        toast({
-          title: 'Welcome!',
-          description: 'Your account has been created successfully',
-          status: 'success',
-          duration: 10000,
-          isClosable: true,
-        });
-        navigate('/dashboard');
-      } else {
-        toast({
-          title: 'Check your email',
-          description: 'Please check your email to confirm your account. The confirmation link will expire in 24 hours.',
-          status: 'info',
-          duration: 20000,
-          isClosable: true,
-          position: 'bottom',
-          variant: 'solid',
-        });
-        // Add a delay before redirecting
-        setTimeout(() => {
-          navigate('/auth/signin');
-        }, 3000);
-      }
+      // Show success message immediately
+      toast({
+        title: 'Check your email',
+        description: 'Please check your email to confirm your account. The confirmation link will expire in 24 hours.',
+        status: 'success',
+        duration: 10000,
+        isClosable: true,
+        position: 'top',
+      });
+
+      // Clear form
+      setEmail('');
+      setPassword('');
+      
+      // Redirect after a short delay
+      setTimeout(() => {
+        navigate('/auth/signin');
+      }, 2000);
     } catch (error) {
       console.error('Signup error:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred during sign up');
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred during sign up';
+      setError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setIsLoading(false);
     }

@@ -4,6 +4,7 @@ import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import SignInPage from './pages/auth/SignInPage';
 import SignUpPage from './pages/auth/SignUpPage';
+import AuthCallback from './pages/auth/AuthCallback';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import UnauthorizedPage from './pages/auth/unauthorized';
@@ -41,6 +42,10 @@ export const router = createBrowserRouter([
           {
             path: 'signup',
             element: <SignUpPage />,
+          },
+          {
+            path: 'callback',
+            element: <AuthCallback />,
           },
           {
             path: 'unauthorized',
