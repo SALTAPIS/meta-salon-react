@@ -91,33 +91,44 @@ export function ProfileSettings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.id) return;
-
-    setIsLoading(true);
     setError(null);
+    setIsLoading(true);
 
     try {
-      let newAvatarUrl = avatarUrl;
-      
-      // Upload new avatar if selected
-      if (avatarFile) {
-        newAvatarUrl = await uploadAvatar(user.id, avatarFile);
+      // Validate display name
+      if (displayName && (displayName.length < 1 || displayName.length > 50)) {
+        throw new Error('Display name must be between 1 and 50 characters');
       }
 
-      // Update profile
+      // Validate username
+      if (username && (username.length < 3 || username.length > 30 || !/^[a-zA-Z0-9_-]+$/.test(username))) {
+        throw new Error('Username must be between 3 and 30 characters and contain only letters, numbers, underscores, and hyphens');
+      }
+
+      // Validate bio
+      if (bio && bio.length > 500) {
+        throw new Error('Bio must not exceed 500 characters');
+      }
+
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           username,
           display_name: displayName,
           bio,
-          avatar_url: newAvatarUrl,
+          avatar_url: avatarUrl,
           email_notifications: emailNotifications,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        if (updateError.code === 'P0001') {
+          // This is a validation error from the database
+          throw new Error(updateError.message);
+        }
+        throw updateError;
+      }
 
       toast({
         title: 'Profile updated',
@@ -127,11 +138,12 @@ export function ProfileSettings() {
       });
     } catch (error) {
       console.error('Error updating profile:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred while updating your profile');
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while updating your profile';
+      setError(errorMessage);
       
       toast({
         title: 'Error',
-        description: 'Failed to update profile. Please try again.',
+        description: errorMessage,
         status: 'error',
         duration: 5000,
       });
