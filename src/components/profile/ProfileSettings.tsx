@@ -22,9 +22,8 @@ import { DeleteIcon } from '@chakra-ui/icons';
 export function ProfileSettings() {
   const { user } = useAuth();
   const toast = useToast();
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+  const [isLoading, setIsLoading] = useState(false);
   const [username, setUsername] = useState(user?.username || '');
   const [displayName, setDisplayName] = useState(user?.display_name || '');
   const [bio, setBio] = useState(user?.bio || '');
@@ -38,36 +37,50 @@ export function ProfileSettings() {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please upload an image file',
-        status: 'error',
-        duration: 3000,
-      });
-      return;
-    }
-
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast({
-        title: 'File too large',
-        description: 'Please upload an image smaller than 2MB',
-        status: 'error',
-        duration: 3000,
-      });
-      return;
-    }
-
     setAvatarFile(file);
-    setAvatarUrl(URL.createObjectURL(file));
+    
+    try {
+      if (!user?.id) throw new Error('User not found');
+      const newAvatarUrl = await uploadAvatar(user.id, file);
+      setAvatarUrl(newAvatarUrl);
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to upload avatar. Please try again.',
+        status: 'error',
+        duration: 5000,
+      });
+    }
   };
 
-  const handleRemoveAvatar = () => {
-    setAvatarFile(null);
-    setAvatarUrl('');
+  const handleRemoveAvatar = async () => {
+    try {
+      if (!user?.id) throw new Error('User not found');
+      setAvatarUrl('');
+      setAvatarFile(null);
+      
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: 'Avatar removed',
+        status: 'success',
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error removing avatar:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to remove avatar. Please try again.',
+        status: 'error',
+        duration: 5000,
+      });
+    }
   };
 
   const uploadAvatar = async (userId: string, file: File): Promise<string> => {
@@ -78,9 +91,7 @@ export function ProfileSettings() {
       .from('avatars')
       .upload(filePath, file, { upsert: true });
 
-    if (uploadError) {
-      throw uploadError;
-    }
+    if (uploadError) throw uploadError;
 
     const { data: { publicUrl } } = supabase.storage
       .from('avatars')
@@ -91,6 +102,11 @@ export function ProfileSettings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.id) {
+      setError('User not found');
+      return;
+    }
+    
     setError(null);
     setIsLoading(true);
 
@@ -124,7 +140,6 @@ export function ProfileSettings() {
 
       if (updateError) {
         if (updateError.code === 'P0001') {
-          // This is a validation error from the database
           throw new Error(updateError.message);
         }
         throw updateError;
