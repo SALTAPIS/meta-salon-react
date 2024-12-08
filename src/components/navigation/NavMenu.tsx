@@ -31,10 +31,26 @@ export function NavMenu() {
     }
   };
 
-  if (isLoading) {
+  // Only show spinner during initial load
+  if (isLoading && !user) {
     return (
       <HStack spacing={4}>
-        <Spinner size="sm" />
+        <Button
+          as={RouterLink}
+          to="/auth/signin"
+          variant="ghost"
+          size="sm"
+        >
+          Sign In
+        </Button>
+        <Button
+          as={RouterLink}
+          to="/auth/signup"
+          colorScheme="blue"
+          size="sm"
+        >
+          Sign Up
+        </Button>
       </HStack>
     );
   }
