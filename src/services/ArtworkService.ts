@@ -1,5 +1,9 @@
 import { supabase } from '../lib/supabaseClient';
-import type { Database, ArtworkMetadata, Album, Artwork, Profile } from '../types/database.types';
+import { Database } from '../types/database.types';
+import { ArtworkMetadata } from '../types/database.types';
+
+type Artwork = Database['public']['Tables']['artworks']['Row'];
+type Album = Database['public']['Tables']['albums']['Row'];
 
 export class ArtworkService {
   private static readonly MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -92,14 +96,14 @@ export class ArtworkService {
     }
 
     // First check if user has enough balance
-    const { data: profile, error: balanceError } = await supabase
+    const { data, error: balanceError } = await supabase
       .from('profiles')
-      .select('balance')
+      .select('*')
       .eq('id', user.data.user.id)
       .single();
 
     if (balanceError) throw balanceError;
-    if (!profile || typeof profile.balance !== 'number' || profile.balance < submissionFee) {
+    if (!data || typeof data.balance !== 'number' || data.balance < submissionFee) {
       throw new Error('Insufficient balance for submission');
     }
 
@@ -121,7 +125,7 @@ export class ArtworkService {
     const { error: feeError } = await supabase
       .from('profiles')
       .update({
-        balance: profile.balance - submissionFee
+        balance: data.balance - submissionFee
       })
       .eq('id', artwork.user_id);
 
