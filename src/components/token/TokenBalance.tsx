@@ -25,22 +25,47 @@ export function TokenBalance() {
   const { balance, isLoading } = useTokens();
   const prevBalanceRef = useRef(balance || 0);
   const numberRef = useRef<HTMLDivElement>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isLoading && balance !== undefined && numberRef.current) {
-      const controls = animate(prevBalanceRef.current, balance, {
-        duration: 0.5,
-        onUpdate: (value) => {
-          if (numberRef.current) {
-            numberRef.current.textContent = Math.round(value).toString();
-          }
-        },
-        onComplete: () => {
-          prevBalanceRef.current = balance;
-        },
-      });
+      try {
+        const controls = animate(prevBalanceRef.current, balance, {
+          duration: 0.5,
+          onUpdate: (value) => {
+            if (numberRef.current && mountedRef.current) {
+              numberRef.current.textContent = Math.round(value).toString();
+            }
+          },
+          onComplete: () => {
+            if (mountedRef.current) {
+              prevBalanceRef.current = balance;
+            }
+          },
+        });
 
-      return () => controls.stop();
+        return () => {
+          controls.stop();
+        };
+      } catch (error) {
+        console.error('Animation error:', {
+          error,
+          currentBalance: balance,
+          prevBalance: prevBalanceRef.current,
+          timestamp: new Date().toISOString()
+        });
+        // Fallback to direct update
+        if (numberRef.current && mountedRef.current) {
+          numberRef.current.textContent = balance.toString();
+        }
+      }
     }
   }, [balance, isLoading]);
 

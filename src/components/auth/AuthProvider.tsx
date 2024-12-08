@@ -1,6 +1,7 @@
 import { createContext, useEffect, useState, useContext } from 'react';
 import { AuthService } from '../../services/auth/authService';
 import { User } from '../../types/user';
+import { supabase } from '../../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -33,10 +34,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateUserBalance = (newBalance: number) => {
     if (!user) return;
-    const updatedUser = { ...user, balance: newBalance };
-    setUser(updatedUser);
-    localStorage.setItem(CACHED_USER_KEY, JSON.stringify(updatedUser));
-    localStorage.setItem(CACHED_BALANCE_KEY, newBalance.toString());
+    
+    try {
+      // Update local state
+      const updatedUser = { ...user, balance: newBalance };
+      setUser(updatedUser);
+      
+      // Update cache atomically
+      localStorage.setItem(CACHED_USER_KEY, JSON.stringify(updatedUser));
+      localStorage.setItem(CACHED_BALANCE_KEY, newBalance.toString());
+      
+      console.log('Balance updated successfully:', {
+        newBalance,
+        userId: user.id,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Balance update failed:', {
+        error,
+        userId: user?.id,
+        attempted_balance: newBalance,
+        timestamp: new Date().toISOString()
+      });
+    }
   };
 
   const refreshUser = async () => {
@@ -68,7 +88,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkUser = async () => {
       try {
-        await refreshUser();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await refreshUser();
+        } else {
+          setUser(null);
+          localStorage.removeItem(CACHED_USER_KEY);
+          localStorage.removeItem(CACHED_BALANCE_KEY);
+        }
       } catch (error) {
         console.error('Error checking user:', error);
         setUser(null);
@@ -81,7 +108,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     checkUser();
 
-    const { data: { subscription } } = authService.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.id);
+      
       if (session?.user) {
         await refreshUser();
       } else {

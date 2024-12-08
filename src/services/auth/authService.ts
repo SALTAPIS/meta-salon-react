@@ -60,26 +60,39 @@ export class AuthService {
 
   async updateProfile(userId: string, updates: ProfileUpdate): Promise<{ error: Error | null }> {
     try {
+      // First get the current profile to preserve existing values
+      const { data: currentProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Preserve balance and other critical fields
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           ...updates,
+          balance: currentProfile.balance, // Preserve the current balance
+          role: currentProfile.role, // Preserve the current role
           updated_at: new Date().toISOString(),
         })
         .eq('id', userId);
 
       if (updateError) throw updateError;
 
-      // Refresh the session to update the user context
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        // Load and cache the updated user profile
-        const updatedUser = await this.loadUserProfile(session.user);
-        localStorage.setItem('cached_user', JSON.stringify(updatedUser));
-        
-        // Force a session refresh to update the user metadata
-        await supabase.auth.refreshSession();
-      }
+      // Get the updated profile
+      const { data: updatedProfile, error: refreshError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (refreshError) throw refreshError;
+
+      // Update local storage with the new profile data
+      localStorage.setItem('cached_user', JSON.stringify(updatedProfile));
 
       return { error: null };
     } catch (error) {
@@ -133,12 +146,21 @@ export class AuthService {
 
   async signInWithPassword(email: string, password: string) {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ 
+      const { data, error } = await supabase.auth.signInWithPassword({ 
         email, 
         password 
       });
       
       if (error) throw error;
+
+      // Load and cache the user profile after successful sign in
+      if (data.user) {
+        const extendedUser = await this.loadUserProfile(data.user);
+        localStorage.setItem('cached_user', JSON.stringify(extendedUser));
+        if (extendedUser.balance !== undefined) {
+          localStorage.setItem('cached_balance', extendedUser.balance.toString());
+        }
+      }
       
       return { error: null };
     } catch (error) {

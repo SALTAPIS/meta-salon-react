@@ -2,17 +2,25 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Spinner, VStack, Text, useToast } from '@chakra-ui/react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/auth/useAuth';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
   const toast = useToast();
+  const { refreshUser } = useAuth();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Clear any existing session first
-        await supabase.auth.signOut();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) throw error;
 
+        if (session?.user) {
+          await refreshUser();
+          
+          toast({
+            title: 'Welcome back!',
         // Get URL parameters
         const params = new URLSearchParams(window.location.search);
         const type = params.get('type');
