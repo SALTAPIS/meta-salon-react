@@ -327,6 +327,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
             id: data.user.id,
             email: data.user.email,
             role: 'user',
+            balance: 500, // Initial balance
             email_verified: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -337,6 +338,23 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
           // Don't throw here, we still want to return success since auth worked
         } else {
           console.log('[AuthService] Profile created successfully');
+          
+          // Create initial vote pack
+          try {
+            const { error: votePackError } = await supabase.rpc('purchase_vote_pack', {
+              p_user_id: data.user.id,
+              p_type: 'basic',
+              p_amount: 10,
+            });
+
+            if (votePackError) {
+              console.error('[AuthService] Error creating initial vote pack:', votePackError);
+            } else {
+              console.log('[AuthService] Initial vote pack created successfully');
+            }
+          } catch (votePackError) {
+            console.error('[AuthService] Error creating initial vote pack:', votePackError);
+          }
         }
       } catch (profileError) {
         console.error('[AuthService] Error creating profile:', profileError);

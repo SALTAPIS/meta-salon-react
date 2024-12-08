@@ -4,8 +4,11 @@ import type { Database } from '../../types/supabase';
 type TransactionType = Database['public']['Tables']['transactions']['Row']['type'];
 type VotePackType = Database['public']['Tables']['vote_packs']['Row']['type'];
 
+type BalanceUpdateCallback = (newBalance: number) => void;
+
 export class TokenService {
   private static instance: TokenService;
+  private balanceUpdateCallbacks: BalanceUpdateCallback[] = [];
 
   private constructor() {}
 
@@ -14,6 +17,17 @@ export class TokenService {
       TokenService.instance = new TokenService();
     }
     return TokenService.instance;
+  }
+
+  onBalanceUpdate(callback: BalanceUpdateCallback) {
+    this.balanceUpdateCallbacks.push(callback);
+    return () => {
+      this.balanceUpdateCallbacks = this.balanceUpdateCallbacks.filter(cb => cb !== callback);
+    };
+  }
+
+  private notifyBalanceUpdate(newBalance: number) {
+    this.balanceUpdateCallbacks.forEach(callback => callback(newBalance));
   }
 
   async getBalance(userId: string): Promise<number> {
@@ -30,8 +44,10 @@ export class TokenService {
         throw error;
       }
 
-      console.log('Balance fetched:', data?.balance);
-      return data?.balance ?? 0;
+      const balance = data?.balance ?? 0;
+      console.log('Balance fetched:', balance);
+      this.notifyBalanceUpdate(balance);
+      return balance;
     } catch (error) {
       console.error('Unexpected error fetching balance:', error);
       throw error;
@@ -63,8 +79,10 @@ export class TokenService {
         throw error;
       }
 
-      console.log('Balance fetched:', data?.balance);
-      return data?.balance ?? 0;
+      const balance = data?.balance ?? 0;
+      console.log('Balance fetched:', balance);
+      this.notifyBalanceUpdate(balance);
+      return balance;
     } catch (error) {
       console.error('Unexpected error fetching balance:', error);
       throw error;
@@ -87,6 +105,10 @@ export class TokenService {
     });
 
     if (error) throw error;
+    
+    // Update balance after transaction
+    await this.getBalance(userId);
+    
     return data;
   }
 
@@ -129,6 +151,10 @@ export class TokenService {
         transactionId: data,
         timestamp: new Date().toISOString()
       });
+
+      // Update balance after purchase
+      await this.getBalance(userId);
+
       return data;
     } catch (error) {
       console.error('TokenService: Unexpected error purchasing vote pack:', {
