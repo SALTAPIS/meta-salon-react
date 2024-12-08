@@ -1,9 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
-import { Database } from '../types/database.types';
-import { ArtworkMetadata } from '../types/database.types';
-
-type Artwork = Database['public']['Tables']['artworks']['Row'];
-type Album = Database['public']['Tables']['albums']['Row'];
+import type { Database, ArtworkMetadata, Album, Artwork, Profile } from '../types/database.types';
 
 export class ArtworkService {
   private static readonly MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -90,15 +86,20 @@ export class ArtworkService {
     challengeId: string,
     submissionFee: number
   ): Promise<Artwork> {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user?.id) {
+      throw new Error('User not authenticated');
+    }
+
     // First check if user has enough balance
-    const { data: { balance }, error: balanceError } = await supabase
+    const { data: profile, error: balanceError } = await supabase
       .from('profiles')
       .select('balance')
-      .eq('id', (await supabase.auth.getUser()).data.user?.id)
+      .eq('id', user.data.user.id)
       .single();
 
     if (balanceError) throw balanceError;
-    if (!balance || balance < submissionFee) {
+    if (!profile || typeof profile.balance !== 'number' || profile.balance < submissionFee) {
       throw new Error('Insufficient balance for submission');
     }
 
@@ -120,7 +121,7 @@ export class ArtworkService {
     const { error: feeError } = await supabase
       .from('profiles')
       .update({
-        balance: balance - submissionFee
+        balance: profile.balance - submissionFee
       })
       .eq('id', artwork.user_id);
 
