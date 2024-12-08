@@ -2,8 +2,7 @@
 ## Part 1: System Overview
 
 ## 1. Core Components
-
-```mermaid
+ 
 graph TB
     subgraph Core Platform
         UM[User Management]
@@ -73,7 +72,7 @@ graph TB
    - Economic management
    - User management
    - Platform configuration
-```
+ 
 
 ## 3. Token Economics
 
@@ -126,19 +125,19 @@ flowchart TB
 ### 4.1 Challenge Types
 ```plaintext
 1. Main Open Challenge
-   - 7-day duration
+   - 7-day (adjustable) duration
    - Entry: 99 SLN + 3
    - 100% to reward pool
    - Weekly distribution
 
 2. Public Time-Limited
-   - 4-24 hours
+   - 1-7-day (adjustable)
    - Free entry
    - Public reward pool
    - Community-driven
 
 3. Private Challenge
-   - 4-24 hours
+   - 1-7-day (adjustable)
    - Setup: 299 SLN + 7
    - Custom vote packs
    - Invite-only
