@@ -232,6 +232,8 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
 
   async signUpWithPassword(email: string, password: string) {
     try {
+      console.log('Starting signup process for:', email);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -243,15 +245,27 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         },
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Signup error:', error);
+        throw error;
+      }
+
+      console.log('Signup response:', data);
 
       // Check if email confirmation was sent
-      if (data?.user?.identities?.length === 0) {
+      if (!data.user) {
+        console.error('No user data returned from signup');
+        throw new Error('Failed to create user account');
+      }
+
+      if (data.user.identities?.length === 0) {
+        console.error('Email already registered');
         throw new Error('Email address already registered');
       }
 
       // Create initial profile
       if (data.user) {
+        console.log('Creating initial profile for user:', data.user.id);
         const { error: profileError } = await supabase
           .from('profiles')
           .upsert({
@@ -260,6 +274,8 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
             email_verified: false,
             role: 'user',
             balance: 0,
+          }, {
+            onConflict: 'id'
           });
 
         if (profileError) {
@@ -268,6 +284,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
       }
 
       const extendedUser = data.user ? await this.loadUserProfile(data.user) : null;
+      console.log('Signup completed successfully');
       
       return { 
         data: { 
@@ -277,7 +294,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         error: null 
       };
     } catch (error) {
-      console.error('Sign up error:', error);
+      console.error('Signup process failed:', error);
       return { 
         data: null,
         error: error as AuthError 
