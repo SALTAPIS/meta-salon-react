@@ -236,15 +236,43 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            email_confirmed: false,
+          }
         },
       });
       
       if (error) throw error;
 
+      // Check if email confirmation was sent
+      if (data?.user?.identities?.length === 0) {
+        throw new Error('Email address already registered');
+      }
+
+      // Create initial profile
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: data.user.id,
+            email: data.user.email,
+            email_verified: false,
+            role: 'user',
+            balance: 0,
+          });
+
+        if (profileError) {
+          console.error('Error creating initial profile:', profileError);
+        }
+      }
+
       const extendedUser = data.user ? await this.loadUserProfile(data.user) : null;
       
       return { 
-        data: { user: extendedUser },
+        data: { 
+          user: extendedUser,
+          message: 'Please check your email for the confirmation link'
+        },
         error: null 
       };
     } catch (error) {
