@@ -1,4 +1,5 @@
-import * as React from 'react';
+import React from 'react';
+import { Box, Stat, StatLabel, StatNumber } from '@chakra-ui/react';
 import { useAuth } from '../../hooks/useAuth';
 import { TokenService } from '../../services/token/tokenService';
 
@@ -71,9 +72,15 @@ export function TokenBalance() {
   }
 
   return (
-    <div className="flex items-center space-x-2">
-      <span className="text-sm font-medium">Balance:</span>
-      <span className="text-sm font-bold">{displayBalance}</span>
-    </div>
+    <Box>
+      <Stat>
+        <StatNumber fontSize="4xl" fontWeight="bold" lineHeight="1.2">
+          {displayBalance}
+        </StatNumber>
+        <StatLabel fontSize="md" color="gray.600">
+          Available Tokens
+        </StatLabel>
+      </Stat>
+    </Box>
   );
 } 
