@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -19,6 +19,7 @@ import {
   AlertDescription,
 } from '@chakra-ui/react';
 import { useAuth } from '../../hooks/auth/useAuth';
+import { AuthService } from '../../services/auth/authService';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
@@ -27,9 +28,10 @@ export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  const { signUpWithPassword, signInWithEmail } = useAuth();
+  const { signUpWithPassword } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
+  const authService = AuthService.getInstance();
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -37,7 +39,7 @@ export default function SignUpPage() {
   const handleResendEmail = async () => {
     setResendLoading(true);
     try {
-      const { error } = await signInWithEmail(email);
+      const { error } = await authService.resendConfirmationEmail(email);
       if (error) {
         toast({
           title: 'Error',
@@ -50,7 +52,7 @@ export default function SignUpPage() {
       }
       toast({
         title: 'Email sent',
-        description: 'A new confirmation email has been sent. Please check your inbox.',
+        description: 'A new confirmation email has been sent. Please check your inbox and spam folder.',
         status: 'success',
         duration: 5000,
         isClosable: true,

@@ -301,4 +301,23 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
       return { error: error instanceof Error ? error : new Error('Failed to update profile') };
     }
   }
+
+  async resendConfirmationEmail(email: string) {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      
+      if (error) throw error;
+      
+      return { error: null };
+    } catch (error) {
+      console.error('Error resending confirmation email:', error);
+      return { error: error as AuthError };
+    }
+  }
 } 
