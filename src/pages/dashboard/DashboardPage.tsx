@@ -4,6 +4,9 @@ import {
   Box,
   useColorModeValue,
   Heading,
+  Spinner,
+  Center,
+  Text,
 } from '@chakra-ui/react';
 import { TokenBalance } from '../../components/token/TokenBalance';
 import { VotePacks } from '../../components/token/VotePacks';
@@ -11,8 +14,21 @@ import { useAuth } from '../../hooks/auth/useAuth';
 import { Navigate } from 'react-router-dom';
 
 const DashboardPage = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const pageBgColor = useColorModeValue('gray.50', 'gray.900');
+
+  if (isLoading) {
+    return (
+      <Box bg={pageBgColor} minH="calc(100vh - 60px)">
+        <Center h="calc(100vh - 60px)">
+          <VStack spacing={4}>
+            <Spinner size="xl" />
+            <Text>Loading your dashboard...</Text>
+          </VStack>
+        </Center>
+      </Box>
+    );
+  }
 
   if (!user) {
     return <Navigate to="/auth/signin" />;
@@ -22,7 +38,7 @@ const DashboardPage = () => {
     <Box bg={pageBgColor} minH="calc(100vh - 60px)">
       <Container maxW="container.xl" py={8}>
         <VStack spacing={8} align="stretch">
-          <Heading>Dashboard</Heading>
+          <Heading>Welcome back, {user.display_name || user.username || 'Artist'}</Heading>
           
           <Box>
             <TokenBalance />

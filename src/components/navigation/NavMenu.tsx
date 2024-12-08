@@ -10,13 +10,14 @@ import {
   HStack,
   Box,
   useColorModeValue,
+  Spinner,
 } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/auth/useAuth';
 
 export function NavMenu() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isLoading } = useAuth();
   const navigate = useNavigate();
   const menuBg = useColorModeValue('white', 'gray.800');
   const iconColor = useColorModeValue('gray.600', 'whiteAlpha.900');
@@ -29,6 +30,14 @@ export function NavMenu() {
       console.error('Error signing out:', error);
     }
   };
+
+  if (isLoading) {
+    return (
+      <HStack spacing={4}>
+        <Spinner size="sm" />
+      </HStack>
+    );
+  }
 
   if (!user) {
     return (
@@ -53,6 +62,8 @@ export function NavMenu() {
     );
   }
 
+  const displayName = user.display_name || user.username || user.email;
+
   return (
     <Menu>
       <MenuButton
@@ -63,12 +74,12 @@ export function NavMenu() {
         <HStack spacing={2}>
           <Avatar 
             size="sm" 
-            name={user.email} 
+            name={displayName} 
             src={user.avatar_url || undefined} 
           />
           <Box display={{ base: 'none', md: 'block' }}>
             <Text fontSize="sm" fontWeight="medium">
-              {user.email}
+              {displayName}
             </Text>
           </Box>
         </HStack>
