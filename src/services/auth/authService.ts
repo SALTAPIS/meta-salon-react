@@ -189,21 +189,15 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
   async signUpWithPassword(email: string, password: string) {
     try {
       console.log('[AuthService] Starting signup process for:', email);
-      
-      // First check if user already exists
-      const { data: existingProfiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('email, email_verified')
-        .eq('email', email)
-        .single();
 
-      if (profileError) {
-        console.log('[AuthService] No existing profile found');
-      } else {
-        console.log('[AuthService] Existing profile:', existingProfiles);
+      // Check if user exists first
+      const { data: { user: existingUser } } = await supabase.auth.getUser();
+      if (existingUser) {
+        console.log('[AuthService] User already exists:', existingUser.email);
+        throw new Error('User already exists. Please sign in instead.');
       }
 
-      console.log('[AuthService] Calling Supabase signUp');
+      // Sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -220,35 +214,41 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         throw error;
       }
 
-      console.log('[AuthService] Signup response:', data);
-
-      // Create initial profile
-      if (data.user) {
-        console.log('[AuthService] Creating profile for:', data.user.email);
-        const { error: createProfileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: data.user.id,
-            email: data.user.email,
-            email_verified: false,
-            role: 'user',
-            balance: 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }, {
-            onConflict: 'id'
-          });
-
-        if (createProfileError) {
-          console.error('[AuthService] Profile creation error:', createProfileError);
-        } else {
-          console.log('[AuthService] Profile created successfully');
-        }
+      if (!data?.user) {
+        console.error('[AuthService] No user returned from signup');
+        throw new Error('Failed to create user account');
       }
 
+      console.log('[AuthService] Signup successful:', data.user.email);
+
+      // Create initial profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: data.user.id,
+          email: data.user.email,
+          email_verified: false,
+          role: 'user',
+          balance: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'id'
+        });
+
+      if (profileError) {
+        console.error('[AuthService] Profile creation error:', profileError);
+        // Don't throw here, as the user is already created
+      } else {
+        console.log('[AuthService] Profile created successfully');
+      }
+
+      // Sign out immediately to force email confirmation
+      await supabase.auth.signOut();
+      
       return { 
         data: { 
-          user: null,
+          user: data.user,
           message: 'Please check your email for the confirmation link'
         },
         error: null 

@@ -96,12 +96,16 @@ export default function SignUpPage() {
         return;
       }
 
-      console.log('Signup successful:', data);
+      if (!data?.user) {
+        throw new Error('Failed to create user account');
+      }
+
+      console.log('Signup successful:', data.user.email);
       setIsSuccess(true);
       setPassword('');
       
       toast({
-        title: 'Check your email',
+        title: 'Account Created',
         description: 'Please check your email to confirm your account. The confirmation link will expire in 24 hours.',
         status: 'success',
         duration: 10000,
