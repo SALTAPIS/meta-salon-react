@@ -34,12 +34,35 @@ export function ProfileSettings() {
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
+  const uploadAvatar = async (userId: string, file: File): Promise<string> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${userId}/avatar.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      throw error;
+    }
+  };
+
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
     try {
       if (!user?.id) throw new Error('User not found');
+      setIsLoading(true);
       const newAvatarUrl = await uploadAvatar(user.id, file);
       setAvatarUrl(newAvatarUrl);
     } catch (error) {
@@ -50,12 +73,15 @@ export function ProfileSettings() {
         status: 'error',
         duration: 5000,
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleRemoveAvatar = async () => {
     try {
       if (!user?.id) throw new Error('User not found');
+      setIsLoading(true);
       setAvatarUrl('');
       
       const { error: updateError } = await supabase
@@ -78,24 +104,9 @@ export function ProfileSettings() {
         status: 'error',
         duration: 5000,
       });
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const uploadAvatar = async (userId: string, file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
-    const filePath = `${userId}/avatar.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, file, { upsert: true });
-
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(filePath);
-
-    return publicUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -134,6 +145,10 @@ export function ProfileSettings() {
       });
 
       if (updateError) throw updateError;
+
+      // Force refresh user data
+      const updatedUser = await authService.getCurrentUser();
+      if (!updatedUser) throw new Error('Failed to refresh user data');
 
       toast({
         title: 'Profile updated',
