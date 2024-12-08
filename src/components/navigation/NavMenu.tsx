@@ -10,7 +10,6 @@ import {
   HStack,
   Box,
   useColorModeValue,
-  Spinner,
 } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
