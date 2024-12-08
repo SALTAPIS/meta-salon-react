@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { createContext, useContext } from 'react';
 import type { AuthContextType } from '../types/user';
 
 const defaultContext: AuthContextType = {
@@ -12,12 +12,12 @@ const defaultContext: AuthContextType = {
   updateUserBalance: () => {},
 };
 
-export const AuthContext = React.createContext<AuthContextType>(defaultContext);
+export const AuthContext = createContext<AuthContextType>(defaultContext);
 AuthContext.displayName = 'AuthContext';
 
 export const useAuth = () => {
-  const context = React.useContext(AuthContext);
-  if (context === undefined) {
+  const context = useContext(AuthContext);
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
