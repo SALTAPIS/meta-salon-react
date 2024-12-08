@@ -1,13 +1,37 @@
 import { AuthError, User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { User, ProfileUpdate } from '../../types/user';
-import { EventEmitter } from 'events';
 
-export class AuthService {
+// Simple event emitter implementation for browser
+class SimpleEventEmitter {
+  private listeners: { [key: string]: Array<(...args: unknown[]) => void> } = {};
+
+  on(event: string, callback: (...args: unknown[]) => void): void {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event].push(callback);
+  }
+
+  emit(event: string, ...args: unknown[]): void {
+    if (this.listeners[event]) {
+      this.listeners[event].forEach(callback => callback(...args));
+    }
+  }
+
+  off(event: string, callback: (...args: unknown[]) => void): void {
+    if (this.listeners[event]) {
+      this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
+    }
+  }
+}
+
+export class AuthService extends SimpleEventEmitter {
   private static instance: AuthService;
-  private eventEmitter = new EventEmitter();
 
-  private constructor() {}
+  private constructor() {
+    super();
+  }
 
   static getInstance(): AuthService {
     if (!AuthService.instance) {
@@ -16,9 +40,9 @@ export class AuthService {
     return AuthService.instance;
   }
 
-  onProfileUpdate(callback: (profile: any) => void) {
-    this.eventEmitter.on('profileUpdate', callback);
-    return () => this.eventEmitter.off('profileUpdate', callback);
+  onProfileUpdate(callback: (profile: User) => void) {
+    this.on('profileUpdate', callback);
+    return () => this.off('profileUpdate', callback);
   }
 
   async loadUserProfile(user: SupabaseUser): Promise<User> {
@@ -102,7 +126,7 @@ export class AuthService {
       localStorage.setItem('cached_user', JSON.stringify(updatedProfile));
 
       // Emit profile update event
-      this.eventEmitter.emit('profileUpdate', updatedProfile);
+      this.emit('profileUpdate', updatedProfile);
 
       return { error: null };
     } catch (error) {

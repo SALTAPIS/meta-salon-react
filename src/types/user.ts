@@ -16,6 +16,7 @@ export interface User extends Omit<SupabaseUser, 'role'> {
   email_notifications: boolean;
   created_at: string;
   updated_at: string;
+  realtimeStatus?: 'online' | 'offline';
 }
 
 // Database profile type that matches our Supabase table
@@ -41,4 +42,17 @@ export interface ProfileUpdate {
   bio?: string | null;
   avatar_url?: string | null;
   email_notifications?: boolean;
+}
+
+// Auth context type
+export interface AuthContextType {
+  user: User | null;
+  isLoading: boolean;
+  signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithEmail: (email: string) => Promise<{ error: Error | null }>;
+  signUpWithPassword: (email: string, password: string) => Promise<{ data: { user: User | null } | null; error: Error | null }>;
+  signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+  updateUserBalance: (newBalance: number) => void;
+  updateProfile?: (profile: ProfileUpdate) => Promise<{ error: Error | null }>;
 } 
