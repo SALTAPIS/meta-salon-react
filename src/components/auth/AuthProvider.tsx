@@ -32,6 +32,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(!initialUser);
   const authService = AuthService.getInstance();
 
+  useEffect(() => {
+    // Listen for profile updates
+    const unsubscribeProfileUpdate = authService.onProfileUpdate((updatedProfile) => {
+      setUser(prevUser => {
+        if (!prevUser) return null;
+        const newUser = { ...prevUser, ...updatedProfile };
+        localStorage.setItem(CACHED_USER_KEY, JSON.stringify(newUser));
+        if (newUser.balance !== undefined) {
+          localStorage.setItem(CACHED_BALANCE_KEY, newUser.balance.toString());
+        }
+        return newUser;
+      });
+    });
+
+    return () => {
+      unsubscribeProfileUpdate();
+    };
+  }, []);
+
   const updateUserBalance = (newBalance: number) => {
     if (!user) return;
     

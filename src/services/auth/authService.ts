@@ -1,9 +1,11 @@
 import { AuthError, User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { User, ProfileUpdate } from '../../types/user';
+import { EventEmitter } from 'events';
 
 export class AuthService {
   private static instance: AuthService;
+  private eventEmitter = new EventEmitter();
 
   private constructor() {}
 
@@ -12,6 +14,11 @@ export class AuthService {
       AuthService.instance = new AuthService();
     }
     return AuthService.instance;
+  }
+
+  onProfileUpdate(callback: (profile: any) => void) {
+    this.eventEmitter.on('profileUpdate', callback);
+    return () => this.eventEmitter.off('profileUpdate', callback);
   }
 
   async loadUserProfile(user: SupabaseUser): Promise<User> {
@@ -93,6 +100,9 @@ export class AuthService {
 
       // Update local storage with the new profile data
       localStorage.setItem('cached_user', JSON.stringify(updatedProfile));
+
+      // Emit profile update event
+      this.eventEmitter.emit('profileUpdate', updatedProfile);
 
       return { error: null };
     } catch (error) {

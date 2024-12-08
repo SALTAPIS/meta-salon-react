@@ -21,7 +21,7 @@ import { DeleteIcon } from '@chakra-ui/icons';
 import { AuthService } from '../../services/auth/authService';
 
 export function ProfileSettings() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -65,6 +65,18 @@ export function ProfileSettings() {
       setIsLoading(true);
       const newAvatarUrl = await uploadAvatar(user.id, file);
       setAvatarUrl(newAvatarUrl);
+      
+      // Update profile with new avatar URL
+      const authService = AuthService.getInstance();
+      await authService.updateProfile(user.id, { avatar_url: newAvatarUrl });
+      await refreshUser();
+
+      toast({
+        title: 'Avatar updated',
+        description: 'Your profile picture has been updated successfully',
+        status: 'success',
+        duration: 3000,
+      });
     } catch (error) {
       console.error('Error uploading avatar:', error);
       toast({
@@ -84,12 +96,9 @@ export function ProfileSettings() {
       setIsLoading(true);
       setAvatarUrl('');
       
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: null })
-        .eq('id', user.id);
-
-      if (updateError) throw updateError;
+      const authService = AuthService.getInstance();
+      await authService.updateProfile(user.id, { avatar_url: null });
+      await refreshUser();
 
       toast({
         title: 'Avatar removed',
@@ -147,8 +156,7 @@ export function ProfileSettings() {
       if (updateError) throw updateError;
 
       // Force refresh user data
-      const updatedUser = await authService.getCurrentUser();
-      if (!updatedUser) throw new Error('Failed to refresh user data');
+      await refreshUser();
 
       toast({
         title: 'Profile updated',
