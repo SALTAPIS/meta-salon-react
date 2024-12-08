@@ -42,7 +42,7 @@ export function VotePacks({ userId }: VotePackProps) {
     duration: 5000,
     isClosable: true,
   });
-  const { balance = 0, votePacks = [], setBalance } = useTokens();
+  const { balance = 0, votePacks = [], fetchData } = useTokens();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
@@ -79,6 +79,8 @@ export function VotePacks({ userId }: VotePackProps) {
       const tokenService = TokenService.getInstance();
       await tokenService.purchaseVotePack(userId, type, price);
       
+      await fetchData();
+      
       toast({
         title: 'Purchase Successful',
         description: `You've purchased ${votes} votes with ${votePower}× power for ${price} tokens`,
@@ -94,7 +96,7 @@ export function VotePacks({ userId }: VotePackProps) {
       setIsLoading(null);
       handleModalClose();
     }
-  }, [selectedPack, balance, userId, handleModalClose, toast]);
+  }, [selectedPack, balance, userId, handleModalClose, toast, fetchData]);
 
   return (
     <VStack spacing={8} p={6} align="stretch">

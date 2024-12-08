@@ -1,6 +1,6 @@
 import { AuthError, User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
-import { User, Profile, ProfileUpdate } from '../../types/user';
+import { User, ProfileUpdate } from '../../types/user';
 
 export class AuthService {
   private static instance: AuthService;
@@ -24,8 +24,9 @@ export class AuthService {
 
       if (error) throw error;
 
-      return {
+      const extendedUser: User = {
         ...user,
+        email: user.email || '',
         role: profile?.role || 'user',
         balance: profile?.balance || 0,
         username: profile?.username || null,
@@ -36,10 +37,13 @@ export class AuthService {
         email_notifications: profile?.email_notifications ?? true,
         updated_at: profile?.updated_at || user.created_at,
       };
+
+      return extendedUser;
     } catch (error) {
       console.error('Error loading profile:', error);
-      return {
+      const defaultUser: User = {
         ...user,
+        email: user.email || '',
         role: 'user',
         balance: 0,
         username: null,
@@ -50,6 +54,7 @@ export class AuthService {
         email_notifications: true,
         updated_at: user.created_at,
       };
+      return defaultUser;
     }
   }
 
