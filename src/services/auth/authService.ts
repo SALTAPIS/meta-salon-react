@@ -1,57 +1,17 @@
-import { AuthError, User as SupabaseUser, Session, AuthChangeEvent } from '@supabase/supabase-js';
+import { AuthError, User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
-import { User, ProfileUpdate } from '../../types/user';
+import { User } from '../../types/user';
 
-// Define event map type for type safety
-interface EventMap extends Record<string, unknown> {
-  profileUpdate: User;
-  // Add other events here as needed
-  [key: string]: unknown; // Add index signature for string keys
-}
-
-// Simple event emitter implementation for browser
-class SimpleEventEmitter<Events extends Record<string, unknown>> {
-  private listeners: {
-    [K in keyof Events]?: Array<(data: Events[K]) => void>;
-  } = {};
-
-  on<K extends keyof Events>(event: K, callback: (data: Events[K]) => void): void {
-    if (!this.listeners[event]) {
-      this.listeners[event] = [];
-    }
-    this.listeners[event]?.push(callback);
-  }
-
-  emit<K extends keyof Events>(event: K, data: Events[K]): void {
-    if (this.listeners[event]) {
-      this.listeners[event]?.forEach(callback => callback(data));
-    }
-  }
-
-  off<K extends keyof Events>(event: K, callback: (data: Events[K]) => void): void {
-    if (this.listeners[event]) {
-      this.listeners[event] = this.listeners[event]?.filter(cb => cb !== callback);
-    }
-  }
-}
-
-export class AuthService extends SimpleEventEmitter<EventMap> {
+export class AuthService {
   private static instance: AuthService;
 
-  private constructor() {
-    super();
-  }
+  private constructor() {}
 
   static getInstance(): AuthService {
     if (!AuthService.instance) {
       AuthService.instance = new AuthService();
     }
     return AuthService.instance;
-  }
-
-  onProfileUpdate(callback: (profile: User) => void) {
-    this.on('profileUpdate', callback);
-    return () => this.off('profileUpdate', callback);
   }
 
   async loadUserProfile(user: SupabaseUser): Promise<User> {
@@ -98,52 +58,6 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
     }
   }
 
-  async updateProfile(userId: string, updates: ProfileUpdate): Promise<{ error: Error | null }> {
-    try {
-      // First get the current profile to preserve existing values
-      const { data: currentProfile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Preserve balance and other critical fields
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          ...updates,
-          balance: currentProfile.balance, // Preserve the current balance
-          role: currentProfile.role, // Preserve the current role
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', userId);
-
-      if (updateError) throw updateError;
-
-      // Get the updated profile
-      const { data: updatedProfile, error: refreshError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (refreshError) throw refreshError;
-
-      // Update local storage with the new profile data
-      localStorage.setItem('cached_user', JSON.stringify(updatedProfile));
-
-      // Emit profile update event
-      this.emit('profileUpdate', updatedProfile);
-
-      return { error: null };
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      return { error: error instanceof Error ? error : new Error('Failed to update profile') };
-    }
-  }
-
   async getCurrentUser(): Promise<User | null> {
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -158,8 +72,8 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
     }
   }
 
-  onAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => void) {
-    return supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+  onAuthStateChange(callback: (event: string, session: Session | null) => void) {
+    return supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         const extendedUser = await this.loadUserProfile(session.user);
         localStorage.setItem('cached_user', JSON.stringify(extendedUser));
@@ -242,32 +156,10 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
       
       if (error) throw error;
 
-      // Create initial profile if user is created
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: data.user.id,
-            email: data.user.email,
-            email_verified: false,
-            role: 'user',
-            balance: 0,
-          }, {
-            onConflict: 'id'
-          });
-
-        if (profileError) {
-          console.error('Error creating initial profile:', profileError);
-        }
-      }
-
       const extendedUser = data.user ? await this.loadUserProfile(data.user) : null;
       
       return { 
-        data: { 
-          user: extendedUser,
-          message: 'Please check your email for the confirmation link'
-        },
+        data: { user: extendedUser },
         error: null 
       };
     } catch (error) {
