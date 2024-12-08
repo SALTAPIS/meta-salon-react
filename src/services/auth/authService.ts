@@ -157,6 +157,8 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         if (extendedUser.balance !== undefined) {
           localStorage.setItem('cached_balance', extendedUser.balance.toString());
         }
+        // Emit profile update event
+        this.emit('profileUpdate', extendedUser);
       }
       
       return { error: null };
@@ -191,15 +193,42 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            email_confirmed: false,
+          }
         },
       });
       
       if (error) throw error;
 
+      // Create initial profile
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: data.user.id,
+            email: data.user.email,
+            email_verified: false,
+            role: 'user',
+            balance: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'id'
+          });
+
+        if (profileError) {
+          console.error('Error creating initial profile:', profileError);
+        }
+      }
+
       const extendedUser = data.user ? await this.loadUserProfile(data.user) : null;
       
       return { 
-        data: { user: extendedUser },
+        data: { 
+          user: extendedUser,
+          message: 'Please check your email for the confirmation link'
+        },
         error: null 
       };
     } catch (error) {

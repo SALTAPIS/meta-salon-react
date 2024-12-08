@@ -27,24 +27,40 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const authService = AuthService.getInstance();
 
   const handleAuthChange = async (_event: string, session: Session | null) => {
-    if (session?.user) {
-      const user = await authService.loadUserProfile(session.user);
-      setUser(user);
-    } else {
+    setIsLoading(true);
+    try {
+      if (session?.user) {
+        const user = await authService.loadUserProfile(session.user);
+        setUser(user);
+      } else {
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('Error handling auth change:', error);
       setUser(null);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   React.useEffect(() => {
+    let mounted = true;
+
     const initAuth = async () => {
       try {
         const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
+        if (mounted) {
+          setUser(currentUser);
+        }
       } catch (error) {
         console.error('Error initializing auth:', error);
+        if (mounted) {
+          setUser(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -52,7 +68,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     initAuth();
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
+    };
+  }, []);
+
+  // Listen for profile updates
+  React.useEffect(() => {
+    const unsubscribeProfileUpdate = authService.onProfileUpdate((updatedProfile) => {
+      setUser(updatedProfile);
+    });
+
+    return () => {
+      unsubscribeProfileUpdate();
     };
   }, []);
 
@@ -70,8 +98,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signUpWithPassword: authService.signUpWithPassword.bind(authService),
     signOut: authService.signOut.bind(authService),
     refreshUser: async () => {
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
+      setIsLoading(true);
+      try {
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+      } finally {
+        setIsLoading(false);
+      }
     },
     updateUserBalance,
   };
