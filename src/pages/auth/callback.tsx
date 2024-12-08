@@ -1,100 +1,86 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Spinner, VStack, Text, useToast } from '@chakra-ui/react';
-import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../hooks/auth/useAuth';
+import { useToast } from '@chakra-ui/react';
+import { supabase } from '../../lib/supabaseClient';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
   const toast = useToast();
-  const { refreshUser } = useAuth();
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
+    const handleCallback = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) throw error;
-
-        if (session?.user) {
-          await refreshUser();
-          
-          toast({
-            title: 'Welcome back!',
-        // Get URL parameters
         const params = new URLSearchParams(window.location.search);
         const type = params.get('type');
         const email = params.get('email');
 
-        // Handle email confirmation
+        // Handle different auth callback types
         if (type === 'email_confirmation' || type === 'signup' || type === 'recovery') {
-          // Get the token from the URL
-          const token = params.get('token') || params.get('access_token');
-          const refreshToken = params.get('refresh_token');
-
-          if (!token) {
-            throw new Error('No authentication token found');
-          }
-
-          // Set the session with the provided tokens
-          const { data: { session }, error: sessionError } = await supabase.auth.setSession({
-            access_token: token,
-            refresh_token: refreshToken || ''
-          });
-
-          if (sessionError) throw sessionError;
-          if (!session) throw new Error('No session established after confirmation');
-
-          // Verify the session is for the correct user
-          if (email && session.user.email !== email) {
-            await supabase.auth.signOut();
-            throw new Error('Session user mismatch');
-          }
-
           toast({
-            title: 'Welcome!',
-            description: 'Your account is ready to use.',
+            title: 'Email confirmed',
+            description: `Welcome${email ? ` ${email}` : ''}! You can now sign in.`,
             status: 'success',
             duration: 5000,
-            isClosable: true,
           });
+          navigate('/login');
+        } else if (type === 'magiclink') {
+          // Handle magic link
+          const { data: { user }, error } = await supabase.auth.getUser();
+          
+          if (error) {
+            console.error('Auth error:', error);
+            toast({
+              title: 'Authentication error',
+              description: error.message,
+              status: 'error',
+              duration: 5000,
+            });
+            navigate('/login');
+            return;
+          }
 
-          navigate('/dashboard', { replace: true });
-          return;
+          if (user) {
+            toast({
+              title: 'Successfully signed in',
+              description: `Welcome back${email ? ` ${email}` : ''}!`,
+              status: 'success',
+              duration: 5000,
+            });
+            navigate('/dashboard');
+          } else {
+            toast({
+              title: 'Sign in failed',
+              description: 'Please try again',
+              status: 'error',
+              duration: 5000,
+            });
+            navigate('/login');
+          }
+        } else {
+          // Unknown callback type
+          console.error('Unknown callback type:', type);
+          toast({
+            title: 'Unknown callback type',
+            description: 'Please try signing in again',
+            status: 'error',
+            duration: 5000,
+          });
+          navigate('/login');
         }
-
-        // Handle other auth types (OAuth, etc.)
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) throw error;
-
-        if (!session) {
-          navigate('/auth/signin', { replace: true });
-          return;
-        }
-
-        navigate('/dashboard', { replace: true });
       } catch (error) {
+        console.error('Callback error:', error);
         toast({
-          title: 'Authentication Error',
-          description: error instanceof Error ? error.message : 'Failed to complete authentication',
+          title: 'Error processing callback',
+          description: error instanceof Error ? error.message : 'Please try again',
           status: 'error',
           duration: 5000,
-          isClosable: true,
         });
-        navigate('/auth/signin', { replace: true });
+        navigate('/login');
       }
     };
 
-    handleAuthCallback();
+    handleCallback();
   }, [navigate, toast]);
 
-  return (
-    <Container centerContent py={10}>
-      <VStack spacing={4}>
-        <Spinner size="xl" />
-        <Text>Completing authentication...</Text>
-      </VStack>
-    </Container>
-  );
+  return null;
 } 
