@@ -3,7 +3,7 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 export type UserRole = 'user' | 'member' | 'admin';
 
 // This is our single source of truth for user data
-export interface User extends Omit<SupabaseUser, 'role'> {
+export interface User extends Omit<SupabaseUser, 'role' | 'email'> {
   id: string;
   email: string;
   role: UserRole | null;
@@ -22,7 +22,7 @@ export interface User extends Omit<SupabaseUser, 'role'> {
 // Database profile type that matches our Supabase table
 export interface Profile {
   id: string;
-  email: string | null;
+  email: string;
   role: UserRole | null;
   balance: number;
   username: string | null;

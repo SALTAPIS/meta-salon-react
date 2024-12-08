@@ -186,7 +186,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
     }
   }
 
-  async signUpWithPassword(email: string, password: string) {
+  async signUpWithPassword(email: string, password: string): Promise<{ data: { user: User | null } | null; error: Error | null }> {
     try {
       console.log('[AuthService] Starting signup process for:', email);
 
@@ -226,10 +226,15 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         .from('profiles')
         .upsert({
           id: data.user.id,
-          email: data.user.email,
+          email: data.user.email || '',
           email_verified: false,
           role: 'user',
           balance: 0,
+          username: null,
+          display_name: null,
+          bio: null,
+          avatar_url: null,
+          email_notifications: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }, {
@@ -248,6 +253,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
       // Create extended user object
       const extendedUser: User = {
         ...data.user,
+        email: data.user.email || '',
         role: 'user',
         balance: 0,
         username: null,
@@ -261,9 +267,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
       };
       
       return { 
-        data: { 
-          user: extendedUser,
-        },
+        data: { user: extendedUser },
         error: null 
       };
     } catch (error) {
