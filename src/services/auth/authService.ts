@@ -238,18 +238,31 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
 
       if (profileError) {
         console.error('[AuthService] Profile creation error:', profileError);
-        // Don't throw here, as the user is already created
       } else {
         console.log('[AuthService] Profile created successfully');
       }
 
       // Sign out immediately to force email confirmation
       await supabase.auth.signOut();
+
+      // Create extended user object
+      const extendedUser: User = {
+        ...data.user,
+        role: 'user',
+        balance: 0,
+        username: null,
+        display_name: null,
+        bio: null,
+        avatar_url: null,
+        email_verified: false,
+        email_notifications: true,
+        created_at: data.user.created_at,
+        updated_at: data.user.created_at,
+      };
       
       return { 
         data: { 
-          user: data.user,
-          message: 'Please check your email for the confirmation link'
+          user: extendedUser,
         },
         error: null 
       };
@@ -257,7 +270,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
       console.error('[AuthService] Signup process error:', error);
       return { 
         data: null,
-        error: error as AuthError 
+        error: error instanceof Error ? error : new Error('Failed to sign up') 
       };
     }
   }
