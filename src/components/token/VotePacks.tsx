@@ -1,217 +1,88 @@
-import * as React from 'react';
-import {
-  Box,
-  Button,
-  Heading,
-  Text,
-  SimpleGrid,
-  useToast,
-  Tooltip,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  ModalCloseButton,
-  useDisclosure,
-  Stack,
-  VStack,
-  Divider,
-  useColorModeValue,
-} from '@chakra-ui/react';
+import { useEffect, useState } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import { TokenService } from '../../services/token/tokenService';
-import { useTokens } from '../../hooks/token/useTokens';
-import { VOTE_PACK_DEFINITIONS, calculatePackPrice, VotePackDefinition } from '../../config/votePackConfig';
+import type { Database } from '../../types/supabase';
 
-interface VotePackProps {
-  userId: string;
-}
+type VotePack = Database['public']['Tables']['vote_packs']['Row'];
 
-export function VotePacks({ userId }: VotePackProps) {
-  const [isLoading, setIsLoading] = React.useState<VotePackDefinition['type'] | null>(null);
-  const [selectedPack, setSelectedPack] = React.useState<VotePackDefinition | null>(null);
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const toast = useToast({
-    position: 'top',
-    duration: 5000,
-    isClosable: true,
-  });
-  const { balance, refreshBalance } = useTokens();
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+export function VotePacks() {
+  const { user } = useAuth();
+  const [packs, setPacks] = useState<VotePack[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const tokenService = TokenService.getInstance();
 
-  const handleModalClose = React.useCallback(() => {
-    if (!isLoading) {
-      onClose();
-      setSelectedPack(null);
-    }
-  }, [isLoading, onClose]);
-
-  const handlePurchaseClick = React.useCallback((pack: VotePackDefinition) => {
-    setSelectedPack(pack);
-    onOpen();
-  }, [onOpen]);
-
-  const handlePurchaseConfirm = React.useCallback(async () => {
-    if (!selectedPack || balance === null) return;
-    
-    const { type, votes, votePower } = selectedPack;
-    const price = calculatePackPrice(votes, votePower);
-    
-    if (balance < price) {
-      toast({
-        title: 'Insufficient Balance',
-        description: `You need ${price} tokens. Current balance: ${balance}`,
-        status: 'warning',
-      });
-      handleModalClose();
+  useEffect(() => {
+    if (!user) {
+      setPacks([]);
+      setIsLoading(false);
       return;
     }
 
-    try {
-      setIsLoading(type);
-      const tokenService = TokenService.getInstance();
-      await tokenService.purchaseVotePack(userId, type, price);
-      
-      await refreshBalance();
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      toast({
-        title: 'Purchase Successful',
-        description: `You've purchased ${votes} votes with ${votePower}× power for ${price} tokens`,
-        status: 'success',
-      });
-    } catch (error) {
-      console.error('Vote pack purchase error:', error);
-      toast({
-        title: 'Purchase Failed',
-        description: error instanceof Error ? error.message : 'Failed to purchase vote pack',
-        status: 'error',
-      });
-      await refreshBalance();
-    } finally {
-      setIsLoading(null);
-      handleModalClose();
+    async function loadPacks() {
+      try {
+        const userPacks = await tokenService.getUserVotePacks(user.id);
+        console.log('VotePacks: Loaded packs:', userPacks);
+        setPacks(userPacks);
+      } catch (error) {
+        console.error('VotePacks: Error loading packs:', error);
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }, [selectedPack, balance, userId, handleModalClose, toast, refreshBalance]);
+
+    loadPacks();
+  }, [user]);
+
+  if (!user) {
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-4 bg-white rounded-lg shadow">
+        <h3 className="text-lg font-semibold mb-4">Your Vote Packs</h3>
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (packs.length === 0) {
+    return (
+      <div className="p-4 bg-white rounded-lg shadow">
+        <h3 className="text-lg font-semibold mb-4">Your Vote Packs</h3>
+        <p className="text-gray-500">No active vote packs</p>
+      </div>
+    );
+  }
 
   return (
-    <VStack spacing={8} p={6} align="stretch">
-      {/* Available Vote Packs */}
-      <Box>
-        <Heading size="md" mb={4}>
-          Available Vote Packs
-        </Heading>
-        <Text mb={6} color="gray.500">
-          Purchase vote packs to participate in artwork voting
-        </Text>
-        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-          {VOTE_PACK_DEFINITIONS.map((pack) => {
-            const price = calculatePackPrice(pack.votes, pack.votePower);
-            return (
-              <Box
-                key={pack.type}
-                p={6}
-                borderWidth="1px"
-                borderColor={borderColor}
-                borderRadius="lg"
-                bg={bgColor}
-                shadow="sm"
-              >
-                <Heading size="md" mb={2}>
-                  {pack.type.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
-                </Heading>
-                <Text mb={2}>
-                  {pack.votes} votes × {pack.votePower} SLN each
-                </Text>
-                <Text fontSize="md" color="blue.500" mb={4}>
-                  Total Price: {price} SLN
-                </Text>
-                {pack.description && (
-                  <Text fontSize="sm" color="gray.500" mb={4}>
-                    {pack.description}
-                  </Text>
-                )}
-                <Tooltip
-                  isDisabled={balance !== null && balance >= price}
-                  label={`Insufficient balance. You need ${price} tokens`}
-                  placement="top"
-                >
-                  <Button
-                    colorScheme="blue"
-                    width="full"
-                    onClick={() => handlePurchaseClick(pack)}
-                    isLoading={isLoading === pack.type}
-                    isDisabled={balance === null || balance < price}
-                  >
-                    Purchase
-                  </Button>
-                </Tooltip>
-              </Box>
-            );
-          })}
-        </SimpleGrid>
-      </Box>
-
-      {/* Purchase Modal */}
-      <Modal
-        isOpen={isOpen}
-        onClose={handleModalClose}
-        isCentered
-        closeOnOverlayClick={!isLoading}
-        motionPreset="scale"
-      >
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
-            Confirm Purchase
-          </ModalHeader>
-          {!isLoading && <ModalCloseButton />}
-          <ModalBody>
-            {selectedPack && balance !== null && (
-              <VStack spacing={4} align="stretch">
-                <Text>
-                  You are about to purchase:
-                </Text>
-                <Box p={4} borderWidth="1px" borderRadius="md" bg="gray.50">
-                  <Stack spacing={3}>
-                    <Text fontWeight="bold">
-                      {selectedPack.type.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Pack
-                    </Text>
-                    <Text>• {selectedPack.votes} votes</Text>
-                    <Text>• {selectedPack.votePower}× vote power</Text>
-                    <Text>• Total price: {calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</Text>
-                    <Divider />
-                    <Text fontSize="sm" color="gray.600">
-                      Your balance after purchase will be: {balance - calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN
-                    </Text>
-                  </Stack>
-                </Box>
-              </VStack>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              variant="ghost"
-              mr={3}
-              onClick={handleModalClose}
-              isDisabled={!!isLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              colorScheme="blue"
-              onClick={handlePurchaseConfirm}
-              isLoading={!!isLoading}
-              loadingText="Purchasing..."
-            >
-              Confirm Purchase
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </VStack>
+    <div className="p-4 bg-white rounded-lg shadow">
+      <h3 className="text-lg font-semibold mb-4">Your Vote Packs</h3>
+      <div className="space-y-4">
+        {packs.map((pack) => (
+          <div
+            key={pack.id}
+            className="p-3 border border-gray-200 rounded-md hover:border-blue-500 transition-colors"
+          >
+            <div className="flex justify-between items-center">
+              <div>
+                <h4 className="font-medium capitalize">{pack.type} Pack</h4>
+                <p className="text-sm text-gray-600">
+                  {pack.votes_remaining} votes remaining
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500">
+                  Expires: {new Date(pack.expires_at).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 } 

@@ -1,40 +1,79 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { TokenService } from '../../services/token/tokenService';
 
+function animateValue(start: number, end: number, duration: number, callback: (value: number) => void) {
+  const startTime = performance.now();
+  
+  function update(currentTime: number) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    // Easing function for smooth animation
+    const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+    const current = Math.round(start + (end - start) * easeOutQuart);
+    
+    callback(current);
+    
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    }
+  }
+  
+  requestAnimationFrame(update);
+}
+
 export function TokenBalance() {
   const { user } = useAuth();
-  const [balance, setBalance] = useState<number | null>(null);
+  const [displayBalance, setDisplayBalance] = useState<number | null>(null);
+  const [targetBalance, setTargetBalance] = useState<number | null>(null);
   const tokenService = TokenService.getInstance();
+  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!user) {
-      setBalance(null);
+      setDisplayBalance(null);
+      setTargetBalance(null);
       return;
     }
 
     // Initial balance fetch
-    tokenService.getBalance(user.id).then(setBalance).catch(console.error);
+    tokenService.getBalance(user.id).then(balance => {
+      setDisplayBalance(balance);
+      setTargetBalance(balance);
+    }).catch(console.error);
 
     // Subscribe to balance updates
     const unsubscribe = tokenService.onBalanceUpdate((newBalance) => {
       console.log('TokenBalance: Balance updated:', newBalance);
-      setBalance(newBalance);
+      setTargetBalance(newBalance);
     });
 
     return () => {
       unsubscribe();
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
     };
   }, [user]);
 
-  if (!user || balance === null) {
+  // Handle balance animation when target changes
+  useEffect(() => {
+    if (displayBalance !== null && targetBalance !== null && displayBalance !== targetBalance) {
+      animateValue(displayBalance, targetBalance, 500, (value) => {
+        setDisplayBalance(value);
+      });
+    }
+  }, [targetBalance]);
+
+  if (!user || displayBalance === null) {
     return null;
   }
 
   return (
     <div className="flex items-center space-x-2">
       <span className="text-sm font-medium">Balance:</span>
-      <span className="text-sm font-bold">{balance}</span>
+      <span className="text-sm font-bold">{displayBalance}</span>
     </div>
   );
 } 
