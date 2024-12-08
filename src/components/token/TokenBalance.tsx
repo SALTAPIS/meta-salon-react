@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import * as React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { TokenService } from '../../services/token/tokenService';
 
@@ -25,12 +25,12 @@ function animateValue(start: number, end: number, duration: number, callback: (v
 
 export function TokenBalance() {
   const { user } = useAuth();
-  const [displayBalance, setDisplayBalance] = useState<number | null>(null);
-  const [targetBalance, setTargetBalance] = useState<number | null>(null);
+  const [displayBalance, setDisplayBalance] = React.useState<number | null>(null);
+  const [targetBalance, setTargetBalance] = React.useState<number | null>(null);
   const tokenService = TokenService.getInstance();
-  const animationRef = useRef<number | null>(null);
+  const animationRef = React.useRef<number | null>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!user) {
       setDisplayBalance(null);
       setTargetBalance(null);
@@ -58,7 +58,7 @@ export function TokenBalance() {
   }, [user]);
 
   // Handle balance animation when target changes
-  useEffect(() => {
+  React.useEffect(() => {
     if (displayBalance !== null && targetBalance !== null && displayBalance !== targetBalance) {
       animateValue(displayBalance, targetBalance, 500, (value) => {
         setDisplayBalance(value);

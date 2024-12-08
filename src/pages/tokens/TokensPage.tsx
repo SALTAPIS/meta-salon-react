@@ -25,7 +25,7 @@ export function TokensPage() {
             <TokenBalance />
           </Box>
           <Box>
-            <VotePacks userId={user.id} />
+            <VotePacks />
           </Box>
         </SimpleGrid>
       </Container>

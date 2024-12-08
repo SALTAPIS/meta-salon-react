@@ -45,7 +45,7 @@ const DashboardPage = () => {
           </Box>
           
           <Box>
-            <VotePacks userId={user.id} />
+            <VotePacks />
           </Box>
         </VStack>
       </Container>

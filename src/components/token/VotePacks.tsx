@@ -12,7 +12,7 @@ export function VotePacks() {
   const tokenService = TokenService.getInstance();
 
   useEffect(() => {
-    if (!user) {
+    if (!user?.id) {
       setPacks([]);
       setIsLoading(false);
       return;
@@ -20,7 +20,7 @@ export function VotePacks() {
 
     async function loadPacks() {
       try {
-        const userPacks = await tokenService.getUserVotePacks(user.id);
+        const userPacks = await tokenService.getUserVotePacks(user!.id);
         console.log('VotePacks: Loaded packs:', userPacks);
         setPacks(userPacks);
       } catch (error) {
@@ -76,7 +76,7 @@ export function VotePacks() {
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-500">
-                  Expires: {new Date(pack.expires_at).toLocaleDateString()}
+                  Expires: {pack.expires_at ? new Date(pack.expires_at).toLocaleDateString() : 'Never'}
                 </p>
               </div>
             </div>
