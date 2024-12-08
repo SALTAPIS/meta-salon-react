@@ -3,9 +3,10 @@ import { supabase } from '../../lib/supabase';
 import { User, ProfileUpdate } from '../../types/user';
 
 // Define event map type for type safety
-interface EventMap {
+interface EventMap extends Record<string, unknown> {
   profileUpdate: User;
   // Add other events here as needed
+  [key: string]: unknown; // Add index signature for string keys
 }
 
 // Simple event emitter implementation for browser
