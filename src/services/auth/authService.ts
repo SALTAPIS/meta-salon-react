@@ -2,31 +2,39 @@ import { AuthError, User as SupabaseUser, Session } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase';
 import { User, ProfileUpdate } from '../../types/user';
 
-// Simple event emitter implementation for browser
-class SimpleEventEmitter {
-  private listeners: { [key: string]: Array<(...args: unknown[]) => void> } = {};
+// Define event map type for type safety
+interface EventMap {
+  profileUpdate: User;
+  // Add other events here as needed
+}
 
-  on(event: string, callback: (...args: unknown[]) => void): void {
+// Simple event emitter implementation for browser
+class SimpleEventEmitter<Events extends Record<string, any>> {
+  private listeners: {
+    [K in keyof Events]?: Array<(data: Events[K]) => void>;
+  } = {};
+
+  on<K extends keyof Events>(event: K, callback: (data: Events[K]) => void): void {
     if (!this.listeners[event]) {
       this.listeners[event] = [];
     }
-    this.listeners[event].push(callback);
+    this.listeners[event]?.push(callback);
   }
 
-  emit(event: string, ...args: unknown[]): void {
+  emit<K extends keyof Events>(event: K, data: Events[K]): void {
     if (this.listeners[event]) {
-      this.listeners[event].forEach(callback => callback(...args));
+      this.listeners[event]?.forEach(callback => callback(data));
     }
   }
 
-  off(event: string, callback: (...args: unknown[]) => void): void {
+  off<K extends keyof Events>(event: K, callback: (data: Events[K]) => void): void {
     if (this.listeners[event]) {
-      this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
+      this.listeners[event] = this.listeners[event]?.filter(cb => cb !== callback);
     }
   }
 }
 
-export class AuthService extends SimpleEventEmitter {
+export class AuthService extends SimpleEventEmitter<EventMap> {
   private static instance: AuthService;
 
   private constructor() {
