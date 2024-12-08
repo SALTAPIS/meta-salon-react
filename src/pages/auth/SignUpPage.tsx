@@ -37,10 +37,12 @@ export default function SignUpPage() {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
   const handleResendEmail = async () => {
+    console.log('Attempting to resend email to:', email);
     setResendLoading(true);
     try {
       const { error } = await authService.resendConfirmationEmail(email);
       if (error) {
+        console.error('Resend email error:', error);
         toast({
           title: 'Error',
           description: error.message,
@@ -50,6 +52,7 @@ export default function SignUpPage() {
         });
         return;
       }
+      console.log('Confirmation email resent successfully');
       toast({
         title: 'Email sent',
         description: 'A new confirmation email has been sent. Please check your inbox and spam folder.',
@@ -77,10 +80,11 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-      console.log('Attempting to sign up with email:', email);
-      const { error } = await signUpWithPassword(email, password);
+      console.log('Starting signup process for:', email);
+      const { error, data } = await signUpWithPassword(email, password);
 
       if (error) {
+        console.error('Signup error:', error);
         setError(error.message);
         toast({
           title: 'Error',
@@ -92,13 +96,10 @@ export default function SignUpPage() {
         return;
       }
 
-      // Show success state
+      console.log('Signup successful:', data);
       setIsSuccess(true);
-      
-      // Clear password but keep email for resend functionality
       setPassword('');
       
-      // Show success message
       toast({
         title: 'Check your email',
         description: 'Please check your email to confirm your account. The confirmation link will expire in 24 hours.',
@@ -108,7 +109,7 @@ export default function SignUpPage() {
         position: 'top',
       });
     } catch (error) {
-      console.error('Signup error:', error);
+      console.error('Signup process error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An error occurred during sign up';
       setError(errorMessage);
       toast({

@@ -188,6 +188,22 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
 
   async signUpWithPassword(email: string, password: string) {
     try {
+      console.log('[AuthService] Starting signup process for:', email);
+      
+      // First check if user already exists
+      const { data: existingProfiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('email, email_verified')
+        .eq('email', email)
+        .single();
+
+      if (profileError) {
+        console.log('[AuthService] No existing profile found');
+      } else {
+        console.log('[AuthService] Existing profile:', existingProfiles);
+      }
+
+      console.log('[AuthService] Calling Supabase signUp');
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -199,11 +215,17 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         },
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('[AuthService] Signup error:', error);
+        throw error;
+      }
+
+      console.log('[AuthService] Signup response:', data);
 
       // Create initial profile
       if (data.user) {
-        const { error: profileError } = await supabase
+        console.log('[AuthService] Creating profile for:', data.user.email);
+        const { error: createProfileError } = await supabase
           .from('profiles')
           .upsert({
             id: data.user.id,
@@ -217,18 +239,11 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
             onConflict: 'id'
           });
 
-        if (profileError) {
-          console.error('Error creating initial profile:', profileError);
+        if (createProfileError) {
+          console.error('[AuthService] Profile creation error:', createProfileError);
+        } else {
+          console.log('[AuthService] Profile created successfully');
         }
-
-        // Don't set the user in local storage yet - wait for email confirmation
-        return { 
-          data: { 
-            user: null,
-            message: 'Please check your email for the confirmation link'
-          },
-          error: null 
-        };
       }
 
       return { 
@@ -239,7 +254,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         error: null 
       };
     } catch (error) {
-      console.error('Sign up error:', error);
+      console.error('[AuthService] Signup process error:', error);
       return { 
         data: null,
         error: error as AuthError 
@@ -249,10 +264,18 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
 
   async handleEmailConfirmation() {
     try {
+      console.log('Starting email confirmation process');
       const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Session error:', error);
+        throw error;
+      }
+
+      console.log('Current session:', session);
 
       if (session?.user) {
+        console.log('Updating profile for user:', session.user.id);
         // Update profile with email_verified status
         const { error: updateError } = await supabase
           .from('profiles')
@@ -262,10 +285,17 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
           })
           .eq('id', session.user.id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Profile update error:', updateError);
+          throw updateError;
+        }
+
+        console.log('Profile updated successfully');
 
         // Load and cache the user profile
         const extendedUser = await this.loadUserProfile(session.user);
+        console.log('Loaded user profile:', extendedUser);
+        
         localStorage.setItem('cached_user', JSON.stringify(extendedUser));
         
         // Emit profile update event
@@ -277,6 +307,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         };
       }
 
+      console.log('No session found during confirmation');
       return { 
         data: { user: null },
         error: new Error('No session found') 
@@ -354,6 +385,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
 
   async resendConfirmationEmail(email: string) {
     try {
+      console.log('[AuthService] Attempting to resend confirmation email to:', email);
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email,
@@ -362,12 +394,33 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         },
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('[AuthService] Resend error:', error);
+        throw error;
+      }
       
+      console.log('[AuthService] Confirmation email resent successfully');
       return { error: null };
     } catch (error) {
-      console.error('Error resending confirmation email:', error);
+      console.error('[AuthService] Error resending confirmation email:', error);
       return { error: error as AuthError };
+    }
+  }
+
+  async checkRecentSignups() {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('email, created_at, email_verified')
+        .order('created_at', { ascending: false })
+        .limit(2);
+
+      if (error) throw error;
+      console.log('Recent signups:', data);
+      return data;
+    } catch (error) {
+      console.error('Error checking recent signups:', error);
+      return null;
     }
   }
 } 
