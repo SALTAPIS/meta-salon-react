@@ -2,6 +2,7 @@ import React from 'react';
 import { Session } from '@supabase/supabase-js';
 import type { AuthContextType, User } from '../types/user';
 import { AuthService } from '../services/auth/authService';
+import { supabase } from '../lib/supabase';
 
 const defaultContext: AuthContextType = {
   user: null,
@@ -24,10 +25,9 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
-  const authService = AuthService.getInstance();
+  const authService = React.useMemo(() => AuthService.getInstance(), []);
 
-  const handleAuthChange = async (_event: string, session: Session | null) => {
-    setIsLoading(true);
+  const handleAuthChange = React.useCallback(async (_event: string, session: Session | null) => {
     try {
       if (session?.user) {
         const user = await authService.loadUserProfile(session.user);
@@ -41,16 +41,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [authService]);
 
+  // Initialize auth state
   React.useEffect(() => {
     let mounted = true;
+    setIsLoading(true);
 
     const initAuth = async () => {
       try {
-        const currentUser = await authService.getCurrentUser();
-        if (mounted) {
-          setUser(currentUser);
+        // Check for existing session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (mounted && session?.user) {
+          const user = await authService.loadUserProfile(session.user);
+          setUser(user);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -64,14 +68,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     };
 
-    const { data: { subscription } } = authService.onAuthStateChange(handleAuthChange);
     initAuth();
 
     return () => {
       mounted = false;
+    };
+  }, [authService]);
+
+  // Subscribe to auth changes
+  React.useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
+    return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [handleAuthChange]);
 
   // Listen for profile updates
   React.useEffect(() => {
@@ -82,15 +92,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return () => {
       unsubscribeProfileUpdate();
     };
-  }, []);
+  }, [authService]);
 
-  const updateUserBalance = (newBalance: number) => {
+  const updateUserBalance = React.useCallback((newBalance: number) => {
     if (user) {
       setUser({ ...user, balance: newBalance });
     }
-  };
+  }, [user]);
 
-  const value = {
+  const value = React.useMemo(() => ({
     user,
     isLoading,
     signInWithPassword: authService.signInWithPassword.bind(authService),
@@ -107,7 +117,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     },
     updateUserBalance,
-  };
+  }), [user, isLoading, authService, updateUserBalance]);
 
   return (
     <AuthContext.Provider value={value}>
