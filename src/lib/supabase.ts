@@ -8,21 +8,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-let supabaseInstance: SupabaseClient<Database> | null = null;
-
-export const getSupabaseClient = () => {
-  if (!supabaseInstance) {
-    supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        storageKey: 'meta-salon-auth',
-        autoRefreshToken: true,
-        detectSessionInUrl: true
-      }
-    });
+// Create a single instance of the Supabase client
+const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    storageKey: 'meta-salon-auth',
+    autoRefreshToken: true,
+    detectSessionInUrl: true
   }
-  return supabaseInstance;
-};
+});
 
-export const supabase = getSupabaseClient();
+// Export the singleton instance
+export { supabase };
  

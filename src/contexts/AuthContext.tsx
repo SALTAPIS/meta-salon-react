@@ -1,10 +1,24 @@
-import { createContext } from 'react';
+import * as React from 'react';
 import type { AuthContextType } from '../types/user';
 
-// Create context with undefined initial value
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const defaultContext: AuthContextType = {
+  user: null,
+  isLoading: true,
+  signInWithPassword: async () => ({ error: null }),
+  signInWithEmail: async () => ({ error: null }),
+  signUpWithPassword: async () => ({ data: { user: null }, error: null }),
+  signOut: async () => {},
+  refreshUser: async () => {},
+  updateUserBalance: () => {},
+};
 
-// Add display name for debugging
+export const AuthContext = React.createContext<AuthContextType>(defaultContext);
 AuthContext.displayName = 'AuthContext';
 
-export { AuthContext }; 
+export const useAuth = () => {
+  const context = React.useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}; 
