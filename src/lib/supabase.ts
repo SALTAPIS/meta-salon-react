@@ -18,11 +18,20 @@ export const getSupabaseClient = () => {
         storageKey: 'meta-salon-auth',
         autoRefreshToken: true,
         detectSessionInUrl: true,
-      }
+        flowType: 'pkce',
+        debug: true,
+      },
     });
   }
   return supabaseInstance;
 };
+
+// Log Supabase configuration
+console.log('Supabase Configuration:', {
+  url: supabaseUrl,
+  authEnabled: true,
+  redirectUrl: `${window.location.origin}/auth/callback`,
+});
 
 export const supabase = getSupabaseClient();
  

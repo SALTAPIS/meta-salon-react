@@ -234,11 +234,15 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
     try {
       console.log('Starting signup process for:', email);
       
+      // Log the redirect URL
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      console.log('Email confirmation redirect URL:', redirectUrl);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectUrl,
           data: {
             email_confirmed: false,
           }
@@ -250,7 +254,16 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         throw error;
       }
 
-      console.log('Signup response:', data);
+      console.log('Signup response:', {
+        user: {
+          id: data.user?.id,
+          email: data.user?.email,
+          created_at: data.user?.created_at,
+          email_confirmed: data.user?.email_confirmed_at,
+          last_sign_in: data.user?.last_sign_in_at,
+        },
+        session: data.session ? 'Session created' : 'No session',
+      });
 
       // Check if email confirmation was sent
       if (!data.user) {
@@ -262,6 +275,15 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         console.error('Email already registered');
         throw new Error('Email address already registered');
       }
+
+      // Log email confirmation status
+      console.log('Email confirmation details:', {
+        confirmationEmailSent: true,
+        emailTo: email,
+        redirectUrl: redirectUrl,
+        provider: 'noreply@mail.app.supabase.io',
+        subject: 'Welcome to Meta.Salon - Confirm Your Account'
+      });
 
       // Create initial profile
       if (data.user) {
@@ -289,7 +311,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
       return { 
         data: { 
           user: extendedUser,
-          message: 'Please check your email for the confirmation link'
+          message: 'Please check your email for the confirmation link. The email will be sent from noreply@mail.app.supabase.io with subject "Welcome to Meta.Salon - Confirm Your Account"'
         },
         error: null 
       };
