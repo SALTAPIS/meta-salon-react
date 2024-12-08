@@ -14,7 +14,7 @@ import {
   FormErrorMessage,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { useAuth } from '../../components/auth/AuthProvider';
+import { useAuth } from '../../hooks/auth/useAuth';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');

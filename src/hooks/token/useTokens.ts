@@ -11,7 +11,7 @@ type VotePack = Database['public']['Tables']['vote_packs']['Row'];
 
 export function useTokens() {
   const { user } = useAuth();
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState(user?.balance || 0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [votePacks, setVotePacks] = useState<VotePack[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,7 +81,6 @@ export function useTokens() {
             if (newProfile?.balance !== undefined) {
               console.log('Updating balance to:', newProfile.balance);
               setBalance(newProfile.balance);
-              await fetchData();
             }
           }
         }
@@ -89,13 +88,13 @@ export function useTokens() {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'transactions',
           filter: `user_id=eq.${user.id}`,
         },
         async () => {
-          console.log('New transaction detected');
+          console.log('Transaction change detected');
           if (!subscriptionActive || !mountedRef.current) return;
           await fetchData();
         }
@@ -103,13 +102,13 @@ export function useTokens() {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'vote_packs',
           filter: `user_id=eq.${user.id}`,
         },
         async () => {
-          console.log('New vote pack detected');
+          console.log('Vote pack change detected');
           if (!subscriptionActive || !mountedRef.current) return;
           await fetchData();
         }
@@ -158,6 +157,5 @@ export function useTokens() {
     isLoading,
     realtimeStatus,
     fetchData,
-    setBalance,
   };
 }

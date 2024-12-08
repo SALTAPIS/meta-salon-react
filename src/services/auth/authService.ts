@@ -1,6 +1,6 @@
-import { AuthError, User, Session } from '@supabase/supabase-js';
+import { AuthError, User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
-import { ExtendedUser } from '../../components/auth/AuthProvider';
+import { User, Profile, ProfileUpdate } from '../../types/user';
 
 export class AuthService {
   private static instance: AuthService;
@@ -14,7 +14,7 @@ export class AuthService {
     return AuthService.instance;
   }
 
-  async loadUserProfile(user: User): Promise<ExtendedUser> {
+  async loadUserProfile(user: SupabaseUser): Promise<User> {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
@@ -34,6 +34,7 @@ export class AuthService {
         avatar_url: profile?.avatar_url || null,
         email_verified: profile?.email_verified || false,
         email_notifications: profile?.email_notifications ?? true,
+        updated_at: profile?.updated_at || user.created_at,
       };
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -47,11 +48,42 @@ export class AuthService {
         avatar_url: null,
         email_verified: false,
         email_notifications: true,
+        updated_at: user.created_at,
       };
     }
   }
 
-  async getCurrentUser(): Promise<ExtendedUser | null> {
+  async updateProfile(userId: string, updates: ProfileUpdate): Promise<{ error: Error | null }> {
+    try {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      if (updateError) throw updateError;
+
+      // Refresh the session to update the user context
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // Load and cache the updated user profile
+        const updatedUser = await this.loadUserProfile(session.user);
+        localStorage.setItem('cached_user', JSON.stringify(updatedUser));
+        
+        // Force a session refresh to update the user metadata
+        await supabase.auth.refreshSession();
+      }
+
+      return { error: null };
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      return { error: error instanceof Error ? error : new Error('Failed to update profile') };
+    }
+  }
+
+  async getCurrentUser(): Promise<User | null> {
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
@@ -69,6 +101,7 @@ export class AuthService {
     return supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         const extendedUser = await this.loadUserProfile(session.user);
+        localStorage.setItem('cached_user', JSON.stringify(extendedUser));
         callback(event, {
           ...session,
           user: {
@@ -87,6 +120,7 @@ export class AuthService {
           }
         });
       } else {
+        localStorage.removeItem('cached_user');
         callback(event, session);
       }
     });
@@ -155,8 +189,14 @@ export class AuthService {
 
   async signOut() {
     try {
+      // Clear any local storage data first
+      localStorage.clear();
+      
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+
+      // Force reload the page to clear any cached state
+      window.location.href = '/auth/signin';
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;

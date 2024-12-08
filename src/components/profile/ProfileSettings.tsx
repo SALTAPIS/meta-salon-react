@@ -18,6 +18,7 @@ import { useState } from 'react';
 import { useAuth } from '../../hooks/auth/useAuth';
 import { supabase } from '../../lib/supabase';
 import { DeleteIcon } from '@chakra-ui/icons';
+import { AuthService } from '../../services/auth/authService';
 
 export function ProfileSettings() {
   const { user } = useAuth();
@@ -123,24 +124,16 @@ export function ProfileSettings() {
         throw new Error('Bio must not exceed 500 characters');
       }
 
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          username,
-          display_name: displayName,
-          bio,
-          avatar_url: avatarUrl,
-          email_notifications: emailNotifications,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
+      const authService = AuthService.getInstance();
+      const { error: updateError } = await authService.updateProfile(user.id, {
+        username,
+        display_name: displayName,
+        bio,
+        avatar_url: avatarUrl,
+        email_notifications: emailNotifications,
+      });
 
-      if (updateError) {
-        if (updateError.code === 'P0001') {
-          throw new Error(updateError.message);
-        }
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
       toast({
         title: 'Profile updated',

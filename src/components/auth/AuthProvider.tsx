@@ -1,24 +1,13 @@
-import { User } from '@supabase/supabase-js';
 import { createContext, useEffect, useState, useContext } from 'react';
 import { AuthService } from '../../services/auth/authService';
-
-export interface ExtendedUser extends Omit<User, 'role'> {
-  role: string | null;
-  balance: number;
-  username: string | null;
-  display_name: string | null;
-  bio: string | null;
-  avatar_url: string | null;
-  email_verified: boolean;
-  email_notifications: boolean;
-}
+import { User } from '../../types/user';
 
 interface AuthContextType {
-  user: ExtendedUser | null;
+  user: User | null;
   isLoading: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithEmail: (email: string) => Promise<{ error: Error | null }>;
-  signUpWithPassword: (email: string, password: string) => Promise<{ data: { user: ExtendedUser | null } | null; error: Error | null }>;
+  signUpWithPassword: (email: string, password: string) => Promise<{ data: { user: User | null } | null; error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -29,9 +18,9 @@ const CACHED_USER_KEY = 'cached_user';
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Try to get cached user first
   const cachedUser = localStorage.getItem(CACHED_USER_KEY);
-  const initialUser = cachedUser ? JSON.parse(cachedUser) as ExtendedUser : null;
+  const initialUser = cachedUser ? JSON.parse(cachedUser) as User : null;
   
-  const [user, setUser] = useState<ExtendedUser | null>(initialUser);
+  const [user, setUser] = useState<User | null>(initialUser);
   const [isLoading, setIsLoading] = useState(!initialUser);
   const authService = AuthService.getInstance();
 
@@ -40,15 +29,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const currentUser = await authService.getCurrentUser();
         setUser(currentUser);
-        if (currentUser) {
-          localStorage.setItem(CACHED_USER_KEY, JSON.stringify(currentUser));
-        } else {
-          localStorage.removeItem(CACHED_USER_KEY);
-        }
       } catch (error) {
         console.error('Error checking user:', error);
         setUser(null);
-        localStorage.removeItem(CACHED_USER_KEY);
       } finally {
         setIsLoading(false);
       }
@@ -58,12 +41,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = authService.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        const extendedUser = session.user as ExtendedUser;
-        setUser(extendedUser);
-        localStorage.setItem(CACHED_USER_KEY, JSON.stringify(extendedUser));
+        const cachedUser = localStorage.getItem(CACHED_USER_KEY);
+        if (cachedUser) {
+          setUser(JSON.parse(cachedUser));
+        }
       } else {
         setUser(null);
-        localStorage.removeItem(CACHED_USER_KEY);
       }
     });
 
@@ -80,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUpWithPassword: authService.signUpWithPassword.bind(authService),
     signOut: async () => {
       await authService.signOut();
-      localStorage.removeItem(CACHED_USER_KEY);
+      setUser(null);
     },
   };
 
