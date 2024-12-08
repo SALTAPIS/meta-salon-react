@@ -1,4 +1,4 @@
-import { AuthError, User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { AuthError, User as SupabaseUser, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { User, ProfileUpdate } from '../../types/user';
 
@@ -158,8 +158,8 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
     }
   }
 
-  onAuthStateChange(callback: (event: string, session: Session | null) => void) {
-    return supabase.auth.onAuthStateChange(async (event, session) => {
+  onAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => void) {
+    return supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       if (session?.user) {
         const extendedUser = await this.loadUserProfile(session.user);
         localStorage.setItem('cached_user', JSON.stringify(extendedUser));
