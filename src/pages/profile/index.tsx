@@ -6,7 +6,7 @@ import {
 } from '@chakra-ui/react';
 import { UserProfile } from '../../components/profile/UserProfile';
 import { UserStats } from '../../components/profile/UserStats';
-import { useAuth } from '../../hooks/auth/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function ProfilePage() {
   const { user } = useAuth();

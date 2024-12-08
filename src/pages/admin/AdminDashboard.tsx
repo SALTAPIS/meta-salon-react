@@ -11,7 +11,7 @@ import {
   HStack,
   Badge,
 } from '@chakra-ui/react';
-import { useAuth } from '../../hooks/auth/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { UserManagement } from '../../components/admin/UserManagement';
 
 export function AdminDashboard() {

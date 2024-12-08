@@ -1,15 +1,22 @@
-const { createClient } = require('@supabase/supabase-js');
-const dotenv = require('dotenv');
-const path = require('path');
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load environment variables from the root directory
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: resolve(__dirname, '../.env') });
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing environment variables');
+  console.error('Missing environment variables. Required:', {
+    VITE_SUPABASE_URL: supabaseUrl ? '✓' : '✗',
+    SUPABASE_SERVICE_KEY: supabaseServiceKey ? '✓' : '✗'
+  });
   process.exit(1);
 }
 
@@ -24,6 +31,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 
 async function resetAdmin() {
   try {
+    console.log('Starting admin reset process...');
+    
     // First, check if admin user exists
     const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
 
@@ -32,6 +41,7 @@ async function resetAdmin() {
       return;
     }
 
+    console.log('Found users:', users.length);
     const adminUser = users.find(u => u.email === 'admin@meta.salon');
 
     if (adminUser) {
@@ -87,6 +97,8 @@ async function resetAdmin() {
 
       console.log('Admin profile ensured:', profile);
     } else {
+      console.log('No existing admin user found, creating new one...');
+      
       // Create new admin user using signUp
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: 'admin@meta.salon',
@@ -150,6 +162,7 @@ async function resetAdmin() {
       console.log('Admin profile created:', profile);
     }
 
+    console.log('Admin reset process completed successfully');
   } catch (error) {
     console.error('Unexpected error:', error);
   }

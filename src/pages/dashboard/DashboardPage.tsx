@@ -10,7 +10,7 @@ import {
 } from '@chakra-ui/react';
 import { TokenBalance } from '../../components/token/TokenBalance';
 import { VotePacks } from '../../components/token/VotePacks';
-import { useAuth } from '../../hooks/auth/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 
 const DashboardPage = () => {

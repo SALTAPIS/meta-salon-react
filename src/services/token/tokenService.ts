@@ -16,6 +16,28 @@ export class TokenService {
     return TokenService.instance;
   }
 
+  async getBalance(userId: string): Promise<number> {
+    try {
+      console.log('Fetching balance for user:', userId);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('balance')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching balance:', error);
+        throw error;
+      }
+
+      console.log('Balance fetched:', data?.balance);
+      return data?.balance ?? 0;
+    } catch (error) {
+      console.error('Unexpected error fetching balance:', error);
+      throw error;
+    }
+  }
+
   async getUserProfile(userId: string) {
     const { data, error } = await supabase
       .from('profiles')

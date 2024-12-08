@@ -18,7 +18,7 @@ import {
   AlertTitle,
   AlertDescription,
 } from '@chakra-ui/react';
-import { useAuth } from '../../hooks/auth/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { AuthService } from '../../services/auth/authService';
 
 export default function SignUpPage() {
@@ -96,11 +96,9 @@ export default function SignUpPage() {
         return;
       }
 
-      if (!data?.user) {
-        throw new Error('Failed to create user account');
-      }
-
-      console.log('Signup successful:', data.user.email);
+      console.log('Signup response:', data);
+      
+      // Show success message even if user is null (email confirmation required)
       setIsSuccess(true);
       setPassword('');
       

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 import { Database } from '../types/database.types';
 import { ArtworkMetadata } from '../types/database.types';
 

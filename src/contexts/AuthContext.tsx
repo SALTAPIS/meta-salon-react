@@ -1,15 +1,15 @@
-import React from 'react';
-import { Session } from '@supabase/supabase-js';
-import type { AuthContextType, User } from '../types/user';
+import * as React from 'react';
+import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { AuthService } from '../services/auth/authService';
-import { supabase } from '../lib/supabase';
+import type { User, AuthContextType, SignInResponse, SignUpResponse } from '../types/user';
+import { createAuthError } from '../utils/errors';
 
 const defaultContext: AuthContextType = {
   user: null,
   isLoading: true,
-  signInWithPassword: async () => ({ error: null }),
-  signInWithEmail: async () => ({ error: null }),
-  signUpWithPassword: async () => ({ data: { user: null }, error: null }),
+  signInWithPassword: async () => ({ data: null, error: null }),
+  signInWithEmail: async () => ({ data: null, error: null }),
+  signUpWithPassword: async () => ({ data: null, error: null }),
   signOut: async () => {},
   refreshUser: async () => {},
   updateUserBalance: () => {},
@@ -23,101 +23,146 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
+  console.log('[AuthContext] Rendering AuthProvider');
   const [user, setUser] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const authService = React.useMemo(() => AuthService.getInstance(), []);
 
-  const handleAuthChange = React.useCallback(async (_event: string, session: Session | null) => {
+  const loadUserProfile = React.useCallback(async (supabaseUser: SupabaseUser): Promise<User> => {
+    console.log('[AuthContext] Loading user profile...');
+    const user = await authService.loadUserProfile(supabaseUser);
+    console.log('[AuthContext] User profile loaded:', user);
+    return user;
+  }, [authService]);
+
+  const signInWithPassword = React.useCallback(async (email: string, password: string): Promise<SignInResponse> => {
     try {
-      if (session?.user) {
-        const user = await authService.loadUserProfile(session.user);
-        setUser(user);
-      } else {
-        setUser(null);
+      const result = await authService.signInWithPassword(email, password);
+      if (result.error) {
+        return { data: null, error: result.error };
       }
+
+      if (!result.data?.user) {
+        return { 
+          data: null, 
+          error: createAuthError('No user data in response') 
+        };
+      }
+
+      const userProfile = await loadUserProfile(result.data.user);
+      return {
+        data: {
+          user: userProfile,
+          session: result.data.session
+        },
+        error: null
+      };
     } catch (error) {
-      console.error('Error handling auth change:', error);
-      setUser(null);
-    } finally {
-      setIsLoading(false);
+      return {
+        data: null,
+        error: createAuthError(error instanceof Error ? error.message : 'Unknown error')
+      };
+    }
+  }, [authService, loadUserProfile]);
+
+  const signInWithEmail = React.useCallback(async (email: string): Promise<SignInResponse> => {
+    try {
+      const result = await authService.signInWithEmail(email);
+      return result;
+    } catch (error) {
+      return {
+        data: null,
+        error: createAuthError(error instanceof Error ? error.message : 'Unknown error')
+      };
     }
   }, [authService]);
 
-  // Initialize auth state
-  React.useEffect(() => {
-    let mounted = true;
-    setIsLoading(true);
-
-    const initAuth = async () => {
-      try {
-        // Check for existing session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (mounted && session?.user) {
-          const user = await authService.loadUserProfile(session.user);
-          setUser(user);
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        if (mounted) {
-          setUser(null);
-        }
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
+  const signUpWithPassword = React.useCallback(async (email: string, password: string): Promise<SignUpResponse> => {
+    try {
+      const result = await authService.signUpWithPassword(email, password);
+      if (result.error) {
+        return { data: null, error: result.error };
       }
-    };
 
-    initAuth();
+      if (!result.data?.user) {
+        return { 
+          data: null, 
+          error: createAuthError('No user data in response') 
+        };
+      }
 
-    return () => {
-      mounted = false;
-    };
+      // Create a default user profile
+      const defaultUser: User = {
+        ...result.data.user,
+        email: result.data.user.email || '',
+        role: 'user',
+        balance: 0,
+        username: null,
+        display_name: null,
+        bio: null,
+        avatar_url: null,
+        email_verified: false,
+        email_notifications: true,
+        created_at: result.data.user.created_at,
+        updated_at: result.data.user.created_at,
+      };
+
+      return {
+        data: { user: defaultUser },
+        error: null
+      };
+    } catch (error) {
+      return {
+        data: null,
+        error: error instanceof Error ? error : new Error('Unknown error')
+      };
+    }
   }, [authService]);
 
-  // Subscribe to auth changes
-  React.useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [handleAuthChange]);
+  const signOut = React.useCallback(async () => {
+    await authService.signOut();
+    setUser(null);
+  }, [authService]);
 
-  // Listen for profile updates
-  React.useEffect(() => {
-    const unsubscribeProfileUpdate = authService.onProfileUpdate((updatedProfile) => {
-      setUser(updatedProfile);
-    });
-
-    return () => {
-      unsubscribeProfileUpdate();
-    };
+  const refreshUser = React.useCallback(async () => {
+    const user = await authService.getCurrentUser();
+    setUser(user);
   }, [authService]);
 
   const updateUserBalance = React.useCallback((newBalance: number) => {
-    if (user) {
-      setUser({ ...user, balance: newBalance });
-    }
-  }, [user]);
+    setUser((prev: User | null) => prev ? { ...prev, balance: newBalance } : null);
+  }, []);
+
+  React.useEffect(() => {
+    console.log('[AuthContext] Setting up auth state listener');
+    const { data: { subscription } } = authService.onAuthStateChange(async (event: string, session: Session | null) => {
+      console.log('[AuthContext] Auth state changed:', event, session?.user?.id);
+      setIsLoading(true);
+      if (session?.user) {
+        const userProfile = await loadUserProfile(session.user);
+        setUser(userProfile);
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      console.log('[AuthContext] Cleaning up auth state listener');
+      subscription.unsubscribe();
+    };
+  }, [authService, loadUserProfile]);
 
   const value = React.useMemo(() => ({
     user,
     isLoading,
-    signInWithPassword: authService.signInWithPassword.bind(authService),
-    signInWithEmail: authService.signInWithEmail.bind(authService),
-    signUpWithPassword: authService.signUpWithPassword.bind(authService),
-    signOut: authService.signOut.bind(authService),
-    refreshUser: async () => {
-      setIsLoading(true);
-      try {
-        const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
-      } finally {
-        setIsLoading(false);
-      }
-    },
+    signInWithPassword,
+    signInWithEmail,
+    signUpWithPassword,
+    signOut,
+    refreshUser,
     updateUserBalance,
-  }), [user, isLoading, authService, updateUserBalance]);
+  }), [user, isLoading, signInWithPassword, signInWithEmail, signUpWithPassword, signOut, refreshUser, updateUserBalance]);
 
   return (
     <AuthContext.Provider value={value}>

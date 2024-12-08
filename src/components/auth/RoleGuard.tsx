@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../../hooks/auth/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import type { UserRole } from '../../types/user';
 
 interface RoleGuardProps {

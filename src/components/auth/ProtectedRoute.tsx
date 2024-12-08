@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../hooks/auth/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { Center, Spinner, VStack, Text } from '@chakra-ui/react';
 import type { UserRole } from '../../types/user';
 

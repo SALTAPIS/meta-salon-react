@@ -1,243 +1,59 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { TokenService } from '../../services/token/tokenService';
-import { useAuth } from '../auth/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
-import type { Database } from '../../types/supabase';
-import type { RealtimeChannel } from '@supabase/supabase-js';
-
-type Profile = Database['public']['Tables']['profiles']['Row'];
-type Transaction = Database['public']['Tables']['transactions']['Row'];
-type VotePack = Database['public']['Tables']['vote_packs']['Row'];
 
 const CHANNEL_NAME = 'token-updates';
-const MAX_RETRY_COUNT = 5;
-const INITIAL_RETRY_DELAY = 1000;
-const MAX_RETRY_DELAY = 16000;
 
 export function useTokens() {
-  const { user, updateUserBalance } = useAuth();
-  const [balance, setBalance] = useState<number>(user?.balance ?? 0);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [votePacks, setVotePacks] = useState<VotePack[]>([]);
+  const { user } = useAuth();
+  const [balance, setBalance] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [realtimeStatus, setRealtimeStatus] = useState('disconnected');
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const lastFetchRef = useRef<number>(0);
-  const mountedRef = useRef(true);
-  const retryCountRef = useRef(0);
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const channelRef = useRef<any>(null);
 
-  // Update balance with persistence
-  const handleBalanceUpdate = useCallback((newBalance: number) => {
-    if (!user?.id || !mountedRef.current) return;
-    console.log('Setting new balance:', newBalance);
-    setBalance(newBalance);
-    updateUserBalance(newBalance);
-  }, [user?.id, updateUserBalance]);
-
-  // Fetch data function with debouncing
-  const fetchData = useCallback(async () => {
-    if (!user?.id || !mountedRef.current) return;
-    
-    const now = Date.now();
-    if (now - lastFetchRef.current < 1000) return;
-    lastFetchRef.current = now;
-
-    setIsLoading(true);
+  const fetchBalance = useCallback(async () => {
+    if (!user?.id) return;
     try {
       const tokenService = TokenService.getInstance();
-      const [userProfile, userTransactions, userVotePacks] = await Promise.all([
-        tokenService.getUserProfile(user.id),
-        tokenService.getUserTransactions(user.id),
-        tokenService.getUserVotePacks(user.id),
-      ]);
-
-      if (mountedRef.current) {
-        if (userProfile?.balance !== undefined) {
-          handleBalanceUpdate(userProfile.balance);
-        }
-        setTransactions(userTransactions);
-        setVotePacks(userVotePacks);
-      }
-    } catch (error) {
-      console.error('Error fetching token data:', error);
+      const balance = await tokenService.getBalance(user.id);
+      setBalance(balance);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to fetch balance'));
     } finally {
-      if (mountedRef.current) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     }
-  }, [user?.id, handleBalanceUpdate]);
+  }, [user?.id]);
 
-  // Set up real-time subscription with exponential backoff
   useEffect(() => {
-    if (!user?.id) return;
+    fetchBalance();
 
-    mountedRef.current = true;
-    let subscriptionActive = true;
-
-    const setupChannel = () => {
-      if (!subscriptionActive || !mountedRef.current) return;
-
-      // Clear any existing retry timeout
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-        retryTimeoutRef.current = null;
-      }
-
-      // Clean up existing channel if any
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-
-      console.log('Setting up real-time subscription for user:', user.id);
-
-      const channel = supabase.channel(`${CHANNEL_NAME}-${user.id}`, {
-        config: {
-          broadcast: { self: true },
-          presence: { key: user.id },
-        },
-      });
-
-      // Add all listeners before subscribing
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          console.log('Presence state synchronized');
-        })
-        .on('presence', { event: 'join' }, ({ key }) => {
-          console.log('User joined:', key);
-        })
-        .on('presence', { event: 'leave' }, ({ key }) => {
-          console.log('User left:', key);
-        })
+    // Subscribe to token updates
+    if (user?.id) {
+      channelRef.current = supabase
+        .channel(CHANNEL_NAME)
         .on(
           'postgres_changes',
           {
             event: '*',
             schema: 'public',
-            table: 'profiles',
-            filter: `id=eq.${user.id}`,
-          },
-          async (payload) => {
-            console.log('Profile change received:', payload);
-            if (!subscriptionActive || !mountedRef.current) return;
-
-            if (payload.eventType === 'UPDATE') {
-              const newProfile = payload.new as Profile;
-              if (newProfile?.balance !== undefined) {
-                handleBalanceUpdate(newProfile.balance);
-              }
-            }
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'transactions',
+            table: 'tokens',
             filter: `user_id=eq.${user.id}`,
           },
-          async () => {
-            console.log('Transaction change detected');
-            if (!subscriptionActive || !mountedRef.current) return;
-            await fetchData();
+          () => {
+            fetchBalance();
           }
         )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'vote_packs',
-            filter: `user_id=eq.${user.id}`,
-          },
-          async () => {
-            console.log('Vote pack change detected');
-            if (!subscriptionActive || !mountedRef.current) return;
-            await fetchData();
-          }
-        );
+        .subscribe();
 
-      // Subscribe to the channel with exponential backoff retry
-      channel.subscribe(async (status) => {
-        if (!subscriptionActive || !mountedRef.current) return;
-        console.log('Subscription status:', status);
-
-        if (status === 'SUBSCRIBED') {
-          retryCountRef.current = 0;
-          setRealtimeStatus('connected');
-          // Track presence
-          const presenceTrackStatus = await channel.track({
-            user_id: user.id,
-            online_at: new Date().toISOString(),
-          });
-          console.log('Presence track status:', presenceTrackStatus);
-          await fetchData();
-        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          setRealtimeStatus('disconnected');
-          
-          // Only attempt to reconnect if we're still mounted, active, and haven't exceeded max retries
-          if (subscriptionActive && mountedRef.current && retryCountRef.current < MAX_RETRY_COUNT) {
-            const delay = Math.min(
-              INITIAL_RETRY_DELAY * Math.pow(2, retryCountRef.current),
-              MAX_RETRY_DELAY
-            );
-            
-            console.log(`Attempting to reconnect in ${delay}ms (attempt ${retryCountRef.current + 1}/${MAX_RETRY_COUNT})`);
-            retryCountRef.current++;
-            retryTimeoutRef.current = setTimeout(setupChannel, delay);
-          } else if (retryCountRef.current >= MAX_RETRY_COUNT) {
-            console.log('Max retry attempts reached. Stopping reconnection attempts.');
-            setRealtimeStatus('max_retries_reached');
-          }
-        } else {
-          setRealtimeStatus(status.toLowerCase());
+      return () => {
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
         }
-      });
+      };
+    }
+  }, [user?.id, fetchBalance]);
 
-      channelRef.current = channel;
-    };
-
-    setupChannel();
-
-    // Cleanup function
-    return () => {
-      console.log('Cleaning up subscription effect');
-      subscriptionActive = false;
-      mountedRef.current = false;
-
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-        retryTimeoutRef.current = null;
-      }
-
-      if (channelRef.current) {
-        console.log('Removing channel');
-        channelRef.current.untrack();
-        channelRef.current.unsubscribe();
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-    };
-  }, [user?.id, fetchData, handleBalanceUpdate]);
-
-  // Initial data fetch
-  useEffect(() => {
-    if (!user?.id) return;
-    fetchData();
-    return () => {
-      mountedRef.current = false;
-    };
-  }, [user?.id, fetchData]);
-
-  return {
-    balance,
-    transactions,
-    votePacks,
-    isLoading,
-    realtimeStatus,
-    fetchData,
-  };
+  return { balance, isLoading, error, refreshBalance: fetchBalance };
 }

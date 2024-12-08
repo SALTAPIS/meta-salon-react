@@ -6,7 +6,7 @@ import {
   Avatar,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { useAuth } from '../../hooks/auth/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { UserStats } from './UserStats';
 
 export function UserProfile() {

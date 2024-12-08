@@ -13,6 +13,7 @@ import ArtworksPage from './pages/artworks/ArtworksPage';
 import ClassementPage from './pages/classement/ClassementPage';
 import SubmitArtPage from './pages/submit/SubmitArtPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import DebugPage from './pages/debug/DebugPage';
 
 export const router = createBrowserRouter([
   {
@@ -96,6 +97,10 @@ export const router = createBrowserRouter([
             <AdminDashboard />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: 'debug',
+        element: <DebugPage />,
       },
     ]
   }

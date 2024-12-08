@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Center, Spinner, VStack, Text, useToast } from '@chakra-ui/react';
-import { AuthService } from '../../services/auth/authService';
+import { supabase } from '../../lib/supabase';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -10,28 +10,51 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        const authService = AuthService.getInstance();
-        const { data, error } = await authService.handleEmailConfirmation();
-        
-        if (error) throw error;
+        console.log('[AuthCallback] Starting auth callback handling');
+        const { data: { session }, error } = await supabase.auth.getSession();
 
-        if (data?.user) {
+        if (error) {
+          console.error('[AuthCallback] Session error:', error);
+          throw error;
+        }
+
+        if (session?.user) {
+          console.log('[AuthCallback] Session found:', {
+            userId: session.user.id,
+            email: session.user.email,
+          });
+
+          // Update profile with email_verified status
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              email_verified: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', session.user.id);
+
+          if (updateError) {
+            console.error('[AuthCallback] Profile update error:', updateError);
+          } else {
+            console.log('[AuthCallback] Profile updated successfully');
+          }
+
           toast({
-            title: 'Email confirmed!',
-            description: 'Your email has been confirmed. You can now sign in.',
+            title: 'Authentication successful!',
+            description: 'You have been signed in.',
             status: 'success',
             duration: 5000,
             isClosable: true,
           });
 
-          // Redirect to dashboard if user is confirmed
+          // Redirect to dashboard
           navigate('/dashboard', { replace: true });
         } else {
-          // If no user, something went wrong
-          throw new Error('Failed to confirm email');
+          console.error('[AuthCallback] No session found');
+          throw new Error('No session found');
         }
       } catch (error) {
-        console.error('Auth callback error:', error);
+        console.error('[AuthCallback] Error:', error);
         toast({
           title: 'Authentication Error',
           description: error instanceof Error ? error.message : 'Failed to complete authentication',
@@ -50,7 +73,7 @@ export default function AuthCallback() {
     <Center h="100vh">
       <VStack spacing={4}>
         <Spinner size="xl" />
-        <Text>Verifying your account...</Text>
+        <Text>Completing authentication...</Text>
       </VStack>
     </Center>
   );

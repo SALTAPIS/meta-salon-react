@@ -1,4 +1,4 @@
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 export type UserRole = 'user' | 'member' | 'admin';
 
@@ -44,15 +44,30 @@ export interface ProfileUpdate {
   email_notifications?: boolean;
 }
 
+// Auth response types
+export interface AuthResponse<T> {
+  data: T | null;
+  error: Error | null;
+}
+
+export type SignInResponse = AuthResponse<{
+  user: User;
+  session: Session;
+}>;
+
+export type SignUpResponse = {
+  data: { user: User | null } | null;
+  error: Error | null;
+};
+
 // Auth context type
 export interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithEmail: (email: string) => Promise<{ error: Error | null }>;
-  signUpWithPassword: (email: string, password: string) => Promise<{ data: { user: User | null } | null; error: Error | null }>;
+  signInWithPassword: (email: string, password: string) => Promise<SignInResponse>;
+  signInWithEmail: (email: string) => Promise<SignInResponse>;
+  signUpWithPassword: (email: string, password: string) => Promise<SignUpResponse>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateUserBalance: (newBalance: number) => void;
-  updateProfile?: (profile: ProfileUpdate) => Promise<{ error: Error | null }>;
 } 

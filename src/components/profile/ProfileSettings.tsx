@@ -15,7 +15,7 @@ import {
   IconButton,
 } from '@chakra-ui/react';
 import { useState } from 'react';
-import { useAuth } from '../../hooks/auth/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { DeleteIcon } from '@chakra-ui/icons';
 import { AuthService } from '../../services/auth/authService';

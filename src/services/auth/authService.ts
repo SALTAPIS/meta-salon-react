@@ -1,12 +1,10 @@
 import { AuthError, User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
-import { User, ProfileUpdate } from '../../types/user';
+import { User } from '../../types/user';
 
 // Define event map type for type safety
 interface EventMap extends Record<string, unknown> {
   profileUpdate: User;
-  // Add other events here as needed
-  [key: string]: unknown; // Add index signature for string keys
 }
 
 // Simple event emitter implementation for browser
@@ -37,9 +35,33 @@ class SimpleEventEmitter<Events extends Record<string, unknown>> {
 
 export class AuthService extends SimpleEventEmitter<EventMap> {
   private static instance: AuthService;
+  private cachedProfile: User | null = null;
 
   private constructor() {
     super();
+    console.log('[AuthService] Initializing with environment:', {
+      url: import.meta.env.VITE_SUPABASE_URL ? '✓ Set' : '✗ Missing',
+      anon_key: import.meta.env.VITE_SUPABASE_ANON_KEY ? '✓ Set' : '✗ Missing',
+      service_key: import.meta.env.VITE_SUPABASE_SERVICE_KEY ? '✓ Set' : '✗ Missing',
+      site_url: import.meta.env.VITE_SITE_URL || window.location.origin,
+      timestamp: new Date().toISOString()
+    });
+
+    // Try to load cached user on initialization
+    const cachedUser = localStorage.getItem('cached_user');
+    if (cachedUser) {
+      try {
+        this.cachedProfile = JSON.parse(cachedUser);
+        console.log('[AuthService] Loaded cached user:', {
+          id: this.cachedProfile?.id,
+          email: this.cachedProfile?.email,
+          role: this.cachedProfile?.role
+        });
+      } catch (error) {
+        console.error('[AuthService] Error parsing cached user:', error);
+        localStorage.removeItem('cached_user');
+      }
+    }
   }
 
   static getInstance(): AuthService {
@@ -56,13 +78,34 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
 
   async loadUserProfile(user: SupabaseUser): Promise<User> {
     try {
+      console.log('[AuthService] Loading profile for user:', {
+        id: user.id,
+        email: user.email,
+        timestamp: new Date().toISOString()
+      });
+
+      // First check if we have a cached profile that matches
+      if (this.cachedProfile && this.cachedProfile.id === user.id) {
+        console.log('[AuthService] Using cached profile');
+        return this.cachedProfile;
+      }
+
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[AuthService] Error loading profile from database:', error);
+        throw error;
+      }
+
+      console.log('[AuthService] Profile loaded from database:', {
+        id: profile.id,
+        role: profile.role,
+        timestamp: new Date().toISOString()
+      });
 
       const extendedUser: User = {
         ...user,
@@ -78,9 +121,13 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         updated_at: profile?.updated_at || user.created_at,
       };
 
+      // Cache the profile
+      this.cachedProfile = extendedUser;
+      localStorage.setItem('cached_user', JSON.stringify(extendedUser));
+
       return extendedUser;
     } catch (error) {
-      console.error('Error loading profile:', error);
+      console.error('[AuthService] Error loading profile, using defaults:', error);
       const defaultUser: User = {
         ...user,
         email: user.email || '',
@@ -94,48 +141,77 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         email_notifications: true,
         updated_at: user.created_at,
       };
+
+      // Cache the default profile
+      this.cachedProfile = defaultUser;
+      localStorage.setItem('cached_user', JSON.stringify(defaultUser));
+
       return defaultUser;
     }
   }
 
   async getCurrentUser(): Promise<User | null> {
     try {
+      console.log('[AuthService] Getting current user session');
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (sessionError) throw sessionError;
-      if (!session?.user) return null;
+      if (sessionError) {
+        console.error('[AuthService] Session error:', sessionError);
+        throw sessionError;
+      }
 
+      if (!session?.user) {
+        console.log('[AuthService] No active session found');
+        return null;
+      }
+
+      console.log('[AuthService] Session found, loading profile');
       return await this.loadUserProfile(session.user);
     } catch (error) {
-      console.error('Error getting current user:', error);
+      console.error('[AuthService] Error getting current user:', error);
       return null;
     }
   }
 
   onAuthStateChange(callback: (event: string, session: Session | null) => void) {
+    console.log('[AuthService] Setting up auth state change listener');
     return supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const extendedUser = await this.loadUserProfile(session.user);
-        localStorage.setItem('cached_user', JSON.stringify(extendedUser));
-        callback(event, {
-          ...session,
-          user: {
-            ...session.user,
-            role: extendedUser.role || undefined,
-            user_metadata: {
-              ...session.user.user_metadata,
-              balance: extendedUser.balance,
-              username: extendedUser.username,
-              display_name: extendedUser.display_name,
-              bio: extendedUser.bio,
-              avatar_url: extendedUser.avatar_url,
-              email_verified: extendedUser.email_verified,
-              email_notifications: extendedUser.email_notifications,
+      console.log('[AuthService] Auth state changed:', { 
+        event, 
+        hasSession: !!session,
+        userId: session?.user?.id,
+        timestamp: new Date().toISOString()
+      });
+
+      try {
+        if (session?.user) {
+          const user = await this.loadUserProfile(session.user);
+          callback(event, {
+            ...session,
+            user: {
+              ...session.user,
+              role: user.role || undefined,
+              user_metadata: {
+                ...session.user.user_metadata,
+                balance: user.balance,
+                username: user.username,
+                display_name: user.display_name,
+                bio: user.bio,
+                avatar_url: user.avatar_url,
+                email_verified: user.email_verified,
+                email_notifications: user.email_notifications,
+              }
             }
-          }
-        });
-      } else {
-        localStorage.removeItem('cached_user');
+          });
+        } else {
+          console.log('[AuthService] No session, clearing cached user');
+          this.cachedProfile = null;
+          localStorage.removeItem('cached_user');
+          callback(event, null);
+        }
+      } catch (error) {
+        console.error('[AuthService] Error in auth state change handler:', error);
+        // Still call callback even if there's an error, to prevent UI from getting stuck
         callback(event, session);
       }
     });
@@ -143,278 +219,170 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
 
   async signInWithPassword(email: string, password: string) {
     try {
+      console.log('[AuthService] Attempting sign in for email:', email);
+
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email, 
         password 
       });
       
-      if (error) throw error;
-
-      // Load and cache the user profile after successful sign in
-      if (data.user) {
-        const extendedUser = await this.loadUserProfile(data.user);
-        localStorage.setItem('cached_user', JSON.stringify(extendedUser));
-        if (extendedUser.balance !== undefined) {
-          localStorage.setItem('cached_balance', extendedUser.balance.toString());
+      if (error) {
+        console.error('[AuthService] Sign in error:', error.message);
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password. Please try again.');
+        } else if (error.message.includes('Email not confirmed')) {
+          throw new Error('Please confirm your email before signing in. Check your inbox for the confirmation link.');
         }
-        // Emit profile update event
-        this.emit('profileUpdate', extendedUser);
+        throw error;
       }
-      
-      return { error: null };
+
+      if (!data.user) {
+        console.error('[AuthService] Sign in successful but no user data returned');
+        throw new Error('Unable to retrieve user data. Please try again.');
+      }
+
+      console.log('[AuthService] Sign in successful:', {
+        userId: data.user.id,
+        email: data.user.email,
+        timestamp: new Date().toISOString()
+      });
+
+      // Load user profile immediately after sign in
+      try {
+        const user = await this.loadUserProfile(data.user);
+        console.log('[AuthService] User profile loaded after sign in:', {
+          id: user.id,
+          email: user.email,
+          role: user.role
+        });
+      } catch (profileError) {
+        console.error('[AuthService] Error loading profile after sign in:', profileError);
+        // Don't throw here, we still want to return success since auth worked
+      }
+
+      return { data, error: null };
     } catch (error) {
-      console.error('Sign in error:', error);
-      return { error: error as AuthError };
+      console.error('[AuthService] Sign in error:', error);
+      return { data: null, error: error as AuthError };
     }
   }
 
   async signInWithEmail(email: string) {
     try {
-      const { error } = await supabase.auth.signInWithOtp({ 
+      console.log('[AuthService] Sending magic link to:', email);
+
+      const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+          emailRedirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/auth/callback`
+        }
       });
-      
-      if (error) throw error;
-      
-      return { error: null };
+
+      if (error) {
+        console.error('[AuthService] Magic link error:', error.message);
+        throw error;
+      }
+
+      console.log('[AuthService] Magic link sent successfully');
+      return { data: null, error: null };
     } catch (error) {
-      console.error('Sign in with email error:', error);
-      return { error: error as AuthError };
+      console.error('[AuthService] Magic link error:', error);
+      return { data: null, error: error as AuthError };
     }
   }
 
-  async signUpWithPassword(email: string, password: string): Promise<{ data: { user: User | null } | null; error: Error | null }> {
+  async signUpWithPassword(email: string, password: string) {
     try {
-      console.log('[AuthService] Starting signup process for:', email);
+      console.log('[AuthService] Attempting sign up for email:', email);
 
-      // Check if user exists first
-      const { data: { user: existingUser } } = await supabase.auth.getUser();
-      if (existingUser) {
-        console.log('[AuthService] User already exists:', existingUser.email);
-        throw new Error('User already exists. Please sign in instead.');
-      }
-
-      // Sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            email_confirmed: false,
-          }
-        },
+          emailRedirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/auth/callback`
+        }
       });
-      
+
       if (error) {
-        console.error('[AuthService] Signup error:', error);
+        console.error('[AuthService] Sign up error:', error.message);
         throw error;
       }
 
-      if (!data?.user) {
-        console.error('[AuthService] No user returned from signup');
-        throw new Error('Failed to create user account');
+      if (!data.user) {
+        console.error('[AuthService] Sign up successful but no user data returned');
+        throw new Error('Unable to create user. Please try again.');
       }
 
-      console.log('[AuthService] Signup successful:', data.user.email);
+      console.log('[AuthService] Sign up successful:', {
+        userId: data.user.id,
+        email: data.user.email,
+        timestamp: new Date().toISOString()
+      });
 
       // Create initial profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: data.user.id,
-          email: data.user.email || '',
-          email_verified: false,
-          role: 'user',
-          balance: 0,
-          username: null,
-          display_name: null,
-          bio: null,
-          avatar_url: null,
-          email_notifications: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'id'
-        });
-
-      if (profileError) {
-        console.error('[AuthService] Profile creation error:', profileError);
-      } else {
-        console.log('[AuthService] Profile created successfully');
-      }
-
-      // Sign out immediately to force email confirmation
-      await supabase.auth.signOut();
-
-      // Create extended user object
-      const extendedUser: User = {
-        ...data.user,
-        email: data.user.email || '',
-        role: 'user',
-        balance: 0,
-        username: null,
-        display_name: null,
-        bio: null,
-        avatar_url: null,
-        email_verified: false,
-        email_notifications: true,
-        created_at: data.user.created_at,
-        updated_at: data.user.created_at,
-      };
-      
-      return { 
-        data: { user: extendedUser },
-        error: null 
-      };
-    } catch (error) {
-      console.error('[AuthService] Signup process error:', error);
-      return { 
-        data: null,
-        error: error instanceof Error ? error : new Error('Failed to sign up') 
-      };
-    }
-  }
-
-  async handleEmailConfirmation() {
-    try {
-      console.log('Starting email confirmation process');
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('Session error:', error);
-        throw error;
-      }
-
-      console.log('Current session:', session);
-
-      if (session?.user) {
-        console.log('Updating profile for user:', session.user.id);
-        // Update profile with email_verified status
-        const { error: updateError } = await supabase
+      try {
+        const { error: profileError } = await supabase
           .from('profiles')
-          .update({
-            email_verified: true,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', session.user.id);
+          .upsert({
+            id: data.user.id,
+            email: data.user.email,
+            role: 'user',
+            email_verified: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
 
-        if (updateError) {
-          console.error('Profile update error:', updateError);
-          throw updateError;
+        if (profileError) {
+          console.error('[AuthService] Error creating profile:', profileError);
+          // Don't throw here, we still want to return success since auth worked
+        } else {
+          console.log('[AuthService] Profile created successfully');
         }
-
-        console.log('Profile updated successfully');
-
-        // Load and cache the user profile
-        const extendedUser = await this.loadUserProfile(session.user);
-        console.log('Loaded user profile:', extendedUser);
-        
-        localStorage.setItem('cached_user', JSON.stringify(extendedUser));
-        
-        // Emit profile update event
-        this.emit('profileUpdate', extendedUser);
-
-        return { 
-          data: { user: extendedUser },
-          error: null 
-        };
+      } catch (profileError) {
+        console.error('[AuthService] Error creating profile:', profileError);
+        // Don't throw here, we still want to return success since auth worked
       }
 
-      console.log('No session found during confirmation');
-      return { 
-        data: { user: null },
-        error: new Error('No session found') 
-      };
+      return { data: { user: data.user }, error: null };
     } catch (error) {
-      console.error('Email confirmation error:', error);
-      return { 
-        data: null,
-        error: error instanceof Error ? error : new Error('Failed to confirm email') 
-      };
+      console.error('[AuthService] Sign up error:', error);
+      return { data: null, error: error as AuthError };
     }
   }
 
   async signOut() {
     try {
-      // Clear any local storage data first
-      localStorage.clear();
-      
+      console.log('[AuthService] Signing out');
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      
+      if (error) {
+        console.error('[AuthService] Sign out error:', error);
+        throw error;
+      }
 
-      // Force reload the page to clear any cached state
-      window.location.href = '/auth/signin';
+      // Clear cached profile
+      this.cachedProfile = null;
+      localStorage.removeItem('cached_user');
+      
+      console.log('[AuthService] Sign out successful');
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('[AuthService] Sign out error:', error);
       throw error;
-    }
-  }
-
-  async updateProfile(userId: string, updates: ProfileUpdate): Promise<{ error: Error | null }> {
-    try {
-      // First get the current profile to preserve existing values
-      const { data: currentProfile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Preserve balance and other critical fields
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          ...updates,
-          balance: currentProfile.balance, // Preserve the current balance
-          role: currentProfile.role, // Preserve the current role
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', userId);
-
-      if (updateError) throw updateError;
-
-      // Get the updated profile
-      const { data: updatedProfile, error: refreshError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (refreshError) throw refreshError;
-
-      // Update local storage with the new profile data
-      localStorage.setItem('cached_user', JSON.stringify(updatedProfile));
-
-      // Emit profile update event
-      this.emit('profileUpdate', updatedProfile);
-
-      return { error: null };
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      return { error: error instanceof Error ? error : new Error('Failed to update profile') };
     }
   }
 
   async resendConfirmationEmail(email: string) {
     try {
-      console.log('[AuthService] Attempting to resend confirmation email to:', email);
+      console.log('[AuthService] Resending confirmation email to:', email);
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/auth/callback`,
         },
       });
       
-      if (error) {
-        console.error('[AuthService] Resend error:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       console.log('[AuthService] Confirmation email resent successfully');
       return { error: null };
@@ -424,20 +392,44 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
     }
   }
 
-  async checkRecentSignups() {
+  async updateProfile(userId: string, updates: Partial<User>) {
     try {
-      const { data, error } = await supabase
+      console.log('[AuthService] Updating profile for user:', userId);
+      const { error } = await supabase
         .from('profiles')
-        .select('email, created_at, email_verified')
-        .order('created_at', { ascending: false })
-        .limit(2);
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
 
       if (error) throw error;
-      console.log('Recent signups:', data);
-      return data;
+
+      // Get the updated profile
+      const { data: profile, error: refreshError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (refreshError) throw refreshError;
+
+      // Update local storage with the new profile data
+      if (this.cachedProfile && this.cachedProfile.id === userId) {
+        this.cachedProfile = {
+          ...this.cachedProfile,
+          ...profile,
+        };
+        localStorage.setItem('cached_user', JSON.stringify(this.cachedProfile));
+      }
+
+      // Emit profile update event
+      this.emit('profileUpdate', profile as User);
+
+      return { error: null };
     } catch (error) {
-      console.error('Error checking recent signups:', error);
-      return null;
+      console.error('[AuthService] Error updating profile:', error);
+      return { error: error as Error };
     }
   }
 } 
