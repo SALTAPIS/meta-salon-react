@@ -1,17 +1,57 @@
 import { AuthError, User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
-import { User } from '../../types/user';
+import { User, ProfileUpdate } from '../../types/user';
 
-export class AuthService {
+// Define event map type for type safety
+interface EventMap extends Record<string, unknown> {
+  profileUpdate: User;
+  // Add other events here as needed
+  [key: string]: unknown; // Add index signature for string keys
+}
+
+// Simple event emitter implementation for browser
+class SimpleEventEmitter<Events extends Record<string, unknown>> {
+  private listeners: {
+    [K in keyof Events]?: Array<(data: Events[K]) => void>;
+  } = {};
+
+  on<K extends keyof Events>(event: K, callback: (data: Events[K]) => void): void {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event]?.push(callback);
+  }
+
+  emit<K extends keyof Events>(event: K, data: Events[K]): void {
+    if (this.listeners[event]) {
+      this.listeners[event]?.forEach(callback => callback(data));
+    }
+  }
+
+  off<K extends keyof Events>(event: K, callback: (data: Events[K]) => void): void {
+    if (this.listeners[event]) {
+      this.listeners[event] = this.listeners[event]?.filter(cb => cb !== callback);
+    }
+  }
+}
+
+export class AuthService extends SimpleEventEmitter<EventMap> {
   private static instance: AuthService;
 
-  private constructor() {}
+  private constructor() {
+    super();
+  }
 
   static getInstance(): AuthService {
     if (!AuthService.instance) {
       AuthService.instance = new AuthService();
     }
     return AuthService.instance;
+  }
+
+  onProfileUpdate(callback: (profile: User) => void) {
+    this.on('profileUpdate', callback);
+    return () => this.off('profileUpdate', callback);
   }
 
   async loadUserProfile(user: SupabaseUser): Promise<User> {
@@ -184,6 +224,52 @@ export class AuthService {
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;
+    }
+  }
+
+  async updateProfile(userId: string, updates: ProfileUpdate): Promise<{ error: Error | null }> {
+    try {
+      // First get the current profile to preserve existing values
+      const { data: currentProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Preserve balance and other critical fields
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          ...updates,
+          balance: currentProfile.balance, // Preserve the current balance
+          role: currentProfile.role, // Preserve the current role
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      if (updateError) throw updateError;
+
+      // Get the updated profile
+      const { data: updatedProfile, error: refreshError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (refreshError) throw refreshError;
+
+      // Update local storage with the new profile data
+      localStorage.setItem('cached_user', JSON.stringify(updatedProfile));
+
+      // Emit profile update event
+      this.emit('profileUpdate', updatedProfile);
+
+      return { error: null };
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      return { error: error instanceof Error ? error : new Error('Failed to update profile') };
     }
   }
 } 

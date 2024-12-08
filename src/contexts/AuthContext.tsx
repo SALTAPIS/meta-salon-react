@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React from 'react';
 import { Session } from '@supabase/supabase-js';
 import type { AuthContextType, User } from '../types/user';
 import { AuthService } from '../services/auth/authService';
@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = React.useState(true);
   const authService = AuthService.getInstance();
 
-  const handleAuthChange = async (event: string, session: Session | null) => {
+  const handleAuthChange = async (_event: string, session: Session | null) => {
     if (session?.user) {
       const user = await authService.loadUserProfile(session.user);
       setUser(user);
