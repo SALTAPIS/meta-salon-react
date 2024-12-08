@@ -81,17 +81,21 @@ export function VotePacks({ userId }: VotePackProps) {
       
       await fetchData();
       
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       toast({
         title: 'Purchase Successful',
         description: `You've purchased ${votes} votes with ${votePower}× power for ${price} tokens`,
         status: 'success',
       });
     } catch (error) {
+      console.error('Vote pack purchase error:', error);
       toast({
         title: 'Purchase Failed',
         description: error instanceof Error ? error.message : 'Failed to purchase vote pack',
         status: 'error',
       });
+      await fetchData();
     } finally {
       setIsLoading(null);
       handleModalClose();
