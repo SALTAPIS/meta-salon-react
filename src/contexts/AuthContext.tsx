@@ -1,14 +1,10 @@
-import React from 'react';
+import { createContext } from 'react';
 import type { AuthContextType } from '../types/user';
 
-// Provide default values for all required properties
-export const AuthContext = React.createContext<AuthContextType>({
-  user: null,
-  isLoading: true,
-  signInWithPassword: async () => ({ error: null }),
-  signInWithEmail: async () => ({ error: null }),
-  signUpWithPassword: async () => ({ data: { user: null }, error: null }),
-  signOut: async () => {},
-  refreshUser: async () => {},
-  updateUserBalance: () => {},
-}); 
+// Create context with undefined initial value
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Add display name for debugging
+AuthContext.displayName = 'AuthContext';
+
+export { AuthContext }; 
