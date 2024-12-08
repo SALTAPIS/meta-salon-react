@@ -14,21 +14,9 @@ const MAX_RETRY_COUNT = 5;
 const INITIAL_RETRY_DELAY = 1000;
 const MAX_RETRY_DELAY = 16000;
 
-// Helper to manage balance persistence
-const getStoredBalance = (userId: string): number | null => {
-  const stored = localStorage.getItem(`balance_${userId}`);
-  return stored ? parseInt(stored, 10) : null;
-};
-
-const setStoredBalance = (userId: string, balance: number) => {
-  localStorage.setItem(`balance_${userId}`, balance.toString());
-};
-
 export function useTokens() {
-  const { user } = useAuth();
-  const [balance, setBalance] = useState<number>(() => {
-    return user?.id ? (getStoredBalance(user.id) ?? user?.balance ?? 0) : 0;
-  });
+  const { user, updateUserBalance } = useAuth();
+  const [balance, setBalance] = useState<number>(user?.balance ?? 0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [votePacks, setVotePacks] = useState<VotePack[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,12 +28,12 @@ export function useTokens() {
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update balance with persistence
-  const updateBalance = useCallback((newBalance: number) => {
+  const handleBalanceUpdate = useCallback((newBalance: number) => {
     if (!user?.id || !mountedRef.current) return;
     console.log('Setting new balance:', newBalance);
     setBalance(newBalance);
-    setStoredBalance(user.id, newBalance);
-  }, [user?.id]);
+    updateUserBalance(newBalance);
+  }, [user?.id, updateUserBalance]);
 
   // Fetch data function with debouncing
   const fetchData = useCallback(async () => {
@@ -66,7 +54,7 @@ export function useTokens() {
 
       if (mountedRef.current) {
         if (userProfile?.balance !== undefined) {
-          updateBalance(userProfile.balance);
+          handleBalanceUpdate(userProfile.balance);
         }
         setTransactions(userTransactions);
         setVotePacks(userVotePacks);
@@ -78,7 +66,7 @@ export function useTokens() {
         setIsLoading(false);
       }
     }
-  }, [user?.id, updateBalance]);
+  }, [user?.id, handleBalanceUpdate]);
 
   // Set up real-time subscription with exponential backoff
   useEffect(() => {
@@ -105,7 +93,7 @@ export function useTokens() {
 
       console.log('Setting up real-time subscription for user:', user.id);
 
-      const channel = supabase.channel(CHANNEL_NAME, {
+      const channel = supabase.channel(`${CHANNEL_NAME}-${user.id}`, {
         config: {
           broadcast: { self: true },
           presence: { key: user.id },
@@ -138,7 +126,7 @@ export function useTokens() {
             if (payload.eventType === 'UPDATE') {
               const newProfile = payload.new as Profile;
               if (newProfile?.balance !== undefined) {
-                updateBalance(newProfile.balance);
+                handleBalanceUpdate(newProfile.balance);
               }
             }
           }
@@ -192,14 +180,12 @@ export function useTokens() {
           
           // Only attempt to reconnect if we're still mounted, active, and haven't exceeded max retries
           if (subscriptionActive && mountedRef.current && retryCountRef.current < MAX_RETRY_COUNT) {
-            console.log(`Attempting to reconnect (attempt ${retryCountRef.current + 1}/${MAX_RETRY_COUNT})...`);
-            
-            // Calculate delay with exponential backoff
             const delay = Math.min(
               INITIAL_RETRY_DELAY * Math.pow(2, retryCountRef.current),
               MAX_RETRY_DELAY
             );
             
+            console.log(`Attempting to reconnect in ${delay}ms (attempt ${retryCountRef.current + 1}/${MAX_RETRY_COUNT})`);
             retryCountRef.current++;
             retryTimeoutRef.current = setTimeout(setupChannel, delay);
           } else if (retryCountRef.current >= MAX_RETRY_COUNT) {
@@ -235,7 +221,7 @@ export function useTokens() {
         channelRef.current = null;
       }
     };
-  }, [user?.id, fetchData, updateBalance]);
+  }, [user?.id, fetchData, handleBalanceUpdate]);
 
   // Initial data fetch
   useEffect(() => {

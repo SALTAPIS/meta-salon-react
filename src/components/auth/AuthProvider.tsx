@@ -9,29 +9,71 @@ interface AuthContextType {
   signInWithEmail: (email: string) => Promise<{ error: Error | null }>;
   signUpWithPassword: (email: string, password: string) => Promise<{ data: { user: User | null } | null; error: Error | null }>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+  updateUserBalance: (newBalance: number) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const CACHED_USER_KEY = 'cached_user';
+const CACHED_BALANCE_KEY = 'cached_balance';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Try to get cached user first
+  // Try to get cached user and balance first
   const cachedUser = localStorage.getItem(CACHED_USER_KEY);
+  const cachedBalance = localStorage.getItem(CACHED_BALANCE_KEY);
   const initialUser = cachedUser ? JSON.parse(cachedUser) as User : null;
+  if (initialUser && cachedBalance) {
+    initialUser.balance = parseInt(cachedBalance, 10);
+  }
   
   const [user, setUser] = useState<User | null>(initialUser);
   const [isLoading, setIsLoading] = useState(!initialUser);
   const authService = AuthService.getInstance();
 
+  const updateUserBalance = (newBalance: number) => {
+    if (!user) return;
+    const updatedUser = { ...user, balance: newBalance };
+    setUser(updatedUser);
+    localStorage.setItem(CACHED_USER_KEY, JSON.stringify(updatedUser));
+    localStorage.setItem(CACHED_BALANCE_KEY, newBalance.toString());
+  };
+
+  const refreshUser = async () => {
+    try {
+      const currentUser = await authService.getCurrentUser();
+      if (currentUser) {
+        // Preserve the cached balance if it exists and no new balance is provided
+        if (cachedBalance && currentUser.balance === undefined) {
+          currentUser.balance = parseInt(cachedBalance, 10);
+        }
+        setUser(currentUser);
+        localStorage.setItem(CACHED_USER_KEY, JSON.stringify(currentUser));
+        if (currentUser.balance !== undefined) {
+          localStorage.setItem(CACHED_BALANCE_KEY, currentUser.balance.toString());
+        }
+      } else {
+        setUser(null);
+        localStorage.removeItem(CACHED_USER_KEY);
+        localStorage.removeItem(CACHED_BALANCE_KEY);
+      }
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+      setUser(null);
+      localStorage.removeItem(CACHED_USER_KEY);
+      localStorage.removeItem(CACHED_BALANCE_KEY);
+    }
+  };
+
   useEffect(() => {
     const checkUser = async () => {
       try {
-        const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
+        await refreshUser();
       } catch (error) {
         console.error('Error checking user:', error);
         setUser(null);
+        localStorage.removeItem(CACHED_USER_KEY);
+        localStorage.removeItem(CACHED_BALANCE_KEY);
       } finally {
         setIsLoading(false);
       }
@@ -39,14 +81,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     checkUser();
 
-    const { data: { subscription } } = authService.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = authService.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const cachedUser = localStorage.getItem(CACHED_USER_KEY);
-        if (cachedUser) {
-          setUser(JSON.parse(cachedUser));
-        }
+        await refreshUser();
       } else {
         setUser(null);
+        localStorage.removeItem(CACHED_USER_KEY);
+        localStorage.removeItem(CACHED_BALANCE_KEY);
       }
     });
 
@@ -64,7 +105,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut: async () => {
       await authService.signOut();
       setUser(null);
+      localStorage.removeItem(CACHED_USER_KEY);
+      localStorage.removeItem(CACHED_BALANCE_KEY);
     },
+    refreshUser,
+    updateUserBalance,
   };
 
   return (
