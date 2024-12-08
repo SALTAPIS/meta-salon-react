@@ -9,7 +9,7 @@ interface EventMap {
 }
 
 // Simple event emitter implementation for browser
-class SimpleEventEmitter<Events extends Record<string, any>> {
+class SimpleEventEmitter<Events extends Record<string, unknown>> {
   private listeners: {
     [K in keyof Events]?: Array<(data: Events[K]) => void>;
   } = {};
