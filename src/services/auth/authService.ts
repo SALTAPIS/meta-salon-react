@@ -232,62 +232,18 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
 
   async signUpWithPassword(email: string, password: string) {
     try {
-      console.log('Starting signup process for:', email);
-      
-      // Log the redirect URL
-      const redirectUrl = `${window.location.origin}/auth/callback`;
-      console.log('Email confirmation redirect URL:', redirectUrl);
-      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            email_confirmed: false,
-          }
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
       
-      if (error) {
-        console.error('Signup error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('Signup response:', {
-        user: {
-          id: data.user?.id,
-          email: data.user?.email,
-          created_at: data.user?.created_at,
-          email_confirmed: data.user?.email_confirmed_at,
-          last_sign_in: data.user?.last_sign_in_at,
-        },
-        session: data.session ? 'Session created' : 'No session',
-      });
-
-      // Check if email confirmation was sent
-      if (!data.user) {
-        console.error('No user data returned from signup');
-        throw new Error('Failed to create user account');
-      }
-
-      if (data.user.identities?.length === 0) {
-        console.error('Email already registered');
-        throw new Error('Email address already registered');
-      }
-
-      // Log email confirmation status
-      console.log('Email confirmation details:', {
-        confirmationEmailSent: true,
-        emailTo: email,
-        redirectUrl: redirectUrl,
-        provider: 'noreply@mail.app.supabase.io',
-        subject: 'Welcome to Meta.Salon - Confirm Your Account'
-      });
-
-      // Create initial profile
+      // Create initial profile if user is created
       if (data.user) {
-        console.log('Creating initial profile for user:', data.user.id);
         const { error: profileError } = await supabase
           .from('profiles')
           .upsert({
@@ -306,17 +262,16 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
       }
 
       const extendedUser = data.user ? await this.loadUserProfile(data.user) : null;
-      console.log('Signup completed successfully');
       
       return { 
         data: { 
           user: extendedUser,
-          message: 'Please check your email for the confirmation link. The email will be sent from noreply@mail.app.supabase.io with subject "Welcome to Meta.Salon - Confirm Your Account"'
+          message: 'Please check your email for the confirmation link'
         },
         error: null 
       };
     } catch (error) {
-      console.error('Signup process failed:', error);
+      console.error('Sign up error:', error);
       return { 
         data: null,
         error: error as AuthError 
