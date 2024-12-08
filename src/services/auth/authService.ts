@@ -220,13 +220,20 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         if (profileError) {
           console.error('Error creating initial profile:', profileError);
         }
+
+        // Don't set the user in local storage yet - wait for email confirmation
+        return { 
+          data: { 
+            user: null,
+            message: 'Please check your email for the confirmation link'
+          },
+          error: null 
+        };
       }
 
-      const extendedUser = data.user ? await this.loadUserProfile(data.user) : null;
-      
       return { 
         data: { 
-          user: extendedUser,
+          user: null,
           message: 'Please check your email for the confirmation link'
         },
         error: null 
@@ -236,6 +243,49 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
       return { 
         data: null,
         error: error as AuthError 
+      };
+    }
+  }
+
+  async handleEmailConfirmation() {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) throw error;
+
+      if (session?.user) {
+        // Update profile with email_verified status
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            email_verified: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', session.user.id);
+
+        if (updateError) throw updateError;
+
+        // Load and cache the user profile
+        const extendedUser = await this.loadUserProfile(session.user);
+        localStorage.setItem('cached_user', JSON.stringify(extendedUser));
+        
+        // Emit profile update event
+        this.emit('profileUpdate', extendedUser);
+
+        return { 
+          data: { user: extendedUser },
+          error: null 
+        };
+      }
+
+      return { 
+        data: { user: null },
+        error: new Error('No session found') 
+      };
+    } catch (error) {
+      console.error('Email confirmation error:', error);
+      return { 
+        data: null,
+        error: error instanceof Error ? error : new Error('Failed to confirm email') 
       };
     }
   }

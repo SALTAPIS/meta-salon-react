@@ -1,35 +1,34 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Center, Spinner, VStack, Text, useToast } from '@chakra-ui/react';
-import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../hooks/auth/useAuth';
+import { AuthService } from '../../services/auth/authService';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
   const toast = useToast();
-  const { refreshUser } = useAuth();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const authService = AuthService.getInstance();
+        const { data, error } = await authService.handleEmailConfirmation();
         
         if (error) throw error;
 
-        if (session?.user) {
-          await refreshUser();
-          
+        if (data?.user) {
           toast({
-            title: 'Welcome back!',
-            description: 'You have been successfully signed in.',
+            title: 'Email confirmed!',
+            description: 'Your email has been confirmed. You can now sign in.',
             status: 'success',
             duration: 5000,
             isClosable: true,
           });
 
+          // Redirect to dashboard if user is confirmed
           navigate('/dashboard', { replace: true });
         } else {
-          navigate('/auth/signin', { replace: true });
+          // If no user, something went wrong
+          throw new Error('Failed to confirm email');
         }
       } catch (error) {
         console.error('Auth callback error:', error);
@@ -45,7 +44,7 @@ export default function AuthCallback() {
     };
 
     handleAuthCallback();
-  }, [navigate, toast, refreshUser]);
+  }, [navigate, toast]);
 
   return (
     <Center h="100vh">
