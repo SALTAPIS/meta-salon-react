@@ -1,3 +1,14 @@
+export interface ArtworkMetadata {
+  dimensions?: {
+    width: number;
+    height: number;
+  };
+  fileSize?: number;
+  mimeType?: string;
+  tags?: string[];
+  exif?: Record<string, string>;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -71,6 +82,79 @@ export interface Database {
           updated_at?: string;
         };
       };
+      albums: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          description: string | null;
+          is_default: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          description?: string | null;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          description?: string | null;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      artworks: {
+        Row: {
+          id: string;
+          user_id: string;
+          album_id: string;
+          title: string;
+          description: string | null;
+          image_url: string;
+          status: 'draft' | 'submitted' | 'approved' | 'rejected';
+          submission_fee: number | null;
+          challenge_id: string | null;
+          metadata: ArtworkMetadata;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          album_id: string;
+          title: string;
+          description?: string | null;
+          image_url: string;
+          status?: 'draft' | 'submitted' | 'approved' | 'rejected';
+          submission_fee?: number | null;
+          challenge_id?: string | null;
+          metadata?: ArtworkMetadata;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          album_id?: string;
+          title?: string;
+          description?: string | null;
+          image_url?: string;
+          status?: 'draft' | 'submitted' | 'approved' | 'rejected';
+          submission_fee?: number | null;
+          challenge_id?: string | null;
+          metadata?: ArtworkMetadata;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Functions: {
       get_all_profiles_admin: {
@@ -86,4 +170,7 @@ export interface Database {
       };
     };
   };
-} 
+}
+
+export type Album = Database['public']['Tables']['albums']['Row'];
+export type Artwork = Database['public']['Tables']['artworks']['Row']; 
