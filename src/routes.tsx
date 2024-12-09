@@ -1,6 +1,7 @@
 import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 import App from './App';
 import SignUpPage from './pages/auth/SignUpPage';
+import SignInPage from './pages/auth/SignInPage';
 import AuthCallback from './pages/auth/AuthCallback';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import ProfilePage from './pages/profile/ProfilePage';
@@ -26,6 +27,10 @@ const routes: RouteObject[] = [
           {
             path: '/signup',
             element: <SignUpPage />,
+          },
+          {
+            path: '/auth/signin',
+            element: <SignInPage />,
           },
           {
             path: '/auth/callback',

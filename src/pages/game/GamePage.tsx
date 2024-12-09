@@ -1,22 +1,93 @@
-import { Box, Container, Heading, Text, VStack } from '@chakra-ui/react';
+import React from 'react';
+import { Box, Container, Heading, Text, Button, VStack, Fade } from '@chakra-ui/react';
+import { GameArena } from './GameArena';
+import { useAuth } from '../../hooks/useAuth';
+import { Navigate } from 'react-router-dom';
 
 export default function GamePage() {
+  const { user } = useAuth();
+  const [isPlaying, setIsPlaying] = React.useState(false);
+
+  if (!user) {
+    return <Navigate to="/auth/signin" />;
+  }
+
   return (
-    <Container maxW="4xl" py={8}>
-      <VStack spacing={6} align="stretch">
-        <Heading as="h1" size="xl">The Salon Game</Heading>
-        <Text fontSize="lg">
-          Welcome to Meta.Salon, where art meets competition. Learn how to participate
-          in our unique digital art salon experience.
-        </Text>
-        <Box>
-          <Heading as="h2" size="lg" mb={4}>How It Works</Heading>
-          <Text>
-            Meta.Salon is a modern interpretation of the historical art salons,
-            where artists showcase their work and compete for recognition and prestige.
-          </Text>
-        </Box>
-      </VStack>
+    <Container maxW="container.xl" py={8}>
+      {!isPlaying ? (
+        <Fade in={!isPlaying}>
+          <VStack spacing={8} align="stretch">
+            <Box textAlign="center">
+              <Heading 
+                as="h1" 
+                size="2xl" 
+                bgGradient="linear(to-r, blue.400, purple.500)"
+                bgClip="text"
+                mb={4}
+              >
+                The Salon Game
+              </Heading>
+              <Text fontSize="xl" color="gray.600">
+                Welcome to Meta.Salon, where art meets competition
+              </Text>
+            </Box>
+
+            <Box 
+              p={8} 
+              borderRadius="xl" 
+              bg="white" 
+              boxShadow="xl"
+              border="1px"
+              borderColor="gray.100"
+            >
+              <Heading as="h2" size="lg" mb={6} color="gray.700">
+                How It Works
+              </Heading>
+              <VStack spacing={4} align="stretch">
+                {[
+                  "You'll be presented with pairs of artworks",
+                  "Click on the artwork you prefer",
+                  "Your votes help determine the winners",
+                  "Each artwork appears once per session",
+                  "You need an active vote pack to participate"
+                ].map((text, index) => (
+                  <Box 
+                    key={index} 
+                    p={4} 
+                    bg="gray.50" 
+                    borderRadius="md"
+                    _hover={{ bg: 'gray.100', transform: 'translateX(8px)' }}
+                    transition="all 0.2s"
+                  >
+                    <Text fontSize="lg" color="gray.700">
+                      {text}
+                    </Text>
+                  </Box>
+                ))}
+              </VStack>
+            </Box>
+
+            <Button
+              size="lg"
+              height="16"
+              width="full"
+              colorScheme="blue"
+              onClick={() => setIsPlaying(true)}
+              _hover={{
+                transform: 'translateY(-2px)',
+                boxShadow: 'lg',
+              }}
+              transition="all 0.2s"
+            >
+              Start Voting
+            </Button>
+          </VStack>
+        </Fade>
+      ) : (
+        <Fade in={isPlaying}>
+          <GameArena onExit={() => setIsPlaying(false)} />
+        </Fade>
+      )}
     </Container>
   );
 } 
