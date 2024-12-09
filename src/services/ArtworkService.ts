@@ -23,28 +23,49 @@ export class ArtworkService {
   }
 
   static async uploadArtwork(userId: string, file: File) {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/${Date.now()}.${fileExt}`;
-    const filePath = `artworks/${fileName}`;
+    try {
+      console.log('Starting file upload...', {
+        userId,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      });
 
-    const { error: uploadError } = await supabase.storage
-      .from('artworks')
-      .upload(filePath, file);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}/${Date.now()}.${fileExt}`;
+      const filePath = `artworks/${fileName}`;
 
-    if (uploadError) throw uploadError;
+      console.log('Uploading to path:', filePath);
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('artworks')
-      .getPublicUrl(filePath);
+      const { error: uploadError, data: uploadData } = await supabase.storage
+        .from('artworks')
+        .upload(filePath, file);
 
-    // Get image metadata
-    const metadata = {
-      size: file.size,
-      type: file.type,
-      lastModified: file.lastModified,
-    };
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
 
-    return { url: publicUrl, metadata };
+      console.log('Upload successful:', uploadData);
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('artworks')
+        .getPublicUrl(filePath);
+
+      console.log('Public URL generated:', publicUrl);
+
+      // Get image metadata
+      const metadata = {
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified,
+      };
+
+      return { url: publicUrl, metadata };
+    } catch (error) {
+      console.error('Error in uploadArtwork:', error);
+      throw error;
+    }
   }
 
   static async createArtwork(
