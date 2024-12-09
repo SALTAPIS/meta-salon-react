@@ -131,23 +131,45 @@ export class ArtworkService {
     challengeId: string,
     submissionFee: number
   ): Promise<void> {
-    // First, check if the user has enough tokens
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    try {
+      // First, check if the user has enough tokens
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-    const balance = await tokenService.getBalance(user.id);
-    if (balance < submissionFee) {
-      throw new Error('Insufficient token balance for submission');
+      const balance = await tokenService.getBalance(user.id);
+      if (balance < submissionFee) {
+        throw new Error(`Insufficient token balance: have ${balance} tokens, need ${submissionFee} tokens`);
+      }
+
+      // Start a transaction
+      const { error: txError } = await supabase.rpc('submit_artwork_to_challenge', {
+        p_artwork_id: artworkId,
+        p_challenge_id: challengeId,
+        p_submission_fee: submissionFee
+      });
+
+      if (txError) {
+        console.error('Error submitting artwork:', {
+          error: txError,
+          message: txError.message,
+          details: txError.details,
+          hint: txError.hint,
+          artworkId,
+          challengeId,
+          submissionFee
+        });
+        throw new Error(txError.message || 'Failed to submit artwork');
+      }
+    } catch (error) {
+      console.error('Error in submitToChallenge:', {
+        error,
+        message: error instanceof Error ? error.message : String(error),
+        artworkId,
+        challengeId,
+        submissionFee
+      });
+      throw error;
     }
-
-    // Start a transaction
-    const { error: txError } = await supabase.rpc('submit_artwork_to_challenge', {
-      p_artwork_id: artworkId,
-      p_challenge_id: challengeId,
-      p_submission_fee: submissionFee
-    });
-
-    if (txError) throw txError;
   }
 
   static async getArtworksByChallenge(challengeId: string): Promise<Artwork[]> {
