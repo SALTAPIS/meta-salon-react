@@ -31,18 +31,25 @@ export class ArtworkService {
         fileType: file.type
       });
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}/${Date.now()}.${fileExt}`;
-      const filePath = `artworks/${fileName}`;
+      // Sanitize file extension
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const safeFileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${userId}/${safeFileName}`;
 
       console.log('Uploading to path:', filePath);
 
       const { error: uploadError, data: uploadData } = await supabase.storage
         .from('artworks')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (uploadError) {
-        console.error('Upload error:', uploadError);
+        console.error('Upload error:', {
+          message: uploadError.message,
+          name: uploadError.name
+        });
         throw uploadError;
       }
 
@@ -63,7 +70,13 @@ export class ArtworkService {
 
       return { url: publicUrl, metadata };
     } catch (error) {
-      console.error('Error in uploadArtwork:', error);
+      console.error('Error in uploadArtwork:', {
+        error,
+        userId,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      });
       throw error;
     }
   }

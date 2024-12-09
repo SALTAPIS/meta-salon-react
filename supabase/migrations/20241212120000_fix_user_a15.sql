@@ -6,7 +6,12 @@ begin
     -- Get user a15's ID
     select id into v_user_id
     from auth.users
-    where email = 'a15@salt.dev';
+    where email = 'a15@sln.io';
+
+    -- Check if user exists
+    if v_user_id is null then
+        raise exception 'User with email a15@sln.io not found';
+    end if;
 
     -- Create default album if it doesn't exist
     insert into public.albums (user_id, title, description, is_default)
@@ -26,4 +31,7 @@ begin
     update public.profiles
     set balance = greatest(balance, 100)
     where id = v_user_id;
+
+    -- Log success
+    raise notice 'Successfully updated user % with default album and tokens', v_user_id;
 end $$; 
