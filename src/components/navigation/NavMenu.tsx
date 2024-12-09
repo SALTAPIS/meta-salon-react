@@ -24,7 +24,8 @@ export function NavMenu() {
   const handleSignOut = async () => {
     try {
       await signOut();
-      navigate('/auth/signin');
+      localStorage.clear();
+      window.location.href = '/auth/signin';
     } catch (error) {
       console.error('Error signing out:', error);
     }

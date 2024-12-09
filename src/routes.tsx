@@ -25,7 +25,7 @@ const routes: RouteObject[] = [
         element: <Layout />,
         children: [
           {
-            path: '/signup',
+            path: '/auth/signup',
             element: <SignUpPage />,
           },
           {
