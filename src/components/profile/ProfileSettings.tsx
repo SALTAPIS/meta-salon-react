@@ -1,179 +1,156 @@
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
   FormControl,
   FormLabel,
+  FormHelperText,
   Input,
   VStack,
   useToast,
-  FormErrorMessage,
   Textarea,
-  Switch,
-  useColorModeValue,
-  HStack,
   Avatar,
+  Center,
   IconButton,
+  Text,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
-import { useState } from 'react';
+import { FiUpload } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
-import { supabase } from '../../lib/supabaseClient';
-import { DeleteIcon } from '@chakra-ui/icons';
 import { AuthService } from '../../services/auth/authService';
 
 export function ProfileSettings() {
   const { user, refreshUser } = useAuth();
-  const toast = useToast();
-  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [username, setUsername] = useState(user?.username || '');
-  const [displayName, setDisplayName] = useState(user?.display_name || '');
-  const [bio, setBio] = useState(user?.bio || '');
-  const [emailNotifications, setEmailNotifications] = useState(user?.email_notifications ?? true);
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
+  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    username: user?.username || '',
+    display_name: user?.display_name || '',
+    bio: user?.bio || '',
+  });
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const toast = useToast();
 
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        username: user.username || '',
+        display_name: user.display_name || '',
+        bio: user.bio || '',
+      });
+    }
+  }, [user]);
 
-  const uploadAvatar = async (userId: string, file: File): Promise<string> => {
-    try {
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${userId}/avatar.${fileExt}`;
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setError(null); // Clear error when user starts typing
+  };
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Invalid file type',
+          description: 'Please upload an image file',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
 
-      if (uploadError) throw uploadError;
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: 'File too large',
+          description: 'Please upload an image smaller than 2MB',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      return publicUrl;
-    } catch (error) {
-      console.error('Error uploading avatar:', error);
-      throw error;
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
     }
   };
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    try {
-      if (!user?.id) throw new Error('User not found');
-      setIsLoading(true);
-      const newAvatarUrl = await uploadAvatar(user.id, file);
-      setAvatarUrl(newAvatarUrl);
-      
-      // Update profile with new avatar URL
-      const authService = AuthService.getInstance();
-      await authService.updateProfile(user.id, { avatar_url: newAvatarUrl });
-      await refreshUser();
-
-      toast({
-        title: 'Avatar updated',
-        description: 'Your profile picture has been updated successfully',
-        status: 'success',
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Error uploading avatar:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to upload avatar. Please try again.',
-        status: 'error',
-        duration: 5000,
-      });
-    } finally {
-      setIsLoading(false);
+  const validateForm = () => {
+    if (formData.username && (formData.username.length < 3 || formData.username.length > 30)) {
+      setError('Username must be between 3 and 30 characters');
+      return false;
     }
-  };
 
-  const handleRemoveAvatar = async () => {
-    try {
-      if (!user?.id) throw new Error('User not found');
-      setIsLoading(true);
-      setAvatarUrl('');
-      
-      const authService = AuthService.getInstance();
-      await authService.updateProfile(user.id, { avatar_url: null });
-      await refreshUser();
-
-      toast({
-        title: 'Avatar removed',
-        status: 'success',
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Error removing avatar:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to remove avatar. Please try again.',
-        status: 'error',
-        duration: 5000,
-      });
-    } finally {
-      setIsLoading(false);
+    if (formData.display_name && (formData.display_name.length < 1 || formData.display_name.length > 50)) {
+      setError('Display name must be between 1 and 50 characters');
+      return false;
     }
+
+    if (formData.bio && formData.bio.length > 500) {
+      setError('Bio must not exceed 500 characters');
+      return false;
+    }
+
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.id) {
-      setError('User not found');
+    setError(null);
+
+    if (!validateForm()) {
       return;
     }
-    
-    setError(null);
-    setIsLoading(true);
 
     try {
-      // Validate display name
-      if (displayName && (displayName.length < 1 || displayName.length > 50)) {
-        throw new Error('Display name must be between 1 and 50 characters');
+      setIsLoading(true);
+
+      // Upload avatar if changed
+      let avatarUrl = user?.avatar_url;
+      if (avatarFile) {
+        const uploadResult = await AuthService.uploadAvatar(avatarFile);
+        if (uploadResult.error) {
+          throw uploadResult.error;
+        }
+        avatarUrl = uploadResult.url;
       }
 
-      // Validate username
-      if (username && (username.length < 3 || username.length > 30 || !/^[a-zA-Z0-9_-]+$/.test(username))) {
-        throw new Error('Username must be between 3 and 30 characters and contain only letters, numbers, underscores, and hyphens');
-      }
-
-      // Validate bio
-      if (bio && bio.length > 500) {
-        throw new Error('Bio must not exceed 500 characters');
-      }
-
-      const authService = AuthService.getInstance();
-      const { error: updateError } = await authService.updateProfile(user.id, {
-        username,
-        display_name: displayName,
-        bio,
+      // Update profile
+      const result = await AuthService.updateProfile({
+        ...formData,
         avatar_url: avatarUrl,
-        email_notifications: emailNotifications,
       });
 
-      if (updateError) throw updateError;
+      if (result.error) {
+        throw result.error;
+      }
 
-      // Force refresh user data
+      // Refresh user data
       await refreshUser();
 
       toast({
         title: 'Profile updated',
         description: 'Your profile has been updated successfully',
         status: 'success',
-        duration: 3000,
+        duration: 5000,
+        isClosable: true,
       });
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred while updating your profile';
-      setError(errorMessage);
-      
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update profile');
       toast({
-        title: 'Error',
-        description: errorMessage,
+        title: 'Error updating profile',
+        description: err instanceof Error ? err.message : 'Failed to update profile',
         status: 'error',
         duration: 5000,
+        isClosable: true,
       });
     } finally {
       setIsLoading(false);
@@ -181,108 +158,107 @@ export function ProfileSettings() {
   };
 
   return (
-    <Box
-      p={6}
-      bg={bgColor}
-      borderWidth="1px"
-      borderColor={borderColor}
-      borderRadius="lg"
-      shadow="sm"
-    >
-      <form onSubmit={handleSubmit}>
-        <VStack spacing={6} align="stretch">
-          {/* Avatar Upload */}
-          <FormControl>
-            <FormLabel>Profile Picture</FormLabel>
-            <HStack spacing={4}>
+    <Box as="form" onSubmit={handleSubmit}>
+      <VStack spacing={6} align="stretch">
+        {/* Avatar Upload */}
+        <FormControl>
+          <Center>
+            <Box position="relative">
               <Avatar
-                size="xl"
-                src={avatarUrl}
-                name={displayName || username || user?.email}
+                size="2xl"
+                src={avatarPreview || user?.avatar_url}
+                name={formData.display_name || user?.email}
               />
-              <VStack>
-                <Button
-                  as="label"
-                  htmlFor="avatar-upload"
-                  colorScheme="blue"
-                  cursor="pointer"
-                >
-                  Upload New Picture
-                  <input
-                    id="avatar-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarChange}
-                    style={{ display: 'none' }}
-                  />
-                </Button>
-                {avatarUrl && (
-                  <IconButton
-                    aria-label="Remove avatar"
-                    icon={<DeleteIcon />}
-                    onClick={handleRemoveAvatar}
-                    variant="ghost"
-                    colorScheme="red"
-                  />
-                )}
-              </VStack>
-            </HStack>
-          </FormControl>
+              <IconButton
+                aria-label="Upload avatar"
+                icon={<FiUpload />}
+                size="sm"
+                colorScheme="blue"
+                position="absolute"
+                bottom="0"
+                right="0"
+                rounded="full"
+                onClick={() => document.getElementById('avatar-upload')?.click()}
+              />
+              <Input
+                id="avatar-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                display="none"
+              />
+            </Box>
+          </Center>
+          <FormHelperText textAlign="center">
+            Click the upload button to change your avatar (max 2MB)
+          </FormHelperText>
+        </FormControl>
 
-          {/* Username */}
-          <FormControl isInvalid={!!error}>
-            <FormLabel>Username</FormLabel>
-            <Input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter username"
-            />
-          </FormControl>
+        {/* Username */}
+        <FormControl>
+          <FormLabel>Username</FormLabel>
+          <Input
+            name="username"
+            value={formData.username}
+            onChange={handleInputChange}
+            placeholder="Choose a username"
+          />
+          <FormHelperText>
+            3-30 characters, used for your profile URL
+          </FormHelperText>
+        </FormControl>
 
-          {/* Display Name */}
-          <FormControl>
-            <FormLabel>Display Name</FormLabel>
-            <Input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Enter display name"
-            />
-          </FormControl>
+        {/* Display Name */}
+        <FormControl>
+          <FormLabel>Display Name</FormLabel>
+          <Input
+            name="display_name"
+            value={formData.display_name}
+            onChange={handleInputChange}
+            placeholder="Enter your display name"
+          />
+          <FormHelperText>
+            1-50 characters, shown on your profile
+          </FormHelperText>
+        </FormControl>
 
-          {/* Bio */}
-          <FormControl>
-            <FormLabel>Bio</FormLabel>
-            <Textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell us about yourself"
-              rows={4}
-            />
-          </FormControl>
+        {/* Bio */}
+        <FormControl>
+          <FormLabel>Bio</FormLabel>
+          <Textarea
+            name="bio"
+            value={formData.bio}
+            onChange={handleInputChange}
+            placeholder="Tell us about yourself"
+            resize="vertical"
+            minH="100px"
+          />
+          <FormHelperText>
+            Up to 500 characters
+            {formData.bio && (
+              <Text as="span" color={formData.bio.length > 500 ? 'red.500' : 'gray.500'}>
+                {' '}({formData.bio.length}/500)
+              </Text>
+            )}
+          </FormHelperText>
+        </FormControl>
 
-          {/* Email Notifications */}
-          <FormControl display="flex" alignItems="center">
-            <FormLabel mb="0">
-              Email Notifications
-            </FormLabel>
-            <Switch
-              isChecked={emailNotifications}
-              onChange={(e) => setEmailNotifications(e.target.checked)}
-            />
-          </FormControl>
+        {error && (
+          <Alert status="error">
+            <AlertIcon />
+            {error}
+          </Alert>
+        )}
 
-          {error && <FormErrorMessage>{error}</FormErrorMessage>}
-
-          <Button
-            type="submit"
-            colorScheme="blue"
-            isLoading={isLoading}
-            loadingText="Saving..."
-          >
-            Save Changes
-          </Button>
-        </VStack>
-      </form>
+        <Button
+          type="submit"
+          colorScheme="blue"
+          isLoading={isLoading}
+          loadingText="Saving..."
+        >
+          Save Changes
+        </Button>
+      </VStack>
     </Box>
   );
 } 
