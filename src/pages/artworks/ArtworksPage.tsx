@@ -15,11 +15,12 @@ import {
   AlertIcon,
   Button,
   useColorModeValue,
+  Icon,
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
 import { ArtworkService } from '../../services/ArtworkService';
-import { VotePanel } from '../../components/artwork/VotePanel';
 import type { Artwork } from '../../types/database.types';
+import { FaGamepad } from 'react-icons/fa';
 
 export function ArtworksPage() {
   const [artworks, setArtworks] = React.useState<Artwork[]>([]);
@@ -69,7 +70,16 @@ export function ArtworksPage() {
       <VStack spacing={8} align="stretch">
         <Box>
           <Heading size="xl" mb={2}>Artworks Gallery</Heading>
-          <Text color="gray.600">Discover and vote for amazing artworks</Text>
+          <Text color="gray.600" mb={4}>Discover amazing artworks</Text>
+          <Button
+            as={RouterLink}
+            to="/vote"
+            colorScheme="blue"
+            size="lg"
+            leftIcon={<Icon as={FaGamepad} />}
+          >
+            Enter Voting Arena
+          </Button>
         </Box>
 
         <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={8}>
@@ -108,8 +118,6 @@ export function ArtworksPage() {
                     </Badge>
                   )}
                 </HStack>
-
-                <VotePanel artworkId={artwork.id} />
 
                 <Button
                   as={RouterLink}

@@ -13,6 +13,12 @@ interface VoteRequest {
 }
 
 serve(async (req: Request) => {
+  console.log('Received request:', {
+    method: req.method,
+    url: req.url,
+    headers: Object.fromEntries(req.headers.entries())
+  });
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -27,9 +33,16 @@ serve(async (req: Request) => {
 
   try {
     // Create Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    console.log('Supabase configuration:', {
+      url: supabaseUrl ? '✓ Set' : '✗ Missing',
+      key: supabaseKey ? '✓ Set' : '✗ Missing'
+    });
+
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      supabaseUrl ?? '',
+      supabaseKey ?? '',
       {
         auth: {
           persistSession: false,
@@ -40,6 +53,7 @@ serve(async (req: Request) => {
 
     // Get auth header
     const authHeader = req.headers.get('Authorization');
+    console.log('Auth header present:', !!authHeader);
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'No authorization header' }),
@@ -58,9 +72,10 @@ serve(async (req: Request) => {
       authHeader.replace('Bearer ', '')
     );
 
-    if (authError || !user) {
+    if (authError) {
+      console.error('Auth error:', authError);
       return new Response(
-        JSON.stringify({ error: 'Invalid auth token' }),
+        JSON.stringify({ error: 'Invalid auth token', details: authError }),
         { 
           status: 401,
           headers: {
@@ -71,23 +86,50 @@ serve(async (req: Request) => {
       );
     }
 
+    if (!user) {
+      console.error('No user found in auth response');
+      return new Response(
+        JSON.stringify({ error: 'User not found' }),
+        { 
+          status: 401,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    console.log('Authenticated user:', {
+      id: user.id,
+      email: user.email
+    });
+
     // Parse and validate request body
     let body: VoteRequest;
     try {
-      body = await req.json();
-      console.log('Received request body:', body);
+      const rawBody = await req.text();
+      console.log('Raw request body:', rawBody);
+      body = JSON.parse(rawBody);
+      
+      console.log('Parsed request body:', body);
       if (!body.artwork_id || !body.pack_id || typeof body.value !== 'number') {
         console.error('Validation failed:', {
           has_artwork_id: !!body.artwork_id,
           has_pack_id: !!body.pack_id,
-          value_is_number: typeof body.value === 'number'
+          value_is_number: typeof body.value === 'number',
+          value: body.value
         });
         throw new Error('Missing required fields');
       }
     } catch (error) {
       console.error('Request body parsing error:', error);
       return new Response(
-        JSON.stringify({ error: 'Invalid request body', details: error.message }),
+        JSON.stringify({ 
+          error: 'Invalid request body', 
+          details: error.message,
+          stack: error.stack
+        }),
         { 
           status: 400,
           headers: {
@@ -97,6 +139,43 @@ serve(async (req: Request) => {
         }
       );
     }
+
+    // Check if artwork exists and get its status
+    const { data: artwork, error: artworkError } = await supabaseClient
+      .from('artworks')
+      .select('id, vault_status')
+      .eq('id', body.artwork_id)
+      .single();
+
+    if (artworkError) {
+      console.error('Error fetching artwork:', artworkError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch artwork', details: artworkError }),
+        { 
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    if (!artwork) {
+      console.error('Artwork not found:', body.artwork_id);
+      return new Response(
+        JSON.stringify({ error: 'Artwork not found' }),
+        { 
+          status: 404,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    console.log('Found artwork:', artwork);
 
     // Call the cast_vote function
     console.log('Calling cast_vote with params:', {
@@ -104,6 +183,7 @@ serve(async (req: Request) => {
       p_pack_id: body.pack_id,
       p_value: body.value
     });
+
     const { data, error: voteError } = await supabaseClient.rpc('cast_vote', {
       p_artwork_id: body.artwork_id,
       p_pack_id: body.pack_id,
@@ -111,9 +191,19 @@ serve(async (req: Request) => {
     });
 
     if (voteError) {
-      console.error('Vote casting error:', voteError);
+      console.error('Vote casting error:', {
+        message: voteError.message,
+        details: voteError.details,
+        hint: voteError.hint,
+        code: voteError.code
+      });
       return new Response(
-        JSON.stringify({ error: voteError.message }),
+        JSON.stringify({ 
+          error: voteError.message,
+          details: voteError.details,
+          hint: voteError.hint,
+          code: voteError.code
+        }),
         { 
           status: 400,
           headers: {
@@ -123,6 +213,8 @@ serve(async (req: Request) => {
         }
       );
     }
+
+    console.log('Vote cast successfully:', data);
 
     return new Response(
       JSON.stringify({ vote_id: data }),
@@ -131,24 +223,27 @@ serve(async (req: Request) => {
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST',
-          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
         },
       }
     );
   } catch (error) {
-    console.error('Unhandled error:', error);
+    console.error('Unhandled error:', {
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause
+    });
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error.message }),
+      JSON.stringify({ 
+        error: 'Internal server error', 
+        details: error.message,
+        stack: error.stack,
+        cause: error.cause
+      }),
       { 
         status: 500,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST',
-          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
         },
       }
     );
