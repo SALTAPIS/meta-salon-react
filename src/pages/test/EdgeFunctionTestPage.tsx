@@ -1,83 +1,69 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Box,
-  Container,
-  VStack,
-  Heading,
-  Text,
   Button,
+  Container,
   FormControl,
   FormLabel,
+  Heading,
   Input,
+  Text,
+  VStack,
   Code,
   useToast,
 } from '@chakra-ui/react';
-import { getSession } from '../../utils/session';
-import { VoteService } from '../../services/VoteService';
+import { supabase } from '../../lib/supabaseClient';
 
 interface TestResponse {
   status: number;
-  data: Record<string, unknown> | null;
-  error?: Error;
+  data?: any;
+  error?: any;
 }
 
-interface DebugInfo {
-  session: unknown;
-  environment: {
-    supabaseUrl: string;
-    hasAnonKey: boolean;
-    hasServiceKey: boolean;
-  };
-}
-
-export function DebugPage() {
-  // Pre-filled test values
-  const [artworkId] = useState('2aea6257-3bcf-417b-a51c-bae0c87451dd');
-  const [packId] = useState('7282e82c-9ef9-4e4f-9a6b-60e4b7e00f04');
+export function EdgeFunctionTestPage() {
+  const [artworkId, setArtworkId] = useState('');
+  const [packId, setPackId] = useState('');
   const [voteValue, setVoteValue] = useState('1');
   const [response, setResponse] = useState<TestResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [, setDebugInfo] = useState<DebugInfo | null>(null);
   const toast = useToast();
-
-  // Load debug info on mount
-  useEffect(() => {
-    loadDebugInfo();
-  }, []);
-
-  const loadDebugInfo = async () => {
-    const session = await getSession();
-    const env = {
-      supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
-      hasAnonKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
-      hasServiceKey: !!import.meta.env.VITE_SUPABASE_SERVICE_KEY,
-    };
-
-    setDebugInfo({
-      session,
-      environment: env
-    });
-  };
 
   const handleTest = async () => {
     try {
       setLoading(true);
       setResponse(null);
 
-      // Call VoteService directly
-      await VoteService.castVote(artworkId, packId, parseInt(voteValue));
-
-      // Set success response
-      setResponse({
-        status: 200,
-        data: { success: true },
-        error: undefined
+      // Log request details
+      console.log('Testing Edge Function with:', {
+        artwork_id: artworkId,
+        pack_id: packId,
+        value: parseInt(voteValue)
       });
 
+      // Make the request
+      const { data, error } = await supabase.functions.invoke('cast-vote', {
+        body: {
+          artwork_id: artworkId,
+          pack_id: packId,
+          value: parseInt(voteValue)
+        }
+      });
+
+      // Log response
+      console.log('Edge Function response:', { data, error });
+
+      // Set response state
+      setResponse({
+        status: error ? 400 : 200,
+        data,
+        error
+      });
+
+      // Show toast
       toast({
-        title: 'Success',
-        description: 'Vote cast successfully',
-        status: 'success',
+        title: error ? 'Error' : 'Success',
+        description: error ? error.message : 'Test completed successfully',
+        status: error ? 'error' : 'success',
         duration: 5000,
         isClosable: true,
       });
@@ -86,8 +72,7 @@ export function DebugPage() {
       console.error('Test error:', err);
       setResponse({
         status: 500,
-        data: null,
-        error: err as Error
+        error: err instanceof Error ? err.message : 'Unknown error'
       });
 
       toast({
@@ -103,20 +88,28 @@ export function DebugPage() {
   };
 
   return (
-    <Container maxW="container.lg" py={8}>
+    <Container maxW="container.md" py={8}>
       <VStack spacing={6} align="stretch">
-        <Heading size="lg">Vote Testing</Heading>
-
-        <Box p={6} borderWidth={1} borderRadius="lg" width="100%">
+        <Heading size="lg">Edge Function Test Page</Heading>
+        
+        <Box p={6} borderWidth={1} borderRadius="lg">
           <VStack spacing={4}>
             <FormControl>
-              <FormLabel>Artwork ID (pre-filled)</FormLabel>
-              <Input value={artworkId} isReadOnly />
+              <FormLabel>Artwork ID</FormLabel>
+              <Input
+                value={artworkId}
+                onChange={(e) => setArtworkId(e.target.value)}
+                placeholder="Enter artwork UUID"
+              />
             </FormControl>
 
             <FormControl>
-              <FormLabel>Vote Pack ID (pre-filled)</FormLabel>
-              <Input value={packId} isReadOnly />
+              <FormLabel>Vote Pack ID</FormLabel>
+              <Input
+                value={packId}
+                onChange={(e) => setPackId(e.target.value)}
+                placeholder="Enter vote pack UUID"
+              />
             </FormControl>
 
             <FormControl>
@@ -124,7 +117,7 @@ export function DebugPage() {
               <Input
                 type="number"
                 value={voteValue}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVoteValue(e.target.value)}
+                onChange={(e) => setVoteValue(e.target.value)}
                 min="1"
                 max="100"
               />
@@ -137,7 +130,7 @@ export function DebugPage() {
               loadingText="Testing..."
               width="full"
             >
-              Cast Vote
+              Test Edge Function
             </Button>
           </VStack>
         </Box>
@@ -151,7 +144,7 @@ export function DebugPage() {
               
               {response.data && (
                 <>
-                  <Text fontWeight="bold">Response:</Text>
+                  <Text fontWeight="bold">Response Data:</Text>
                   <Code p={4} borderRadius="md" whiteSpace="pre-wrap">
                     {JSON.stringify(response.data, null, 2)}
                   </Code>
