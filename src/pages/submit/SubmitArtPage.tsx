@@ -64,14 +64,18 @@ export default function SubmitArtPage() {
           ArtworkService.getActiveChallenges()
         ]);
 
+        console.log('Loaded albums:', userAlbums); // Debug log
         setAlbums(userAlbums);
         setChallenges(activeChalls);
         
+        // Set default album if exists
         const defaultAlbum = userAlbums.find(album => album.is_default);
+        console.log('Default album:', defaultAlbum); // Debug log
         if (defaultAlbum) {
           setSelectedAlbumId(defaultAlbum.id);
         }
 
+        // Set default challenge
         const openChallenge = activeChalls.find((c: Challenge) => c.type === 'open');
         if (openChallenge) {
           setSelectedChallengeId(openChallenge.id);
@@ -228,11 +232,11 @@ export default function SubmitArtPage() {
           <Select
             value={selectedAlbumId}
             onChange={handleAlbumChange}
+            placeholder="Select album"
           >
-            <option value="">Select album</option>
             {albums.map((album: Album) => (
               <option key={album.id} value={album.id}>
-                {album.name}
+                {album.title || 'Untitled Album'}
               </option>
             ))}
           </Select>
