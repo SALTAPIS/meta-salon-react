@@ -53,7 +53,8 @@ serve(async (req: Request) => {
 
     // Get auth header
     const authHeader = req.headers.get('Authorization');
-    console.log('Auth header present:', !!authHeader);
+    console.log('Auth header:', authHeader ? authHeader.substring(0, 20) + '...' : 'missing');
+    
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'No authorization header' }),
@@ -73,7 +74,11 @@ serve(async (req: Request) => {
     );
 
     if (authError) {
-      console.error('Auth error:', authError);
+      console.error('Auth error:', {
+        message: authError.message,
+        status: authError.status,
+        name: authError.name
+      });
       return new Response(
         JSON.stringify({ error: 'Invalid auth token', details: authError }),
         { 
@@ -176,6 +181,47 @@ serve(async (req: Request) => {
     }
 
     console.log('Found artwork:', artwork);
+
+    // Check vote pack ownership
+    const { data: votePack, error: votePackError } = await supabaseClient
+      .from('vote_packs')
+      .select('*')
+      .eq('id', body.pack_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (votePackError) {
+      console.error('Error fetching vote pack:', votePackError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch vote pack', details: votePackError }),
+        { 
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    if (!votePack) {
+      console.error('Vote pack not found or not owned by user:', {
+        pack_id: body.pack_id,
+        user_id: user.id
+      });
+      return new Response(
+        JSON.stringify({ error: 'Vote pack not found or not owned by user' }),
+        { 
+          status: 404,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    console.log('Found vote pack:', votePack);
 
     // Call the cast_vote function
     console.log('Calling cast_vote with params:', {
