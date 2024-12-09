@@ -473,6 +473,26 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         .from('avatars')
         .getPublicUrl(filePath);
 
+      // Update profile with new avatar URL
+      await this.updateProfile(user.id, {
+        avatar_url: publicUrl
+      });
+
+      // Force refresh the cached profile
+      if (this.cachedProfile) {
+        this.cachedProfile = {
+          ...this.cachedProfile,
+          avatar_url: publicUrl
+        };
+        localStorage.setItem('cached_user', JSON.stringify(this.cachedProfile));
+      }
+
+      // Emit profile update event
+      this.emit('profileUpdate', {
+        ...user,
+        avatar_url: publicUrl
+      });
+
       return { data: { url: publicUrl }, error: null };
     } catch (error) {
       console.error('[AuthService] Error uploading avatar:', error);

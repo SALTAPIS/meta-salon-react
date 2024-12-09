@@ -40,16 +40,16 @@ serve(async (req: Request) => {
       key: supabaseKey ? '✓ Set' : '✗ Missing'
     });
 
-    const supabaseClient = createClient(
-      supabaseUrl ?? '',
-      supabaseKey ?? '',
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
-      }
-    );
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase configuration');
+    }
+
+    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
 
     // Get auth header
     const authHeader = req.headers.get('Authorization');
@@ -230,7 +230,7 @@ serve(async (req: Request) => {
       p_value: body.value
     });
 
-    const { data, error: voteError } = await supabaseClient.rpc('cast_vote', {
+    const { data: voteId, error: voteError } = await supabaseClient.rpc('cast_vote', {
       p_artwork_id: body.artwork_id,
       p_pack_id: body.pack_id,
       p_value: body.value,
@@ -260,10 +260,24 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log('Vote cast successfully:', data);
+    if (!voteId) {
+      console.error('No vote ID returned');
+      return new Response(
+        JSON.stringify({ error: 'Failed to create vote record' }),
+        { 
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    console.log('Vote cast successfully:', voteId);
 
     return new Response(
-      JSON.stringify({ vote_id: data }),
+      JSON.stringify({ vote_id: voteId }),
       { 
         status: 200,
         headers: {
