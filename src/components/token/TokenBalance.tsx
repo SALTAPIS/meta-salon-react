@@ -1,86 +1,64 @@
-import React from 'react';
-import { Box, Stat, StatLabel, StatNumber } from '@chakra-ui/react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Text, Skeleton } from '@chakra-ui/react';
 import { useAuth } from '../../hooks/useAuth';
-import { TokenService } from '../../services/token/tokenService';
+import { useTokens } from '../../hooks/token/useTokens';
 
-function animateValue(start: number, end: number, duration: number, callback: (value: number) => void) {
-  const startTime = performance.now();
-  
-  function update(currentTime: number) {
-    const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    
-    // Easing function for smooth animation
-    const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-    const current = Math.round(start + (end - start) * easeOutQuart);
-    
-    callback(current);
-    
-    if (progress < 1) {
-      requestAnimationFrame(update);
-    }
-  }
-  
-  requestAnimationFrame(update);
+interface TokenBalanceProps {
+  animate?: boolean;
 }
 
-export function TokenBalance() {
+export function TokenBalance({ animate = true }: TokenBalanceProps) {
   const { user } = useAuth();
-  const [displayBalance, setDisplayBalance] = React.useState<number | null>(null);
-  const [targetBalance, setTargetBalance] = React.useState<number | null>(null);
-  const tokenService = TokenService.getInstance();
-  const animationRef = React.useRef<number | null>(null);
+  const { balance, isLoading } = useTokens();
+  const [displayBalance, setDisplayBalance] = useState<number | null>(null);
+  const [targetBalance, setTargetBalance] = useState<number | null>(null);
+  const animationRef = useRef<number | null>(null);
 
-  React.useEffect(() => {
-    if (!user) {
-      setDisplayBalance(null);
-      setTargetBalance(null);
-      return;
-    }
-
-    // Initial balance fetch
-    tokenService.getBalance(user.id).then(balance => {
-      setDisplayBalance(balance);
+  useEffect(() => {
+    if (balance !== null) {
       setTargetBalance(balance);
-    }).catch(console.error);
+      if (!animate) {
+        setDisplayBalance(balance);
+      }
+    }
+  }, [balance, animate]);
 
-    // Subscribe to balance updates
-    const unsubscribe = tokenService.onBalanceUpdate((newBalance) => {
-      console.log('TokenBalance: Balance updated:', newBalance);
-      setTargetBalance(newBalance);
-    });
+  useEffect(() => {
+    if (!animate || targetBalance === null || displayBalance === null) return;
+
+    const startTime = Date.now();
+    const startValue = displayBalance;
+    const endValue = targetBalance;
+    const duration = 1000; // 1 second animation
+
+    const updateBalance = () => {
+      const now = Date.now();
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Easing function
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      const currentValue = startValue + (endValue - startValue) * easeOutQuart;
+
+      setDisplayBalance(Math.round(currentValue));
+
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(updateBalance);
+      }
+    };
+
+    animationRef.current = requestAnimationFrame(updateBalance);
 
     return () => {
-      unsubscribe();
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [user]);
+  }, [targetBalance, displayBalance, animate]);
 
-  // Handle balance animation when target changes
-  React.useEffect(() => {
-    if (displayBalance !== null && targetBalance !== null && displayBalance !== targetBalance) {
-      animateValue(displayBalance, targetBalance, 500, (value) => {
-        setDisplayBalance(value);
-      });
-    }
-  }, [targetBalance]);
-
-  if (!user || displayBalance === null) {
-    return null;
+  if (isLoading) {
+    return <Skeleton height="1.5em" width="4em" />;
   }
 
-  return (
-    <Box>
-      <Stat>
-        <StatNumber fontSize="4xl" fontWeight="bold" lineHeight="1.2">
-          {displayBalance}
-        </StatNumber>
-        <StatLabel fontSize="md" color="gray.600">
-          Available Tokens
-        </StatLabel>
-      </Stat>
-    </Box>
-  );
+  return <Text>{displayBalance ?? balance ?? 0} SLN</Text>;
 } 

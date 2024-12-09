@@ -56,23 +56,24 @@ export function VotePanel({ artworkId }: VotePanelProps) {
   const [selectedPackId, setSelectedPackId] = useState<string>('');
   const [voteAmount, setVoteAmount] = useState<number>(1);
   const [consumptionStats, setConsumptionStats] = useState<ConsumptionStats | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(false);
 
   // Load consumption stats
   useEffect(() => {
+    let mounted = true;
+
     const loadStats = async () => {
       try {
-        setIsLoadingStats(true);
         const stats = await VoteService.getVoteConsumptionStats(artworkId);
-        setConsumptionStats(stats);
+        if (mounted) {
+          setConsumptionStats(stats);
+        }
       } catch (err) {
         console.error('Failed to load consumption stats:', err);
-      } finally {
-        setIsLoadingStats(false);
       }
     };
 
     loadStats();
+    return () => { mounted = false; };
   }, [artworkId, votes]);
 
   const handleVote = async () => {
@@ -160,7 +161,7 @@ export function VotePanel({ artworkId }: VotePanelProps) {
           <Select
             placeholder="Select vote pack"
             value={selectedPackId}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedPackId(e.target.value)}
+            onChange={(e: { target: { value: string } }) => setSelectedPackId(e.target.value)}
           >
             {activePacks.map((pack: VotePack) => (
               <option key={pack.id} value={pack.id}>
@@ -173,7 +174,7 @@ export function VotePanel({ artworkId }: VotePanelProps) {
             min={1}
             max={100}
             value={voteAmount}
-            onChange={(valueString: string, valueNumber: number) => setVoteAmount(valueNumber)}
+            onChange={(_, valueNumber: number) => setVoteAmount(valueNumber)}
           >
             <NumberInputField />
             <NumberInputStepper>

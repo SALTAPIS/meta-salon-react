@@ -1,71 +1,27 @@
-import {
-  SimpleGrid,
-  Box,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
-  useColorModeValue,
-  Spinner,
-  Center,
-  Text,
-} from '@chakra-ui/react';
-import { useTokenQueries } from '../../hooks/token/useTokenQueries';
+import { Box, SimpleGrid, Stat, StatLabel, StatNumber, StatHelpText } from '@chakra-ui/react';
+import { useTokens } from '../../hooks/token/useTokens';
+import type { VotePack } from '../../types/database.types';
 
-interface UserStatsProps {
-  userId: string;
-}
+export function UserStats() {
+  const { balance, votePacks } = useTokens();
 
-export function UserStats({ userId }: UserStatsProps) {
-  const bgColor = useColorModeValue('gray.50', 'gray.700');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
-
-  const { balance, votePacks, transactions, isLoading, error } = useTokenQueries(userId);
-
-  if (isLoading) {
-    return (
-      <Center py={8}>
-        <Spinner />
-      </Center>
-    );
-  }
-
-  if (error) {
-    return (
-      <Center py={8}>
-        <Text color="red.500">Error loading stats</Text>
-      </Center>
-    );
-  }
-
-  const totalVotes = votePacks?.reduce((sum, pack) => sum + (pack.votes_remaining || 0), 0) || 0;
-  const totalTransactions = transactions?.length || 0;
+  const totalVotes = votePacks?.reduce((sum: number, pack: VotePack) => 
+    sum + (pack.votes || 0), 0) || 0;
 
   return (
-    <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} w="full">
-      <Box p={4} bg={bgColor} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
+    <Box p={4}>
+      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
         <Stat>
-          <StatLabel>Balance</StatLabel>
+          <StatLabel>Token Balance</StatLabel>
           <StatNumber>{balance || 0}</StatNumber>
-          <StatHelpText>Available tokens</StatHelpText>
+          <StatHelpText>Available SLN tokens</StatHelpText>
         </Stat>
-      </Box>
-
-      <Box p={4} bg={bgColor} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
         <Stat>
-          <StatLabel>Votes</StatLabel>
+          <StatLabel>Vote Packs</StatLabel>
           <StatNumber>{totalVotes}</StatNumber>
           <StatHelpText>Available votes</StatHelpText>
         </Stat>
-      </Box>
-
-      <Box p={4} bg={bgColor} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
-        <Stat>
-          <StatLabel>Transactions</StatLabel>
-          <StatNumber>{totalTransactions}</StatNumber>
-          <StatHelpText>Total transactions</StatHelpText>
-        </Stat>
-      </Box>
-    </SimpleGrid>
+      </SimpleGrid>
+    </Box>
   );
 } 

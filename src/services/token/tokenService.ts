@@ -27,10 +27,37 @@ export class TokenService {
   static async purchaseVotePack(userId: string, votes: number): Promise<VotePack> {
     const { data, error } = await supabase
       .rpc('purchase_vote_pack', {
+        p_user_id: userId,
         p_votes: votes
       });
 
     if (error) throw error;
     return data;
+  }
+
+  static async getActiveVotePack(userId: string): Promise<VotePack | null> {
+    const { data, error } = await supabase
+      .from('vote_packs')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  }
+
+  static async getUserTransactions(userId: string, limit = 10) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data || [];
   }
 } 
