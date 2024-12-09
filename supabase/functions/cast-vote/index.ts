@@ -13,9 +13,16 @@ interface VoteRequest {
 }
 
 serve(async (req: Request) => {
-  // Handle CORS
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', {
+      status: 204,
+      headers: {
+        ...corsHeaders,
+        'Access-Control-Allow-Methods': 'POST',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      },
+    });
   }
 
   try {
@@ -27,7 +34,12 @@ serve(async (req: Request) => {
       throw new Error('Missing Supabase configuration');
     }
 
-    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
 
     // Get user from auth header
     const authHeader = req.headers.get('Authorization');
@@ -55,7 +67,9 @@ serve(async (req: Request) => {
         JSON.stringify({ 
           success: false,
           error: 'Invalid token',
-          details: userError?.message
+          details: {
+            message: userError?.message
+          }
         }),
         { 
           status: 401,
@@ -68,17 +82,17 @@ serve(async (req: Request) => {
     }
 
     // Parse request body
-    const rawBody = await req.text();
     let body: VoteRequest;
-    
     try {
-      body = JSON.parse(rawBody);
+      body = JSON.parse(await req.text());
     } catch (error) {
       return new Response(
         JSON.stringify({ 
           success: false,
           error: 'Invalid request body',
-          details: error.message
+          details: {
+            message: error.message
+          }
         }),
         { 
           status: 400,
@@ -179,8 +193,7 @@ serve(async (req: Request) => {
         success: false,
         error: 'Internal server error',
         details: {
-          message: error.message,
-          cause: error.cause
+          message: error.message
         }
       }),
       { 

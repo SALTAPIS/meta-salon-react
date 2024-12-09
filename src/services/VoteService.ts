@@ -4,13 +4,20 @@ import { handleError } from '../utils/errors';
 import { getSession } from '../utils/session';
 import { VotePackService } from './VotePackService';
 
+interface ErrorDetails {
+  code?: string;
+  hint?: string;
+  details?: string;
+  message?: string;
+}
+
 interface VoteResponse {
   success: boolean;
   vote_id?: string;
   total_value?: number;
   votes_remaining?: number;
   error?: string;
-  details?: any;
+  details?: ErrorDetails;
 }
 
 export class VoteService {
@@ -43,6 +50,10 @@ export class VoteService {
         throw new Error('Failed to verify artwork');
       }
 
+      if (!artwork || artwork.vault_status !== 'active') {
+        throw new Error('Artwork is not active');
+      }
+
       console.log('Artwork check:', {
         exists: !!artwork,
         vault_status: artwork?.vault_status
@@ -61,18 +72,14 @@ export class VoteService {
         throw new Error('Failed to verify vote pack');
       }
 
+      if (!pack || pack.votes_remaining < value) {
+        throw new Error('Insufficient votes in pack');
+      }
+
       console.log('Vote pack check:', {
         exists: !!pack,
         votes_remaining: pack?.votes_remaining,
         expires_at: pack?.expires_at
-      });
-
-      // Call Edge Function with timeout
-      console.log('Calling Edge Function with:', {
-        artwork_id: artworkId,
-        pack_id: packId,
-        value: value,
-        auth_token: `Bearer ${session.access_token}`
       });
 
       // Set up timeout promise
@@ -83,7 +90,7 @@ export class VoteService {
       });
 
       // Call Edge Function with race against timeout
-      const functionPromise = supabase.functions.invoke('cast-vote', {
+      const functionPromise = supabase.functions.invoke<VoteResponse>('cast-vote', {
         body: {
           artwork_id: artworkId,
           pack_id: packId,
@@ -103,27 +110,26 @@ export class VoteService {
           cause: error.cause,
           details: error
         });
-        throw error;
+        throw new Error(error.message || 'Failed to cast vote');
       }
 
-      const response = data as VoteResponse;
-      if (!response.success) {
+      if (!data || !data.success) {
         console.error('Vote casting failed:', {
-          error: response.error,
-          details: response.details
+          error: data?.error,
+          details: data?.details
         });
-        throw new Error(response.error || 'Failed to cast vote');
+        throw new Error(data?.error || 'Failed to cast vote');
       }
 
-      if (!response.vote_id) {
-        console.error('Invalid response from server:', response);
+      if (!data.vote_id) {
+        console.error('Invalid response from server:', data);
         throw new Error('Invalid response from server');
       }
 
       console.log('Vote cast successfully:', {
-        vote_id: response.vote_id,
-        total_value: response.total_value,
-        votes_remaining: response.votes_remaining,
+        vote_id: data.vote_id,
+        total_value: data.total_value,
+        votes_remaining: data.votes_remaining,
         artwork_id: artworkId,
         pack_id: packId
       });
@@ -131,7 +137,7 @@ export class VoteService {
       // Update local vote pack state
       await VotePackService.refreshVotePacks();
 
-      return response.vote_id;
+      return data.vote_id;
     } catch (err) {
       const error = err as Error;
       console.error('Vote casting error:', {
