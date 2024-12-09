@@ -25,6 +25,9 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
+    /* Types */
+    "types": ["react", "react-dom"],
+
     /* Paths */
     "baseUrl": ".",
     "paths": {
