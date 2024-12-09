@@ -8,15 +8,16 @@ export class VoteService {
    */
   static async castVote(artworkId: string, packId: string, value: number): Promise<string> {
     try {
-      const { data, error } = await supabase
-        .rpc('cast_vote', {
-          p_artwork_id: artworkId,
-          p_pack_id: packId,
-          p_value: value
-        });
+      const { data, error } = await supabase.functions.invoke('cast-vote', {
+        body: {
+          artwork_id: artworkId,
+          pack_id: packId,
+          value: value
+        }
+      });
 
       if (error) throw error;
-      return data;
+      return data.vote_id;
     } catch (error) {
       throw handleError(error, 'Failed to cast vote');
     }
