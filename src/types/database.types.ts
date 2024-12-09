@@ -9,6 +9,20 @@ export interface ArtworkMetadata {
   exif?: Record<string, string>;
 }
 
+export interface Challenge {
+  id: string;
+  title: string;
+  description: string | null;
+  status: 'draft' | 'active' | 'completed' | 'cancelled';
+  type: 'open' | 'public' | 'private';
+  submission_fee: number;
+  start_time: string;
+  end_time: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export type Database = {
   public: {
     Tables: {

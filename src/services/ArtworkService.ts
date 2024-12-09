@@ -1,38 +1,31 @@
-import { supabase } from '../lib/supabase';
-import { Database } from '../types/database.types';
-import { ArtworkMetadata } from '../types/database.types';
+import { supabase } from '../lib/supabaseClient';
+import type { Album, Artwork, Challenge } from '../types/database.types';
+import { TokenService } from './token/tokenService';
 
-type Artwork = Database['public']['Tables']['artworks']['Row'];
-type Album = Database['public']['Tables']['albums']['Row'];
+interface ArtworkMetadata {
+  size: number;
+  type: string;
+  lastModified: number;
+}
+
+const tokenService = TokenService.getInstance();
 
 export class ArtworkService {
-  private static readonly MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-  private static readonly ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
-
-  static async getDefaultAlbum(userId: string): Promise<Album | null> {
-    const { data, error } = await supabase
+  static async getUserAlbums(userId: string): Promise<Album[]> {
+    const { data: albums, error } = await supabase
       .from('albums')
-      .select()
+      .select('*')
       .eq('user_id', userId)
-      .eq('is_default', true)
-      .single();
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data;
+    return albums;
   }
 
-  static async uploadArtwork(userId: string, file: File): Promise<{ url: string; metadata: ArtworkMetadata }> {
-    // Validate file
-    if (file.size > ArtworkService.MAX_FILE_SIZE) {
-      throw new Error('File size exceeds 10MB limit');
-    }
-    if (!ArtworkService.ALLOWED_MIME_TYPES.includes(file.type)) {
-      throw new Error('Invalid file type. Only JPG, PNG, and GIF are allowed');
-    }
-
+  static async uploadArtwork(userId: string, file: File) {
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/${Date.now()}.${fileExt}`;
-    const filePath = `${fileName}`;
+    const filePath = `artworks/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('artworks')
@@ -44,11 +37,11 @@ export class ArtworkService {
       .from('artworks')
       .getPublicUrl(filePath);
 
-    // Create metadata
-    const metadata: ArtworkMetadata = {
-      fileSize: file.size,
-      mimeType: file.type,
-      tags: []
+    // Get image metadata
+    const metadata = {
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified,
     };
 
     return { url: publicUrl, metadata };
@@ -62,146 +55,70 @@ export class ArtworkService {
     imageUrl: string,
     metadata: ArtworkMetadata
   ): Promise<Artwork> {
-    // Validate title
-    if (!title.trim()) {
-      throw new Error('Title is required');
-    }
-
-    const { data, error } = await supabase
+    const { data: artwork, error } = await supabase
       .from('artworks')
       .insert({
         user_id: userId,
         album_id: albumId,
-        title: title.trim(),
-        description: description?.trim() || null,
+        title,
+        description,
         image_url: imageUrl,
-        status: 'draft',
-        metadata
+        metadata,
       })
       .select()
       .single();
 
     if (error) throw error;
-    return data;
+    return artwork;
+  }
+
+  static async getActiveChallenges(): Promise<Challenge[]> {
+    const { data: challenges, error } = await supabase
+      .from('challenges')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return challenges;
   }
 
   static async submitToChallenge(
     artworkId: string,
     challengeId: string,
     submissionFee: number
-  ): Promise<Artwork> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user?.id) {
-      throw new Error('User not authenticated');
+  ): Promise<void> {
+    // First, check if the user has enough tokens
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const balance = await tokenService.getBalance(user.id);
+    if (balance < submissionFee) {
+      throw new Error('Insufficient token balance for submission');
     }
 
-    // First check if user has enough balance
-    const { data, error: balanceError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.data.user.id)
-      .single();
+    // Start a transaction
+    const { error: txError } = await supabase.rpc('submit_artwork_to_challenge', {
+      p_artwork_id: artworkId,
+      p_challenge_id: challengeId,
+      p_submission_fee: submissionFee
+    });
 
-    if (balanceError) throw balanceError;
-    if (!data || typeof data.balance !== 'number' || data.balance < submissionFee) {
-      throw new Error('Insufficient balance for submission');
-    }
-
-    // Start transaction
-    const { data: artwork, error: submissionError } = await supabase
-      .from('artworks')
-      .update({
-        status: 'submitted',
-        challenge_id: challengeId,
-        submission_fee: submissionFee
-      })
-      .eq('id', artworkId)
-      .select()
-      .single();
-
-    if (submissionError) throw submissionError;
-
-    // Deduct submission fee
-    const { error: feeError } = await supabase
-      .from('profiles')
-      .update({
-        balance: data.balance - submissionFee
-      })
-      .eq('id', artwork.user_id);
-
-    if (feeError) throw feeError;
-
-    // Record transaction
-    const { error: transactionError } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: artwork.user_id,
-        type: 'submission',
-        amount: -submissionFee,
-        description: `Artwork submission fee for ${artwork.title}`,
-        reference_id: artwork.id
-      });
-
-    if (transactionError) throw transactionError;
-
-    return artwork;
+    if (txError) throw txError;
   }
 
-  static async getUserArtworks(userId: string): Promise<Artwork[]> {
-    const { data, error } = await supabase
+  static async getArtworksByChallenge(challengeId: string): Promise<Artwork[]> {
+    const { data: artworks, error } = await supabase
       .from('artworks')
-      .select()
-      .eq('user_id', userId)
+      .select(`
+        *,
+        user:profiles(username, avatar_url),
+        album:albums(name)
+      `)
+      .eq('challenge_id', challengeId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
-  }
-
-  static async getAlbumArtworks(albumId: string): Promise<Artwork[]> {
-    const { data, error } = await supabase
-      .from('artworks')
-      .select()
-      .eq('album_id', albumId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  }
-
-  static async getUserAlbums(userId: string): Promise<Album[]> {
-    const { data, error } = await supabase
-      .from('albums')
-      .select()
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  }
-
-  static async createAlbum(
-    userId: string,
-    name: string,
-    description: string | null = null
-  ): Promise<Album> {
-    // Validate name
-    if (!name.trim()) {
-      throw new Error('Album name is required');
-    }
-
-    const { data, error } = await supabase
-      .from('albums')
-      .insert({
-        user_id: userId,
-        name: name.trim(),
-        description: description?.trim() || null,
-        is_default: false
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    return artworks;
   }
 } 
