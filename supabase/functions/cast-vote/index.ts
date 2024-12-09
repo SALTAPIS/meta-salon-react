@@ -13,10 +13,12 @@ interface VoteRequest {
 }
 
 serve(async (req: Request) => {
+  // Log request details
   console.log('Received request:', {
     method: req.method,
     url: req.url,
-    headers: Object.fromEntries(req.headers.entries())
+    headers: Object.fromEntries(req.headers.entries()),
+    timestamp: new Date().toISOString()
   });
 
   // Handle CORS preflight requests
@@ -57,9 +59,10 @@ serve(async (req: Request) => {
     console.log('Auth header:', {
       present: !!authHeader,
       prefix: authHeader?.substring(0, 7),
-      length: authHeader?.length
+      length: authHeader?.length,
+      timestamp: new Date().toISOString()
     });
-    
+
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'No authorization header' }),
