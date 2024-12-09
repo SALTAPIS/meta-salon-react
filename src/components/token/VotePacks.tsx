@@ -1,4 +1,5 @@
-import { useState, type MouseEvent } from 'react';
+import { useState } from 'react';
+import type { MouseEvent } from 'react';
 import {
   Box,
   Button,
