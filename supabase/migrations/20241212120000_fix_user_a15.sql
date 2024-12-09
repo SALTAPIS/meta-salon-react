@@ -9,7 +9,7 @@ begin
     where email = 'a15@salt.dev';
 
     -- Create default album if it doesn't exist
-    insert into public.albums (user_id, name, description, is_default)
+    insert into public.albums (user_id, title, description, is_default)
     select
         v_user_id,
         'My First Album',
