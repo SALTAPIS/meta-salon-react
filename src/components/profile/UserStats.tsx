@@ -13,15 +13,15 @@ import {
 import { useTokenQueries } from '../../hooks/token/useTokenQueries';
 import type { VotePack } from '../../types/database.types';
 
-export interface UserStatsProps {
+interface Props {
   userId: string;
 }
 
-export function UserStats({ userId }: UserStatsProps) {
+export function UserStats(props: Props) {
   const bgColor = useColorModeValue('gray.50', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
 
-  const { balance, votePacks, transactions, isLoading, error } = useTokenQueries(userId);
+  const { balance, votePacks, transactions, isLoading, error } = useTokenQueries(props.userId);
 
   if (isLoading) {
     return (
