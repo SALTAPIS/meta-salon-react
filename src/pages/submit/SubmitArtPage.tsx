@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -40,18 +40,18 @@ export default function SubmitArtPage() {
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [title, setTitle] = React.useState('');
-  const [description, setDescription] = React.useState('');
-  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
-  const [albums, setAlbums] = React.useState<Album[]>([]);
-  const [selectedAlbumId, setSelectedAlbumId] = React.useState<string>('');
-  const [challenges, setChallenges] = React.useState<Challenge[]>([]);
-  const [selectedChallengeId, setSelectedChallengeId] = React.useState<string>('');
-  const [submissionFee, setSubmissionFee] = React.useState<number>(99);
+  const [isLoading, setIsLoading] = useState(false);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string>('');
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [selectedChallengeId, setSelectedChallengeId] = useState<string>('');
+  const [submissionFee, setSubmissionFee] = useState<number>(99);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!user) {
       navigate('/login');
       return;
@@ -64,18 +64,16 @@ export default function SubmitArtPage() {
           ArtworkService.getActiveChallenges()
         ]);
 
-        console.log('Loaded albums:', userAlbums); // Debug log
+        console.log('Loaded albums:', userAlbums);
         setAlbums(userAlbums);
         setChallenges(activeChalls);
         
-        // Set default album if exists
         const defaultAlbum = userAlbums.find(album => album.is_default);
-        console.log('Default album:', defaultAlbum); // Debug log
+        console.log('Default album:', defaultAlbum);
         if (defaultAlbum) {
           setSelectedAlbumId(defaultAlbum.id);
         }
 
-        // Set default challenge
         const openChallenge = activeChalls.find((c: Challenge) => c.type === 'open');
         if (openChallenge) {
           setSelectedChallengeId(openChallenge.id);
