@@ -450,4 +450,33 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
       return { error: error as Error };
     }
   }
+
+  async uploadAvatar(file: File): Promise<{ data?: { url: string }, error: Error | null }> {
+    try {
+      const user = await this.getCurrentUser();
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+
+      // Upload file to storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      return { data: { url: publicUrl }, error: null };
+    } catch (error) {
+      console.error('[AuthService] Error uploading avatar:', error);
+      return { error: error as Error };
+    }
+  }
 } 
