@@ -9,10 +9,23 @@ export class VoteService {
   static async castVote(artworkId: string, packId: string, value: number): Promise<string> {
     try {
       // Get current session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No active session');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error('Failed to get session:', sessionError);
+        throw new Error('Authentication error: Failed to get session');
       }
+      
+      if (!session) {
+        console.error('No active session found');
+        throw new Error('Authentication error: No active session');
+      }
+
+      console.log('Casting vote:', {
+        artwork_id: artworkId,
+        pack_id: packId,
+        value: value,
+        user_id: session.user.id
+      });
 
       const { data, error } = await supabase.functions.invoke('cast-vote', {
         body: {
@@ -25,9 +38,35 @@ export class VoteService {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge Function error:', {
+          message: error.message,
+          name: error.name,
+          cause: error.cause,
+          details: error
+        });
+        throw error;
+      }
+
+      if (!data?.vote_id) {
+        console.error('No vote_id in response:', data);
+        throw new Error('Invalid response from server');
+      }
+
+      console.log('Vote cast successfully:', {
+        vote_id: data.vote_id,
+        artwork_id: artworkId,
+        pack_id: packId
+      });
+
       return data.vote_id;
     } catch (error) {
+      console.error('Vote casting error:', {
+        error,
+        artwork_id: artworkId,
+        pack_id: packId,
+        value: value
+      });
       throw handleError(error, 'Failed to cast vote');
     }
   }
@@ -94,24 +133,17 @@ export class VoteService {
       // Get total votes in pack
       const { data: pack, error: packError } = await supabase
         .from('vote_packs')
-        .select('votes')
+        .select('votes_remaining')
         .eq('id', packId)
         .single();
 
       if (packError) throw packError;
 
-      // Get used votes
-      const { data: votes, error: votesError } = await supabase
-        .from('votes')
-        .select('value')
-        .eq('pack_id', packId);
+      if (!pack) {
+        throw new Error('Vote pack not found');
+      }
 
-      if (votesError) throw votesError;
-
-      const totalVotes = pack.votes;
-      const usedVotes = votes?.reduce((sum, vote) => sum + vote.value, 0) || 0;
-
-      return totalVotes - usedVotes;
+      return pack.votes_remaining;
     } catch (error) {
       throw handleError(error, 'Failed to get available votes');
     }
