@@ -30,6 +30,11 @@ serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
+    console.log('Supabase configuration:', {
+      url: supabaseUrl ? '✓ Set' : '✗ Missing',
+      key: supabaseKey ? '✓ Set' : '✗ Missing'
+    });
+
     if (!supabaseUrl || !supabaseKey) {
       throw new Error('Missing Supabase configuration');
     }
@@ -43,6 +48,11 @@ serve(async (req: Request) => {
 
     // Get user from auth header
     const authHeader = req.headers.get('Authorization');
+    console.log('Auth header:', {
+      present: !!authHeader,
+      prefix: authHeader?.substring(0, 7)
+    });
+
     if (!authHeader) {
       return new Response(
         JSON.stringify({ 
@@ -61,6 +71,12 @@ serve(async (req: Request) => {
 
     const jwt = authHeader.replace('Bearer ', '');
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(jwt);
+
+    console.log('User verification:', {
+      success: !!user,
+      error: userError?.message,
+      user_id: user?.id
+    });
 
     if (userError || !user) {
       return new Response(
@@ -83,15 +99,20 @@ serve(async (req: Request) => {
 
     // Parse request body
     let body: VoteRequest;
+    const rawBody = await req.text();
+    console.log('Raw request body:', rawBody);
+
     try {
-      body = JSON.parse(await req.text());
+      body = JSON.parse(rawBody);
+      console.log('Parsed request body:', body);
     } catch (error) {
       return new Response(
         JSON.stringify({ 
           success: false,
           error: 'Invalid request body',
           details: {
-            message: error.message
+            message: error.message,
+            raw: rawBody
           }
         }),
         { 
@@ -128,10 +149,22 @@ serve(async (req: Request) => {
     }
 
     // Call the cast_vote function
+    console.log('Calling cast_vote with:', {
+      p_artwork_id: body.artwork_id,
+      p_pack_id: body.pack_id,
+      p_value: body.value
+    });
+
     const { data: voteResult, error: voteError } = await supabaseClient.rpc('cast_vote', {
       p_artwork_id: body.artwork_id,
       p_pack_id: body.pack_id,
       p_value: body.value,
+    });
+
+    console.log('Vote result:', {
+      success: !!voteResult,
+      error: voteError?.message,
+      result: voteResult
     });
 
     if (voteError) {
@@ -188,12 +221,18 @@ serve(async (req: Request) => {
       }
     );
   } catch (error) {
+    console.error('Unhandled error:', {
+      message: error.message,
+      stack: error.stack
+    });
+
     return new Response(
       JSON.stringify({ 
         success: false,
         error: 'Internal server error',
         details: {
-          message: error.message
+          message: error.message,
+          type: error.name
         }
       }),
       { 

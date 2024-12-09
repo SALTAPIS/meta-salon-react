@@ -9,6 +9,8 @@ interface ErrorDetails {
   hint?: string;
   details?: string;
   message?: string;
+  raw?: string;
+  type?: string;
 }
 
 interface VoteResponse {
@@ -110,7 +112,17 @@ export class VoteService {
           cause: error.cause,
           details: error
         });
-        throw new Error(error.message || 'Failed to cast vote');
+
+        // Try to extract error details from the error response
+        let errorMessage = error.message;
+        try {
+          const errorData = JSON.parse(error.message);
+          errorMessage = errorData.error || errorData.message || error.message;
+        } catch {
+          // If parsing fails, use the original error message
+        }
+
+        throw new Error(errorMessage);
       }
 
       if (!data || !data.success) {
@@ -148,7 +160,18 @@ export class VoteService {
         message: error.message,
         stack: error.stack
       });
-      throw handleError(error, 'Failed to cast vote');
+
+      // Try to extract a user-friendly error message
+      let userMessage = 'Failed to cast vote';
+      if (error.message.includes('not active')) {
+        userMessage = 'This artwork is not currently accepting votes';
+      } else if (error.message.includes('Insufficient')) {
+        userMessage = 'Not enough votes available in the selected pack';
+      } else if (error.message.includes('expired')) {
+        userMessage = 'The selected vote pack has expired';
+      }
+
+      throw handleError(error, userMessage);
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);
