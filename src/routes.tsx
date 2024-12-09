@@ -14,6 +14,9 @@ import { RoleGuard } from './components/auth/RoleGuard';
 import { Layout } from './components/layout/Layout';
 import GamePage from './pages/game/GamePage';
 import ClassementPage from './pages/classement/ClassementPage';
+import { ArtworkDetailsPage } from './pages/artworks/ArtworkDetailsPage';
+import { EdgeFunctionTestPage } from './pages/test/EdgeFunctionTestPage';
+import { DebugPage } from './pages/debug/DebugPage';
 
 const routes: RouteObject[] = [
   {
@@ -67,12 +70,24 @@ const routes: RouteObject[] = [
             element: <ArtworksPage />,
           },
           {
+            path: '/artwork/:id',
+            element: <ArtworkDetailsPage />,
+          },
+          {
             path: '/game',
             element: <GamePage />,
           },
           {
             path: '/classement',
             element: <ClassementPage />,
+          },
+          {
+            path: '/test/edge-function',
+            element: <ProtectedRoute><EdgeFunctionTestPage /></ProtectedRoute>,
+          },
+          {
+            path: '/debug',
+            element: <ProtectedRoute><DebugPage /></ProtectedRoute>,
           },
           {
             path: '/',

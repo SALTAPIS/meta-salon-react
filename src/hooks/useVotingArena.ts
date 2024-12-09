@@ -11,6 +11,10 @@ interface VotingPair {
   right: Artwork;
 }
 
+interface VoteError extends Error {
+  details?: Record<string, unknown>;
+}
+
 export function useVotingArena() {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [remainingArtworks, setRemainingArtworks] = useState<Artwork[]>([]);
@@ -121,7 +125,13 @@ export function useVotingArena() {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to cast vote';
-      console.error('Vote casting error:', err);
+      console.error('Vote casting error:', {
+        error: err,
+        message,
+        artwork_id: winningArtworkId,
+        pack_id: activePack.id,
+        details: err instanceof Error ? (err as VoteError).details : undefined
+      });
       setError(message);
       toast({
         title: 'Failed to cast vote',
@@ -130,12 +140,13 @@ export function useVotingArena() {
         duration: 5000,
         isClosable: true,
       });
+      return; // Don't proceed to next pair if vote failed
     }
 
     // Always update to next pair, regardless of vote success/failure
     try {
       // Update remaining artworks
-      const newRemainingArtworks = remainingArtworks.filter(artwork => 
+      const newRemainingArtworks = remainingArtworks.filter((artwork: Artwork) => 
         artwork.id !== currentPair.left.id && 
         artwork.id !== currentPair.right.id
       );

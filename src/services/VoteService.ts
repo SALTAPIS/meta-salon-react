@@ -9,8 +9,13 @@ interface ErrorDetails {
   hint?: string;
   details?: string;
   message?: string;
+  error?: string;
   raw?: string;
   type?: string;
+}
+
+interface VoteError extends Error {
+  details?: ErrorDetails;
 }
 
 interface VoteResponse {
@@ -22,160 +27,84 @@ interface VoteResponse {
   details?: ErrorDetails;
 }
 
+interface EdgeFunctionError {
+  success: false;
+  error: string;
+  details?: string | Record<string, unknown>;
+  code?: string;
+  request_id: string;
+}
+
+interface EdgeFunctionSuccess {
+  success: true;
+  data: unknown;
+  request_id: string;
+}
+
+type EdgeFunctionResponse = EdgeFunctionError | EdgeFunctionSuccess;
+
 export class VoteService {
   /**
    * Cast votes for an artwork using a specific vote pack
    */
-  static async castVote(artworkId: string, packId: string, value: number): Promise<string> {
-    let timeoutId: NodeJS.Timeout | undefined;
-
+  static async castVote(artworkId: string, packId: string, value: number): Promise<void> {
     try {
+      // Get session for auth token
       const session = await getSession();
       if (!session) {
         throw new Error('Not authenticated');
       }
 
-      // Validate inputs
-      if (!artworkId || !packId || typeof value !== 'number' || value <= 0) {
-        throw new Error('Invalid vote parameters');
-      }
-
-      // Check artwork exists and is active
-      const { data: artwork, error: artworkError } = await supabase
-        .from('artworks')
-        .select('vault_status')
-        .eq('id', artworkId)
-        .single();
-
-      if (artworkError) {
-        console.error('Failed to verify artwork:', artworkError);
-        throw new Error('Failed to verify artwork');
-      }
-
-      if (!artwork || artwork.vault_status !== 'active') {
-        throw new Error('Artwork is not active');
-      }
-
-      console.log('Artwork check:', {
-        exists: !!artwork,
-        vault_status: artwork?.vault_status
-      });
-
-      // Check vote pack
-      const { data: pack, error: packError } = await supabase
-        .from('vote_packs')
-        .select('*')
-        .eq('id', packId)
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (packError) {
-        console.error('Failed to verify vote pack:', packError);
-        throw new Error('Failed to verify vote pack');
-      }
-
-      if (!pack || pack.votes_remaining < value) {
-        throw new Error('Insufficient votes in pack');
-      }
-
-      console.log('Vote pack check:', {
-        exists: !!pack,
-        votes_remaining: pack?.votes_remaining,
-        expires_at: pack?.expires_at
-      });
-
-      // Set up timeout promise
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          reject(new Error('Vote operation timed out. Please try again.'));
-        }, 10000); // 10 second timeout
-      });
-
-      // Call Edge Function with race against timeout
-      const functionPromise = supabase.functions.invoke<VoteResponse>('cast-vote', {
-        body: {
-          artwork_id: artworkId,
-          pack_id: packId,
-          value: value
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
-
-      const { data, error } = await Promise.race([functionPromise, timeoutPromise]);
-
-      if (error) {
-        console.error('Edge Function error:', {
-          message: error.message,
-          name: error.name,
-          cause: error.cause,
-          details: error
-        });
-
-        // Try to extract error details from the error response
-        let errorMessage = error.message;
-        try {
-          const errorData = JSON.parse(error.message);
-          errorMessage = errorData.error || errorData.message || error.message;
-        } catch {
-          // If parsing fails, use the original error message
-        }
-
-        throw new Error(errorMessage);
-      }
-
-      if (!data || !data.success) {
-        console.error('Vote casting failed:', {
-          error: data?.error,
-          details: data?.details
-        });
-        throw new Error(data?.error || 'Failed to cast vote');
-      }
-
-      if (!data.vote_id) {
-        console.error('Invalid response from server:', data);
-        throw new Error('Invalid response from server');
-      }
-
-      console.log('Vote cast successfully:', {
-        vote_id: data.vote_id,
-        total_value: data.total_value,
-        votes_remaining: data.votes_remaining,
-        artwork_id: artworkId,
-        pack_id: packId
-      });
-
-      // Update local vote pack state
-      await VotePackService.refreshVotePacks();
-
-      return data.vote_id;
-    } catch (err) {
-      const error = err as Error;
-      console.error('Vote casting error:', {
-        error,
+      // Log request
+      console.log('[VoteService] Casting vote:', {
         artwork_id: artworkId,
         pack_id: packId,
         value: value,
-        message: error.message,
-        stack: error.stack
+        user_id: session.user.id
       });
 
-      // Try to extract a user-friendly error message
-      let userMessage = 'Failed to cast vote';
-      if (error.message.includes('not active')) {
-        userMessage = 'This artwork is not currently accepting votes';
-      } else if (error.message.includes('Insufficient')) {
-        userMessage = 'Not enough votes available in the selected pack';
-      } else if (error.message.includes('expired')) {
-        userMessage = 'The selected vote pack has expired';
+      // Call database function directly
+      const { data, error } = await supabase.rpc('cast_vote', {
+        p_artwork_id: artworkId,
+        p_pack_id: packId,
+        p_value: value
+      });
+
+      // Handle database error
+      if (error) {
+        console.error('[VoteService] Database error:', {
+          error,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          request: {
+            artwork_id: artworkId,
+            pack_id: packId,
+            value: value
+          }
+        });
+        throw error;
       }
 
-      throw handleError(error, userMessage);
-    } finally {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
+      // Log success
+      console.log('[VoteService] Vote success:', {
+        data,
+        artwork_id: artworkId,
+        pack_id: packId,
+        value: value
+      });
+
+      // Refresh vote packs
+      await VotePackService.refreshVotePacks();
+    } catch (error) {
+      console.error('[VoteService] Error:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        artwork_id: artworkId,
+        pack_id: packId,
+        value: value
+      });
+      throw handleError(error, 'Failed to cast vote');
     }
   }
 

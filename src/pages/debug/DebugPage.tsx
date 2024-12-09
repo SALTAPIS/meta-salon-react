@@ -1,361 +1,181 @@
-import * as React from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import { supabase } from '../../lib/supabaseClient';
-import type { AuthChangeEvent, Session, User as SupabaseUser } from '@supabase/supabase-js';
+import React from 'react';
 import {
   Box,
+  Button,
   Container,
+  FormControl,
+  FormLabel,
+  Input,
   VStack,
   Heading,
   Text,
   Code,
-  Button,
   useToast,
-  Divider,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
   Badge,
-  HStack,
-  Accordion,
-  AccordionItem,
-  AccordionButton,
-  AccordionPanel,
-  AccordionIcon,
-  Spinner,
 } from '@chakra-ui/react';
+import { supabase } from '../../lib/supabaseClient';
+import { getSession } from '../../utils/session';
+import { VoteService } from '../../services/VoteService';
 
-interface DebugInfo {
-  session: Session | null;
-  profile: SupabaseUser | null;
-  authState: Array<{
-    event: string;
-    timestamp: string;
-    details?: {
-      userId?: string;
-      email?: string;
-      hasProfile?: boolean;
-    } | null;
-  }>;
-  errors: Array<{
-    message: string;
-    timestamp: string;
-  }>;
+interface TestResponse {
+  status: number;
+  data: unknown;
+  error?: Error;
 }
 
-export default function DebugPage() {
-  const { user, isLoading } = useAuth();
-  const [debugInfo, setDebugInfo] = React.useState<DebugInfo>({
-    session: null,
-    profile: null,
-    authState: [],
-    errors: [],
-  });
+interface DebugInfo {
+  session: unknown;
+  environment: {
+    supabaseUrl?: string;
+    hasAnonKey?: boolean;
+    hasServiceKey?: boolean;
+  };
+}
+
+export function DebugPage() {
+  // Pre-filled test values
+  const [artworkId, setArtworkId] = React.useState('2aea6257-3bcf-417b-a51c-bae0c87451dd');
+  const [packId, setPackId] = React.useState('7282e82c-9ef9-4e4f-9a6b-60e4b7e00f04');
+  const [voteValue, setVoteValue] = React.useState('1');
+  const [response, setResponse] = React.useState<TestResponse | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [debugInfo, setDebugInfo] = React.useState<DebugInfo | null>(null);
   const toast = useToast();
 
+  // Load debug info on mount
   React.useEffect(() => {
-    let mounted = true;
-    console.log('Checking auth state...');
+    loadDebugInfo();
+  }, []);
 
-    async function checkAuth() {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          throw sessionError;
-        }
-
-        console.log('Session result:', { hasSession: !!session, userId: session?.user?.id });
-
-        // Get profile if session exists
-        let profile = null;
-        if (session?.user) {
-          const { data, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (profileError) {
-            console.error('Profile error:', profileError);
-            throw profileError;
-          }
-          profile = data;
-          console.log('Profile loaded:', { id: profile.id, role: profile.role });
-        }
-
-        if (mounted) {
-          setDebugInfo((prev: DebugInfo) => ({
-            ...prev,
-            session,
-            profile,
-            authState: [
-              ...prev.authState,
-              {
-                event: session ? 'Session found' : 'No session',
-                timestamp: new Date().toISOString(),
-                details: session ? {
-                  userId: session.user?.id,
-                  email: session.user?.email,
-                  hasProfile: !!profile
-                } : null
-              },
-            ],
-          }));
-        }
-      } catch (error) {
-        console.error('Debug page error:', error);
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        if (mounted) {
-          setDebugInfo((prev: DebugInfo) => ({
-            ...prev,
-            errors: [
-              ...prev.errors,
-              {
-                message,
-                timestamp: new Date().toISOString(),
-              },
-            ],
-          }));
-        }
-      }
-    }
-
-    checkAuth();
-
-    // Subscribe to auth changes
-    console.log('Setting up auth state listener...');
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
-      console.log('Auth state changed:', { event, hasSession: !!session, userId: session?.user?.id });
-      if (mounted) {
-        setDebugInfo((prev: DebugInfo) => ({
-          ...prev,
-          session,
-          authState: [
-            ...prev.authState,
-            {
-              event,
-              timestamp: new Date().toISOString(),
-              details: session ? {
-                userId: session.user?.id,
-                email: session.user?.email,
-              } : null
-            },
-          ],
-        }));
-      }
-    });
-
-    return () => {
-      console.log('Cleaning up auth state listener...');
-      mounted = false;
-      subscription.unsubscribe();
+  const loadDebugInfo = async () => {
+    const session = await getSession();
+    const env = {
+      supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+      hasAnonKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+      hasServiceKey: !!import.meta.env.VITE_SUPABASE_SERVICE_KEY,
     };
-  }, []); // Empty dependency array to run only once
 
-  const clearLocalStorage = () => {
-    localStorage.clear();
-    toast({
-      title: 'Local storage cleared',
-      status: 'info',
-      duration: 3000,
+    setDebugInfo({
+      session,
+      environment: env
     });
   };
 
-  const refreshSession = async () => {
+  const handleTest = async () => {
     try {
-      console.log('Refreshing session...');
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      
-      setDebugInfo((prev: DebugInfo) => ({
-        ...prev,
-        session,
-        authState: [
-          ...prev.authState,
-          {
-            event: 'Session refreshed',
-            timestamp: new Date().toISOString(),
-            details: session ? {
-              userId: session.user?.id,
-              email: session.user?.email,
-            } : null
-          },
-        ],
-      }));
+      setLoading(true);
+      setResponse(null);
+
+      // Call VoteService directly
+      await VoteService.castVote(artworkId, packId, parseInt(voteValue));
+
+      // Set success response
+      setResponse({
+        status: 200,
+        data: { success: true },
+        error: undefined
+      });
 
       toast({
-        title: 'Session refreshed',
+        title: 'Success',
+        description: 'Vote cast successfully',
         status: 'success',
-        duration: 3000,
+        duration: 5000,
+        isClosable: true,
       });
-    } catch (error) {
-      console.error('Session refresh error:', error);
+
+    } catch (err) {
+      console.error('Test error:', err);
+      setResponse({
+        status: 500,
+        data: null,
+        error: err as Error
+      });
+
       toast({
-        title: 'Error refreshing session',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Unknown error',
         status: 'error',
-        duration: 3000,
+        duration: 5000,
+        isClosable: true,
       });
+    } finally {
+      setLoading(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <Container maxW="container.lg" py={8}>
-        <VStack spacing={4}>
-          <Spinner size="xl" />
-          <Text>Loading auth state...</Text>
-          <Text color="gray.500" fontSize="sm">
-            Current time: {new Date().toISOString()}
-          </Text>
-        </VStack>
-      </Container>
-    );
-  }
 
   return (
     <Container maxW="container.lg" py={8}>
-      <VStack spacing={8} align="stretch">
-        <Box>
-          <Heading size="lg" mb={4}>Auth Debug Information</Heading>
-          <Text color="gray.500" mb={4}>
-            Current time: {new Date().toISOString()}
-          </Text>
-          <HStack spacing={4}>
-            <Button onClick={refreshSession} colorScheme="blue" size="sm">
-              Refresh Session
-            </Button>
-            <Button onClick={clearLocalStorage} colorScheme="red" size="sm">
-              Clear Local Storage
-            </Button>
-          </HStack>
-        </Box>
+      <VStack spacing={6} align="stretch">
+        <Heading size="lg">Vote Testing</Heading>
 
-        <Divider />
+        <Box p={6} borderWidth={1} borderRadius="lg" width="100%">
+          <VStack spacing={4}>
+            <FormControl>
+              <FormLabel>Artwork ID (pre-filled)</FormLabel>
+              <Input value={artworkId} isReadOnly />
+            </FormControl>
 
-        <Box>
-          <Heading size="md" mb={4}>Auth Context State</Heading>
-          <VStack spacing={4} align="stretch">
-            <HStack>
-              <Badge colorScheme={isLoading ? 'yellow' : 'green'}>
-                {isLoading ? 'Loading' : 'Ready'}
-              </Badge>
-              <Badge colorScheme={user ? 'green' : 'red'}>
-                {user ? 'Authenticated' : 'Not Authenticated'}
-              </Badge>
-            </HStack>
-            <Text>Auth Listener: {debugInfo.authState.length > 0 ? 'Active' : 'Not active'}</Text>
+            <FormControl>
+              <FormLabel>Vote Pack ID (pre-filled)</FormLabel>
+              <Input value={packId} isReadOnly />
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Vote Value</FormLabel>
+              <Input
+                type="number"
+                value={voteValue}
+                onChange={(e) => setVoteValue(e.target.value)}
+                min="1"
+                max="100"
+              />
+            </FormControl>
+
+            <Button
+              colorScheme="blue"
+              onClick={handleTest}
+              isLoading={loading}
+              loadingText="Testing..."
+              width="full"
+            >
+              Cast Vote
+            </Button>
           </VStack>
         </Box>
 
-        <Accordion allowMultiple defaultIndex={[0, 1, 2, 3, 4, 5]}>
-          <AccordionItem>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                <Heading size="sm">Environment Variables</Heading>
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-            <AccordionPanel>
-              <Code p={4} borderRadius="md" display="block" whiteSpace="pre">
-                {JSON.stringify({
-                  VITE_SITE_URL: import.meta.env.VITE_SITE_URL || window.location.origin,
-                  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || 'not set',
-                  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'set' : 'not set',
-                  VITE_SUPABASE_SERVICE_KEY: import.meta.env.VITE_SUPABASE_SERVICE_KEY ? 'set' : 'not set',
-                }, null, 2)}
-              </Code>
-            </AccordionPanel>
-          </AccordionItem>
+        {response && (
+          <Box p={6} borderWidth={1} borderRadius="lg" bg={response.error ? 'red.50' : 'green.50'}>
+            <VStack spacing={4} align="stretch">
+              <Text fontWeight="bold">
+                Status: {response.status}
+              </Text>
+              
+              {response.data && (
+                <>
+                  <Text fontWeight="bold">Response:</Text>
+                  <Code p={4} borderRadius="md" whiteSpace="pre-wrap">
+                    {JSON.stringify(response.data, null, 2)}
+                  </Code>
+                </>
+              )}
 
-          <AccordionItem>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                <Heading size="sm">User Context</Heading>
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-            <AccordionPanel>
-              <Code p={4} borderRadius="md" display="block" whiteSpace="pre">
-                {JSON.stringify(user, null, 2)}
-              </Code>
-            </AccordionPanel>
-          </AccordionItem>
-
-          <AccordionItem>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                <Heading size="sm">Current Session</Heading>
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-            <AccordionPanel>
-              <Code p={4} borderRadius="md" display="block" whiteSpace="pre">
-                {JSON.stringify(debugInfo.session, null, 2)}
-              </Code>
-            </AccordionPanel>
-          </AccordionItem>
-
-          <AccordionItem>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                <Heading size="sm">Profile Data</Heading>
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-            <AccordionPanel>
-              <Code p={4} borderRadius="md" display="block" whiteSpace="pre">
-                {JSON.stringify(debugInfo.profile, null, 2)}
-              </Code>
-            </AccordionPanel>
-          </AccordionItem>
-
-          <AccordionItem>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                <Heading size="sm">Auth State History</Heading>
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-            <AccordionPanel>
-              <Code p={4} borderRadius="md" display="block" whiteSpace="pre">
-                {JSON.stringify(debugInfo.authState, null, 2)}
-              </Code>
-            </AccordionPanel>
-          </AccordionItem>
-
-          <AccordionItem>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                <Heading size="sm">Local Storage</Heading>
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-            <AccordionPanel>
-              <Code p={4} borderRadius="md" display="block" whiteSpace="pre">
-                {JSON.stringify(Object.fromEntries(
-                  Object.entries(localStorage).map(([key, value]) => [
-                    key,
-                    key.includes('token') ? '[REDACTED]' : value
-                  ])
-                ), null, 2)}
-              </Code>
-            </AccordionPanel>
-          </AccordionItem>
-
-          <AccordionItem>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                <Heading size="sm">Errors</Heading>
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-            <AccordionPanel>
-              <Code p={4} borderRadius="md" display="block" whiteSpace="pre">
-                {JSON.stringify(debugInfo.errors, null, 2)}
-              </Code>
-            </AccordionPanel>
-          </AccordionItem>
-        </Accordion>
+              {response.error && (
+                <>
+                  <Text fontWeight="bold" color="red.500">Error:</Text>
+                  <Code p={4} borderRadius="md" whiteSpace="pre-wrap" bg="red.100">
+                    {JSON.stringify(response.error, null, 2)}
+                  </Code>
+                </>
+              )}
+            </VStack>
+          </Box>
+        )}
       </VStack>
     </Container>
   );

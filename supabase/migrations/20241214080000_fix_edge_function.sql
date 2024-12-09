@@ -122,7 +122,7 @@ begin
     -- Update or insert vault state
     insert into public.vault_states (
         artwork_id,
-        total_votes,
+        vote_count,
         last_vote_at,
         updated_at
     )
@@ -134,7 +134,7 @@ begin
     )
     on conflict (artwork_id) do update
     set
-        total_votes = vault_states.total_votes + v_total_value,
+        vote_count = vault_states.vote_count + v_total_value,
         last_vote_at = now(),
         updated_at = now();
 

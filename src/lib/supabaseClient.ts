@@ -20,7 +20,11 @@ export const supabase = supabaseInstance || createClient<Database>(supabaseUrl, 
     storageKey: 'meta-salon-auth',
     autoRefreshToken: true,
     detectSessionInUrl: true
-  }
+  },
+  // Use local Edge Functions in development
+  ...(import.meta.env.DEV ? {
+    edgeFunctionUrl: 'http://localhost:54321/functions/v1'
+  } : {})
 });
 
 // Get or create the admin client for operations that need elevated privileges

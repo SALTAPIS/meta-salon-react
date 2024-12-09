@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   VStack,
@@ -26,7 +26,7 @@ import {
 import { useVoting } from '../../hooks/useVoting';
 import { useTokens } from '../../hooks/token/useTokens';
 import { VoteService } from '../../services/VoteService';
-import type { VotePack } from '../../types/database.types';
+import type { VotePack, Vote } from '../../types/database.types';
 
 interface VotePanelProps {
   artworkId: string;
@@ -37,6 +37,10 @@ interface ConsumptionStats {
   consumedVotes: number;
   unconsumedVotes: number;
   vaultValue: number;
+}
+
+interface VoteError extends Error {
+  details?: Record<string, unknown>;
 }
 
 export function VotePanel({ artworkId }: VotePanelProps) {
@@ -87,6 +91,14 @@ export function VotePanel({ artworkId }: VotePanelProps) {
         isClosable: true,
       });
     } catch (err) {
+      console.error('Vote casting error:', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Unknown error',
+        artwork_id: artworkId,
+        pack_id: selectedPackId,
+        vote_amount: voteAmount,
+        details: err instanceof Error ? (err as VoteError).details : undefined
+      });
       toast({
         title: 'Failed to cast vote',
         description: err instanceof Error ? err.message : 'Unknown error',
@@ -164,7 +176,7 @@ export function VotePanel({ artworkId }: VotePanelProps) {
           <Select
             placeholder="Select vote pack"
             value={selectedPackId}
-            onChange={(e) => setSelectedPackId(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedPackId(e.target.value)}
           >
             {activePacks.map((pack: VotePack) => (
               <option key={pack.id} value={pack.id}>
@@ -178,7 +190,7 @@ export function VotePanel({ artworkId }: VotePanelProps) {
             min={1}
             max={100}
             value={voteAmount}
-            onChange={(_, valueNumber) => setVoteAmount(valueNumber)}
+            onChange={(_: string, valueNumber: number) => setVoteAmount(valueNumber)}
           >
             <NumberInputField />
             <NumberInputStepper>
@@ -211,7 +223,7 @@ export function VotePanel({ artworkId }: VotePanelProps) {
           <Box>
             <Text fontWeight="bold" mb={2}>Recent Votes</Text>
             <VStack spacing={2} align="stretch">
-              {votes.slice(0, 5).map((vote) => (
+              {votes.slice(0, 5).map((vote: Vote) => (
                 <HStack key={vote.id} justify="space-between" p={2} bg="gray.50" borderRadius="md">
                   <Text fontSize="sm">
                     {vote.user_id === userVotes[0]?.user_id ? 'You' : 'Someone'} voted
