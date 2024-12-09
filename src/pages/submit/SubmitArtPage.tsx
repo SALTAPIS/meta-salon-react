@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState, type ChangeEvent, type FormEvent } from 'react';
 import {
   Box,
   Button,
@@ -19,11 +19,6 @@ import {
   HStack,
   useColorModeValue,
   Select,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  NumberIncrementStepper,
-  NumberDecrementStepper,
 } from '@chakra-ui/react';
 import { useAuth } from '../../hooks/useAuth';
 import { ArtworkService } from '../../services/ArtworkService';
@@ -32,24 +27,24 @@ import { useChallenges } from '../../hooks/useChallenges';
 
 export default function SubmitArtPage() {
   const { user } = useAuth();
-  const { challenges, isLoading: isLoadingChallenges } = useChallenges();
+  const { challenges } = useChallenges();
   const navigate = useNavigate();
   const toast = useToast();
   
-  const [title, setTitle] = React.useState('');
-  const [description, setDescription] = React.useState('');
-  const [imageFile, setImageFile] = React.useState<File | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [preview, setPreview] = React.useState<string | null>(null);
-  const [selectedChallenge, setSelectedChallenge] = React.useState<string>('');
-  const [step, setStep] = React.useState<'draft' | 'submit'>('draft');
-  const [draftId, setDraftId] = React.useState<string | null>(null);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [selectedChallenge, setSelectedChallenge] = useState<string>('');
+  const [step, setStep] = useState<'draft' | 'submit'>('draft');
+  const [draftId, setDraftId] = useState<string | null>(null);
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setImageFile(file);
@@ -61,7 +56,7 @@ export default function SubmitArtPage() {
     }
   };
 
-  const handleCreateDraft = async (e: React.FormEvent) => {
+  const handleCreateDraft = async (e: FormEvent) => {
     e.preventDefault();
     if (!user || !imageFile) return;
 
@@ -167,7 +162,7 @@ export default function SubmitArtPage() {
                     <FormLabel>Title</FormLabel>
                     <Input
                       value={title}
-                      onChange={(e) => setTitle(e.target.value)}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
                       placeholder="Enter artwork title"
                     />
                   </FormControl>
@@ -176,7 +171,7 @@ export default function SubmitArtPage() {
                     <FormLabel>Description</FormLabel>
                     <Textarea
                       value={description}
-                      onChange={(e) => setDescription(e.target.value)}
+                      onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
                       placeholder="Describe your artwork"
                       rows={4}
                     />
@@ -214,7 +209,7 @@ export default function SubmitArtPage() {
                     <Select
                       placeholder="Choose a challenge"
                       value={selectedChallenge}
-                      onChange={(e) => setSelectedChallenge(e.target.value)}
+                      onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedChallenge(e.target.value)}
                     >
                       {challenges?.map((challenge) => (
                         <option key={challenge.id} value={challenge.id}>

@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 import App from './App';
 import SignUpPage from './pages/auth/SignUpPage';
 import AuthCallback from './pages/auth/AuthCallback';
@@ -14,7 +14,7 @@ import { Layout } from './components/layout/Layout';
 import GamePage from './pages/game/GamePage';
 import ClassementPage from './pages/classement/ClassementPage';
 
-export const router = createBrowserRouter([
+const routes: RouteObject[] = [
   {
     path: '/',
     element: <App />,
@@ -77,4 +77,6 @@ export const router = createBrowserRouter([
       },
     ],
   },
-]); 
+];
+
+export const router = createBrowserRouter(routes); 
