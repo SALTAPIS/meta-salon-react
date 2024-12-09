@@ -37,7 +37,8 @@ serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     console.log('Supabase configuration:', {
       url: supabaseUrl ? '✓ Set' : '✗ Missing',
-      key: supabaseKey ? '✓ Set' : '✗ Missing'
+      key: supabaseKey ? '✓ Set' : '✗ Missing',
+      timestamp: new Date().toISOString()
     });
 
     if (!supabaseUrl || !supabaseKey) {
@@ -53,7 +54,11 @@ serve(async (req: Request) => {
 
     // Get auth header
     const authHeader = req.headers.get('Authorization');
-    console.log('Auth header:', authHeader ? authHeader.substring(0, 20) + '...' : 'missing');
+    console.log('Auth header:', {
+      present: !!authHeader,
+      prefix: authHeader?.substring(0, 7),
+      length: authHeader?.length
+    });
     
     if (!authHeader) {
       return new Response(
@@ -77,7 +82,8 @@ serve(async (req: Request) => {
       console.error('Auth error:', {
         message: authError.message,
         status: authError.status,
-        name: authError.name
+        name: authError.name,
+        timestamp: new Date().toISOString()
       });
       return new Response(
         JSON.stringify({ error: 'Invalid auth token', details: authError }),
@@ -107,7 +113,8 @@ serve(async (req: Request) => {
 
     console.log('Authenticated user:', {
       id: user.id,
-      email: user.email
+      email: user.email,
+      timestamp: new Date().toISOString()
     });
 
     // Parse and validate request body
@@ -117,18 +124,27 @@ serve(async (req: Request) => {
       console.log('Raw request body:', rawBody);
       body = JSON.parse(rawBody);
       
-      console.log('Parsed request body:', body);
+      console.log('Parsed request body:', {
+        ...body,
+        timestamp: new Date().toISOString()
+      });
+
       if (!body.artwork_id || !body.pack_id || typeof body.value !== 'number') {
         console.error('Validation failed:', {
           has_artwork_id: !!body.artwork_id,
           has_pack_id: !!body.pack_id,
           value_is_number: typeof body.value === 'number',
-          value: body.value
+          value: body.value,
+          timestamp: new Date().toISOString()
         });
         throw new Error('Missing required fields');
       }
     } catch (error) {
-      console.error('Request body parsing error:', error);
+      console.error('Request body parsing error:', {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
       return new Response(
         JSON.stringify({ 
           error: 'Invalid request body', 
@@ -153,7 +169,11 @@ serve(async (req: Request) => {
       .single();
 
     if (artworkError) {
-      console.error('Error fetching artwork:', artworkError);
+      console.error('Error fetching artwork:', {
+        error: artworkError,
+        artwork_id: body.artwork_id,
+        timestamp: new Date().toISOString()
+      });
       return new Response(
         JSON.stringify({ error: 'Failed to fetch artwork', details: artworkError }),
         { 
@@ -167,7 +187,10 @@ serve(async (req: Request) => {
     }
 
     if (!artwork) {
-      console.error('Artwork not found:', body.artwork_id);
+      console.error('Artwork not found:', {
+        artwork_id: body.artwork_id,
+        timestamp: new Date().toISOString()
+      });
       return new Response(
         JSON.stringify({ error: 'Artwork not found' }),
         { 
@@ -180,7 +203,10 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log('Found artwork:', artwork);
+    console.log('Found artwork:', {
+      ...artwork,
+      timestamp: new Date().toISOString()
+    });
 
     // Check vote pack ownership
     const { data: votePack, error: votePackError } = await supabaseClient
@@ -191,7 +217,12 @@ serve(async (req: Request) => {
       .single();
 
     if (votePackError) {
-      console.error('Error fetching vote pack:', votePackError);
+      console.error('Error fetching vote pack:', {
+        error: votePackError,
+        pack_id: body.pack_id,
+        user_id: user.id,
+        timestamp: new Date().toISOString()
+      });
       return new Response(
         JSON.stringify({ error: 'Failed to fetch vote pack', details: votePackError }),
         { 
@@ -207,7 +238,8 @@ serve(async (req: Request) => {
     if (!votePack) {
       console.error('Vote pack not found or not owned by user:', {
         pack_id: body.pack_id,
-        user_id: user.id
+        user_id: user.id,
+        timestamp: new Date().toISOString()
       });
       return new Response(
         JSON.stringify({ error: 'Vote pack not found or not owned by user' }),
@@ -221,13 +253,17 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log('Found vote pack:', votePack);
+    console.log('Found vote pack:', {
+      ...votePack,
+      timestamp: new Date().toISOString()
+    });
 
     // Call the cast_vote function
     console.log('Calling cast_vote with params:', {
       p_artwork_id: body.artwork_id,
       p_pack_id: body.pack_id,
-      p_value: body.value
+      p_value: body.value,
+      timestamp: new Date().toISOString()
     });
 
     const { data: voteId, error: voteError } = await supabaseClient.rpc('cast_vote', {
@@ -241,7 +277,8 @@ serve(async (req: Request) => {
         message: voteError.message,
         details: voteError.details,
         hint: voteError.hint,
-        code: voteError.code
+        code: voteError.code,
+        timestamp: new Date().toISOString()
       });
       return new Response(
         JSON.stringify({ 
@@ -261,7 +298,9 @@ serve(async (req: Request) => {
     }
 
     if (!voteId) {
-      console.error('No vote ID returned');
+      console.error('No vote ID returned:', {
+        timestamp: new Date().toISOString()
+      });
       return new Response(
         JSON.stringify({ error: 'Failed to create vote record' }),
         { 
@@ -274,7 +313,12 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log('Vote cast successfully:', voteId);
+    console.log('Vote cast successfully:', {
+      vote_id: voteId,
+      artwork_id: body.artwork_id,
+      pack_id: body.pack_id,
+      timestamp: new Date().toISOString()
+    });
 
     return new Response(
       JSON.stringify({ vote_id: voteId }),
@@ -290,7 +334,8 @@ serve(async (req: Request) => {
     console.error('Unhandled error:', {
       message: error.message,
       stack: error.stack,
-      cause: error.cause
+      cause: error.cause,
+      timestamp: new Date().toISOString()
     });
     return new Response(
       JSON.stringify({ 
