@@ -10,6 +10,14 @@ import {
   Button,
   useToast,
   Heading,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure,
 } from '@chakra-ui/react';
 import { useAuth } from '../../hooks/useAuth';
 import { TokenService } from '../../services/token/tokenService';
@@ -25,11 +33,54 @@ const AVAILABLE_PACKS = [
   { type: 'elite', amount: 100, cost: 1000, description: 'Elite Pack - 100 votes (10 SLN per vote)' },
 ] as const;
 
+interface PurchaseModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  pack: typeof AVAILABLE_PACKS[number];
+  onConfirm: () => void;
+  isLoading: boolean;
+}
+
+function PurchaseModal({ isOpen, onClose, pack, onConfirm, isLoading }: PurchaseModalProps) {
+  return (
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader>Confirm Purchase</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          <VStack align="stretch" spacing={4}>
+            <Box>
+              <Text fontWeight="bold">{pack.description}</Text>
+              <Text color="gray.600">Cost: {pack.cost} tokens</Text>
+            </Box>
+            <Text>Are you sure you want to purchase this vote pack?</Text>
+          </VStack>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="ghost" mr={3} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            colorScheme="blue"
+            onClick={onConfirm}
+            isLoading={isLoading}
+          >
+            Confirm Purchase
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+}
+
 export function VotePacks() {
   const { user } = useAuth();
   const [packs, setPacks] = React.useState<VotePack[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isPurchasing, setIsPurchasing] = React.useState(false);
+  const [selectedPack, setSelectedPack] = React.useState<typeof AVAILABLE_PACKS[number] | null>(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const tokenService = TokenService.getInstance();
   const toast = useToast();
 
@@ -62,14 +113,19 @@ export function VotePacks() {
     loadPacks();
   }, [user, toast]);
 
-  const handlePurchase = async (packType: typeof AVAILABLE_PACKS[number]['type'], amount: number, cost: number) => {
-    if (!user) return;
+  const handlePurchaseClick = (pack: typeof AVAILABLE_PACKS[number]) => {
+    setSelectedPack(pack);
+    onOpen();
+  };
+
+  const handlePurchaseConfirm = async () => {
+    if (!user || !selectedPack) return;
     
     try {
       setIsPurchasing(true);
-      console.log('Purchasing pack:', { packType, amount, cost });
+      console.log('Purchasing pack:', selectedPack);
       
-      await tokenService.purchaseVotePack(user.id, packType, cost);
+      await tokenService.purchaseVotePack(user.id, selectedPack.type, selectedPack.cost);
       
       // Refresh packs after purchase
       const userPacks = await tokenService.getUserVotePacks(user.id);
@@ -77,11 +133,12 @@ export function VotePacks() {
       
       toast({
         title: 'Purchase successful',
-        description: `You've purchased a ${packType} pack with ${amount} votes`,
+        description: `You've purchased a ${selectedPack.type} pack with ${selectedPack.amount} votes`,
         status: 'success',
         duration: 5000,
         isClosable: true,
       });
+      onClose();
     } catch (error) {
       console.error('Error purchasing pack:', error);
       toast({
@@ -136,8 +193,8 @@ export function VotePacks() {
                 <Button
                   colorScheme="blue"
                   size="sm"
-                  isLoading={isPurchasing}
-                  onClick={() => handlePurchase(pack.type, pack.amount, pack.cost)}
+                  isLoading={isPurchasing && selectedPack?.type === pack.type}
+                  onClick={() => handlePurchaseClick(pack)}
                 >
                   Purchase
                 </Button>
@@ -184,6 +241,17 @@ export function VotePacks() {
             ))}
           </VStack>
         </Box>
+      )}
+
+      {/* Purchase Confirmation Modal */}
+      {selectedPack && (
+        <PurchaseModal
+          isOpen={isOpen}
+          onClose={onClose}
+          pack={selectedPack}
+          onConfirm={handlePurchaseConfirm}
+          isLoading={isPurchasing}
+        />
       )}
     </VStack>
   );
