@@ -1,74 +1,102 @@
-import { supabase } from '../../lib/supabase';
-import type { VotePack } from '../../types/database.types';
+import { supabase } from '../../lib/supabaseClient';
+import { handleError } from '../../utils/errorHandling';
+import { VOTE_PACK_DEFINITIONS, calculatePackPrice } from '../../config/votePackConfig';
+import type { VotePack, Transaction } from '../../types/database.types';
 
 export class TokenService {
-  private static instance: TokenService;
-
-  private constructor() {}
-
-  public static getInstance(): TokenService {
-    if (!TokenService.instance) {
-      TokenService.instance = new TokenService();
-    }
-    return TokenService.instance;
-  }
-
+  /**
+   * Get user's token balance
+   */
   static async getBalance(userId: string): Promise<number> {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('balance')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('balance')
+        .eq('id', userId)
+        .single();
 
-    if (error) throw error;
-    return data?.balance || 0;
+      if (error) throw error;
+      return data?.balance || 0;
+    } catch (error) {
+      throw handleError(error, 'Failed to get balance');
+    }
   }
 
+  /**
+   * Get user's vote packs
+   */
   static async getVotePacks(userId: string): Promise<VotePack[]> {
-    const { data, error } = await supabase
-      .from('vote_packs')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('vote_packs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return data || [];
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      throw handleError(error, 'Failed to get vote packs');
+    }
   }
 
-  static async purchaseVotePack(userId: string, votes: number): Promise<VotePack> {
-    const { data, error } = await supabase
-      .rpc('purchase_vote_pack', {
-        p_user_id: userId,
-        p_votes: votes
+  /**
+   * Purchase a vote pack
+   */
+  static async purchaseVotePack(packType: string): Promise<void> {
+    try {
+      const packDef = VOTE_PACK_DEFINITIONS.find(p => p.type === packType);
+      if (!packDef) {
+        throw new Error('Invalid pack type');
+      }
+
+      const price = calculatePackPrice(packDef.votes, packDef.votePower);
+
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) {
+        throw new Error('Not authenticated');
+      }
+
+      const { error } = await supabase.rpc('purchase_vote_pack', {
+        p_type: packType,
+        p_amount: price
       });
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+    } catch (error) {
+      throw handleError(error, 'Failed to purchase vote pack');
+    }
   }
 
-  static async getActiveVotePack(userId: string): Promise<VotePack | null> {
-    const { data, error } = await supabase
-      .from('vote_packs')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .single();
+  /**
+   * Get user's transaction history
+   */
+  static async getUserTransactions(userId: string, limit?: number): Promise<Transaction[]> {
+    try {
+      let query = supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
+      if (limit) {
+        query = query.limit(limit);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      throw handleError(error, 'Failed to get transaction history');
+    }
   }
 
-  static async getUserTransactions(userId: string, limit = 10) {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) throw error;
-    return data || [];
+  /**
+   * Get transaction history (alias for getUserTransactions)
+   * @deprecated Use getUserTransactions instead
+   */
+  static async getTransactionHistory(userId: string): Promise<Transaction[]> {
+    return this.getUserTransactions(userId);
   }
 } 

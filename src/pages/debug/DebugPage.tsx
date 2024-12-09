@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { supabase } from '../../lib/supabase';
-import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { supabase } from '../../lib/supabaseClient';
+import type { AuthChangeEvent, Session, User as SupabaseUser } from '@supabase/supabase-js';
 import {
   Box,
   Container,
@@ -123,7 +123,7 @@ export default function DebugPage() {
 
     // Subscribe to auth changes
     console.log('Setting up auth state listener...');
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       console.log('Auth state changed:', { event, hasSession: !!session, userId: session?.user?.id });
       if (mounted) {
         setDebugInfo((prev: DebugInfo) => ({

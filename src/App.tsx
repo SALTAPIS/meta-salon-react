@@ -1,9 +1,10 @@
 import { ChakraProvider, ColorModeScript } from '@chakra-ui/react';
-import { RouterProvider } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { router } from './routes';
 import optimizedTheme from './theme/optimized';
-import { QueryProvider } from './components/providers/QueryProvider';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient();
 
 export default function App() {
   console.log('[App] Rendering App component');
@@ -11,11 +12,11 @@ export default function App() {
     <>
       <ColorModeScript initialColorMode={optimizedTheme.config.initialColorMode} />
       <ChakraProvider theme={optimizedTheme}>
-        <QueryProvider>
+        <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <RouterProvider router={router} />
+            <Outlet />
           </AuthProvider>
-        </QueryProvider>
+        </QueryClientProvider>
       </ChakraProvider>
     </>
   );

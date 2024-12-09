@@ -26,29 +26,21 @@ import {
   StatHelpText,
   Spinner,
   Center,
+  Badge,
 } from '@chakra-ui/react';
 import { useTokens } from '../../hooks/token/useTokens';
+import { TokenService } from '../../services/token/tokenService';
 import type { VotePack } from '../../types/database.types';
-
-interface AvailablePack {
-  votes: number;
-  price: number;
-}
-
-const AVAILABLE_PACKS: AvailablePack[] = [
-  { votes: 10, price: 99 },
-  { votes: 50, price: 450 },
-  { votes: 100, price: 850 },
-];
+import { VOTE_PACK_DEFINITIONS, calculatePackPrice } from '../../config/votePackConfig';
 
 export function VotePacks() {
   const toast = useToast();
   const { votePacks, isLoading, error, refreshBalance } = useTokens();
-  const [selectedPack, setSelectedPack] = useState<AvailablePack | null>(null);
+  const [selectedPack, setSelectedPack] = useState<typeof VOTE_PACK_DEFINITIONS[0] | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const handlePackSelect = (pack: AvailablePack) => {
+  const handlePackSelect = (pack: typeof VOTE_PACK_DEFINITIONS[0]) => {
     setSelectedPack(pack);
     onOpen();
   };
@@ -58,10 +50,11 @@ export function VotePacks() {
 
     try {
       setIsSubmitting(true);
+      await TokenService.purchaseVotePack(selectedPack.type);
       await refreshBalance();
       toast({
         title: 'Vote pack purchased',
-        description: `You purchased ${selectedPack.votes} votes`,
+        description: `You purchased a ${selectedPack.type} pack with ${selectedPack.votes} votes`,
         status: 'success',
         duration: 5000,
         isClosable: true,
@@ -98,7 +91,7 @@ export function VotePacks() {
   }
 
   const activePacks = votePacks?.filter((pack: VotePack) => 
-    pack.votes > 0 && pack.status === 'active'
+    pack.votes_remaining > 0 && (!pack.expires_at || new Date(pack.expires_at) > new Date())
   ) || [];
 
   return (
@@ -113,9 +106,19 @@ export function VotePacks() {
                 <Card key={pack.id}>
                   <CardBody>
                     <Stat>
-                      <StatLabel>Vote Pack</StatLabel>
-                      <StatNumber>{pack.votes}</StatNumber>
-                      <StatHelpText>Available votes</StatHelpText>
+                      <StatLabel>
+                        {pack.type.charAt(0).toUpperCase() + pack.type.slice(1)} Pack
+                        <Badge ml={2} colorScheme={pack.vote_power > 1 ? 'purple' : 'blue'}>
+                          {pack.vote_power}x Power
+                        </Badge>
+                      </StatLabel>
+                      <StatNumber>{pack.votes_remaining}</StatNumber>
+                      <StatHelpText>
+                        {pack.expires_at 
+                          ? `Expires ${new Date(pack.expires_at).toLocaleDateString()}`
+                          : 'No expiration'
+                        }
+                      </StatHelpText>
                     </Stat>
                   </CardBody>
                 </Card>
@@ -133,13 +136,21 @@ export function VotePacks() {
         <Box>
           <Text fontSize="xl" fontWeight="bold" mb={4}>Purchase Vote Packs</Text>
           <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
-            {AVAILABLE_PACKS.map((pack) => (
-              <Card key={pack.votes} cursor="pointer" onClick={() => handlePackSelect(pack)}>
+            {VOTE_PACK_DEFINITIONS.map((pack) => (
+              <Card key={pack.type} cursor="pointer" onClick={() => handlePackSelect(pack)}>
                 <CardBody>
                   <VStack spacing={2}>
                     <Text fontSize="2xl" fontWeight="bold">{pack.votes}</Text>
                     <Text>votes</Text>
-                    <Text fontWeight="semibold">{pack.price} SLN</Text>
+                    <Badge colorScheme={pack.votePower > 1 ? 'purple' : 'blue'}>
+                      {pack.votePower}x Vote Power
+                    </Badge>
+                    <Text fontSize="sm" color="gray.600" textAlign="center">
+                      {pack.description}
+                    </Text>
+                    <Text fontWeight="semibold">
+                      {calculatePackPrice(pack.votes, pack.votePower)} SLN
+                    </Text>
                     <Button
                       colorScheme="blue"
                       size="sm"
@@ -169,12 +180,25 @@ export function VotePacks() {
             {selectedPack && (
               <VStack spacing={4} align="stretch">
                 <Text>
-                  You are about to purchase a vote pack with {selectedPack.votes} votes
-                  for {selectedPack.price} SLN.
+                  You are about to purchase a {selectedPack.type} pack with:
                 </Text>
+                <HStack spacing={4} justify="center">
+                  <Stat>
+                    <StatLabel>Votes</StatLabel>
+                    <StatNumber>{selectedPack.votes}</StatNumber>
+                  </Stat>
+                  <Stat>
+                    <StatLabel>Vote Power</StatLabel>
+                    <StatNumber>{selectedPack.votePower}x</StatNumber>
+                  </Stat>
+                  <Stat>
+                    <StatLabel>Price</StatLabel>
+                    <StatNumber>{calculatePackPrice(selectedPack.votes, selectedPack.votePower)} SLN</StatNumber>
+                  </Stat>
+                </HStack>
                 <Alert status="info">
                   <AlertIcon />
-                  Votes can be used to support artworks in challenges
+                  {selectedPack.description}
                 </Alert>
               </VStack>
             )}

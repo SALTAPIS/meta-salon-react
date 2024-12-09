@@ -1,7 +1,7 @@
 import { createContext, useEffect, useState, useContext } from 'react';
 import { AuthService } from '../../services/auth/authService';
 import type { User, AuthContextType, SignInResponse, SignUpResponse } from '../../types/user';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabaseClient';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

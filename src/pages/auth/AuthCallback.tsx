@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Center, Spinner, VStack, Text, useToast } from '@chakra-ui/react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabaseClient';
 
 export default function AuthCallback() {
   const navigate = useNavigate();

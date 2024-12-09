@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3006,
-    strictPort: true,
+    strictPort: false,
   },
   build: {
     minify: 'esbuild',

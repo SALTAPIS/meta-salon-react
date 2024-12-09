@@ -1,184 +1,95 @@
-import { useState, useEffect } from 'react';
-import type { ChangeEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import {
+  Box,
+  Button,
   Container,
-  Heading,
-  VStack,
   FormControl,
   FormLabel,
   Input,
   Textarea,
-  Button,
-  Box,
-  Text,
+  VStack,
   useToast,
-  Select,
-  Image,
-  HStack,
-  useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  ModalCloseButton,
   Alert,
   AlertIcon,
-  FormHelperText,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
+  Text,
+  Heading,
   SimpleGrid,
-  Card,
-  CardBody,
+  Image,
   Badge,
+  HStack,
+  useColorModeValue,
+  Select,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
 } from '@chakra-ui/react';
 import { useAuth } from '../../hooks/useAuth';
 import { ArtworkService } from '../../services/ArtworkService';
-import type { Album, Challenge, Artwork } from '../../types/database.types';
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
+import { useNavigate } from 'react-router-dom';
+import { useChallenges } from '../../hooks/useChallenges';
 
 export default function SubmitArtPage() {
   const { user } = useAuth();
+  const { challenges, isLoading: isLoadingChallenges } = useChallenges();
   const navigate = useNavigate();
   const toast = useToast();
-  const { isOpen, onOpen, onClose } = useDisclosure();
   
-  const [isLoading, setIsLoading] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [albums, setAlbums] = useState<Album[]>([]);
-  const [selectedAlbumId, setSelectedAlbumId] = useState<string>('');
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [selectedChallengeId, setSelectedChallengeId] = useState<string>('');
-  const [submissionFee, setSubmissionFee] = useState<number>(99);
-  const [draftArtworks, setDraftArtworks] = useState<Artwork[]>([]);
-  const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
+  const [title, setTitle] = React.useState('');
+  const [description, setDescription] = React.useState('');
+  const [imageFile, setImageFile] = React.useState<File | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [preview, setPreview] = React.useState<string | null>(null);
+  const [selectedChallenge, setSelectedChallenge] = React.useState<string>('');
+  const [step, setStep] = React.useState<'draft' | 'submit'>('draft');
+  const [draftId, setDraftId] = React.useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
-
-    const loadData = async () => {
-      try {
-        const [userAlbums, activeChalls, drafts] = await Promise.all([
-          ArtworkService.getUserAlbums(user.id),
-          ArtworkService.getActiveChallenges(),
-          ArtworkService.getDraftArtworks(user.id)
-        ]);
-
-        console.log('Loaded albums:', userAlbums);
-        setAlbums(userAlbums);
-        setChallenges(activeChalls);
-        setDraftArtworks(drafts);
-        
-        const defaultAlbum = userAlbums.find(album => album.is_default);
-        console.log('Default album:', defaultAlbum);
-        if (defaultAlbum) {
-          setSelectedAlbumId(defaultAlbum.id);
-        }
-
-        const openChallenge = activeChalls.find((c: Challenge) => c.type === 'open');
-        if (openChallenge) {
-          setSelectedChallengeId(openChallenge.id);
-          setSubmissionFee(openChallenge.submission_fee);
-        }
-      } catch (error) {
-        console.error('Error loading data:', error);
-        toast({
-          title: 'Error loading data',
-          description: error instanceof Error ? error.message : 'Unknown error',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    };
-
-    loadData();
-  }, [user, navigate, toast]);
-
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    if (file.size > MAX_FILE_SIZE) {
-      toast({
-        title: 'File too large',
-        description: 'Maximum file size is 10MB',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Only JPG, PNG, and GIF files are allowed',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    setSelectedFile(file);
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
   };
 
-  const handleSubmitToChallenge = async () => {
-    if (!user || !selectedArtwork || !selectedChallengeId) {
-      toast({
-        title: 'Missing required fields',
-        description: 'Please select an artwork and challenge',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
+  const handleCreateDraft = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !imageFile) return;
 
     try {
       setIsLoading(true);
-      console.log('Submitting to challenge...');
-      await ArtworkService.submitToChallenge(selectedArtwork.id, selectedChallengeId, submissionFee);
-      console.log('Challenge submission complete');
+      setError(null);
+
+      const artworkId = await ArtworkService.createDraftArtwork(
+        title,
+        description,
+        imageFile
+      );
+
+      setDraftId(artworkId);
+      setStep('submit');
 
       toast({
-        title: 'Artwork submitted successfully',
-        description: 'Your artwork has been submitted to the challenge',
+        title: 'Draft created successfully',
+        description: 'Now you can submit it to a challenge',
         status: 'success',
         duration: 5000,
         isClosable: true,
       });
-
-      // Refresh draft artworks
-      const drafts = await ArtworkService.getDraftArtworks(user.id);
-      setDraftArtworks(drafts);
-
-      // Clear selection
-      setSelectedArtwork(null);
-      onClose();
-
-    } catch (error) {
-      console.error('Error submitting artwork:', error);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create draft');
       toast({
-        title: 'Error submitting artwork',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        title: 'Failed to create draft',
+        description: err instanceof Error ? err.message : 'Unknown error',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -188,96 +99,33 @@ export default function SubmitArtPage() {
     }
   };
 
-  const handleTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setTitle(event.target.value);
-  };
-
-  const handleDescriptionChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    setDescription(event.target.value);
-  };
-
-  const handleAlbumChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setSelectedAlbumId(event.target.value);
-  };
-
-  const handleChallengeChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setSelectedChallengeId(event.target.value);
-    const challenge = challenges.find((c: Challenge) => c.id === event.target.value);
-    if (challenge) {
-      setSubmissionFee(challenge.submission_fee);
-    }
-  };
-
-  const handleArtworkSelect = (artwork: Artwork) => {
-    setSelectedArtwork(artwork);
-    onOpen();
-  };
-
-  const handleUpload = async () => {
-    if (!user) {
-      toast({
-        title: 'Authentication required',
-        description: 'Please log in to upload artwork',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    if (!selectedFile || !title || !selectedAlbumId) {
-      toast({
-        title: 'Missing required fields',
-        description: 'Please fill in all required fields',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
+  const handleSubmitToChallenge = async () => {
+    if (!draftId || !selectedChallenge) return;
 
     try {
       setIsLoading(true);
-      console.log('Starting artwork upload...');
+      setError(null);
 
-      console.log('Uploading artwork file...');
-      const { url: imageUrl, metadata } = await ArtworkService.uploadArtwork(user.id, selectedFile);
-      console.log('Artwork uploaded successfully:', { imageUrl, metadata });
-
-      console.log('Creating artwork record...');
-      const artwork = await ArtworkService.createArtwork(
-        user.id,
-        selectedAlbumId,
-        title,
-        description,
-        imageUrl,
-        metadata
+      await ArtworkService.submitArtworkToChallenge(
+        draftId,
+        selectedChallenge,
+        10 // Fixed submission fee for now
       );
-      console.log('Artwork record created:', artwork);
 
       toast({
-        title: 'Artwork uploaded successfully',
-        description: 'Your artwork has been saved as a draft',
+        title: 'Artwork submitted successfully',
+        description: 'Your artwork has been submitted to the challenge',
         status: 'success',
         duration: 5000,
         isClosable: true,
       });
 
-      // Refresh draft artworks
-      const drafts = await ArtworkService.getDraftArtworks(user.id);
-      setDraftArtworks(drafts);
-
-      // Clear form
-      setTitle('');
-      setDescription('');
-      setSelectedFile(null);
-      setPreviewUrl(null);
-
-    } catch (error) {
-      console.error('Error uploading artwork:', error);
+      navigate('/artworks');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit to challenge');
       toast({
-        title: 'Error uploading artwork',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        title: 'Failed to submit to challenge',
+        description: err instanceof Error ? err.message : 'Unknown error',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -290,190 +138,142 @@ export default function SubmitArtPage() {
   return (
     <Container maxW="container.xl" py={8}>
       <VStack spacing={8} align="stretch">
-        <Heading>Submit Artwork</Heading>
+        <Box>
+          <Heading size="xl" mb={2}>Submit Artwork</Heading>
+          <Text color="gray.600">Share your artwork with the community</Text>
+        </Box>
 
-        <Tabs>
-          <TabList>
-            <Tab>Upload New Artwork</Tab>
-            <Tab>Submit to Challenge</Tab>
-          </TabList>
+        {error && (
+          <Alert status="error">
+            <AlertIcon />
+            {error}
+          </Alert>
+        )}
 
-          <TabPanels>
-            <TabPanel>
-              <VStack spacing={6} align="stretch">
-                <FormControl isRequired>
-                  <FormLabel>Title</FormLabel>
-                  <Input
-                    value={title}
-                    onChange={handleTitleChange}
-                    placeholder="Enter artwork title"
-                  />
-                </FormControl>
-
-                <FormControl>
-                  <FormLabel>Description</FormLabel>
-                  <Textarea
-                    value={description}
-                    onChange={handleDescriptionChange}
-                    placeholder="Enter artwork description"
-                    rows={4}
-                  />
-                </FormControl>
-
-                <FormControl isRequired>
-                  <FormLabel>Album</FormLabel>
-                  <Select
-                    value={selectedAlbumId}
-                    onChange={handleAlbumChange}
-                    placeholder="Select album"
-                  >
-                    {albums.map((album: Album) => (
-                      <option key={album.id} value={album.id}>
-                        {album.title || 'Untitled Album'}
-                      </option>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <FormControl isRequired>
-                  <FormLabel>Artwork Image</FormLabel>
-                  <Input
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif"
-                    onChange={handleFileChange}
-                  />
-                  <FormHelperText>
-                    Maximum file size: 10MB. Supported formats: JPG, PNG, GIF
-                  </FormHelperText>
-                </FormControl>
-
-                {previewUrl && (
-                  <Box borderWidth={1} borderRadius="lg" p={4}>
-                    <Image
-                      src={previewUrl}
-                      alt="Preview"
-                      maxH="400px"
-                      objectFit="contain"
+        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8}>
+          <Box
+            as="form"
+            onSubmit={handleCreateDraft}
+            p={6}
+            borderWidth={1}
+            borderRadius="lg"
+            bg={bgColor}
+            borderColor={borderColor}
+          >
+            <VStack spacing={4}>
+              {step === 'draft' ? (
+                <>
+                  <FormControl isRequired>
+                    <FormLabel>Title</FormLabel>
+                    <Input
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Enter artwork title"
                     />
-                  </Box>
-                )}
+                  </FormControl>
 
-                <Button
-                  colorScheme="blue"
-                  size="lg"
-                  isLoading={isLoading}
-                  onClick={handleUpload}
-                  isDisabled={!selectedFile || !title || !selectedAlbumId}
-                >
-                  Upload Artwork
-                </Button>
-              </VStack>
-            </TabPanel>
+                  <FormControl isRequired>
+                    <FormLabel>Description</FormLabel>
+                    <Textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Describe your artwork"
+                      rows={4}
+                    />
+                  </FormControl>
 
-            <TabPanel>
-              <VStack spacing={6} align="stretch">
-                <Heading size="md">Draft Artworks</Heading>
-                
-                <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-                  {draftArtworks.map((artwork: Artwork) => (
-                    <Card key={artwork.id} variant="outline">
-                      <CardBody>
-                        <Image
-                          src={artwork.image_url}
-                          alt={artwork.title}
-                          borderRadius="lg"
-                          mb={4}
-                        />
-                        <VStack align="stretch" spacing={2}>
-                          <Heading size="sm">{artwork.title}</Heading>
-                          <Text noOfLines={2}>{artwork.description}</Text>
-                          <Badge colorScheme="yellow">Draft</Badge>
-                          <Button
-                            colorScheme="blue"
-                            onClick={() => handleArtworkSelect(artwork)}
-                          >
-                            Submit to Challenge
-                          </Button>
-                        </VStack>
-                      </CardBody>
-                    </Card>
-                  ))}
-                </SimpleGrid>
-
-                {draftArtworks.length === 0 && (
-                  <Alert status="info">
-                    <AlertIcon />
-                    <Text>
-                      No draft artworks available. Upload a new artwork first.
+                  <FormControl isRequired>
+                    <FormLabel>Image</FormLabel>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      p={1}
+                    />
+                    <Text fontSize="sm" color="gray.500" mt={1}>
+                      Supported formats: JPG, PNG, GIF (max 10MB)
                     </Text>
-                  </Alert>
-                )}
-              </VStack>
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-      </VStack>
+                  </FormControl>
 
-      <Modal isOpen={isOpen} onClose={onClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Submit to Challenge</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <VStack spacing={4} align="stretch">
-              {selectedArtwork && (
-                <Box borderWidth={1} borderRadius="lg" p={4}>
-                  <Image
-                    src={selectedArtwork.image_url}
-                    alt={selectedArtwork.title}
-                    maxH="200px"
-                    objectFit="contain"
-                  />
-                  <Text mt={2} fontWeight="bold">{selectedArtwork.title}</Text>
-                </Box>
+                  <Button
+                    type="submit"
+                    colorScheme="blue"
+                    isLoading={isLoading}
+                    loadingText="Creating draft..."
+                    width="full"
+                    mt={4}
+                    isDisabled={!title || !description || !imageFile}
+                  >
+                    Create Draft
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <FormControl isRequired>
+                    <FormLabel>Select Challenge</FormLabel>
+                    <Select
+                      placeholder="Choose a challenge"
+                      value={selectedChallenge}
+                      onChange={(e) => setSelectedChallenge(e.target.value)}
+                    >
+                      {challenges?.map((challenge) => (
+                        <option key={challenge.id} value={challenge.id}>
+                          {challenge.title}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <Text fontSize="sm" color="gray.600">
+                    Submission fee: 10 tokens
+                  </Text>
+
+                  <Button
+                    colorScheme="blue"
+                    isLoading={isLoading}
+                    loadingText="Submitting..."
+                    width="full"
+                    mt={4}
+                    onClick={handleSubmitToChallenge}
+                    isDisabled={!selectedChallenge}
+                  >
+                    Submit to Challenge
+                  </Button>
+                </>
               )}
-
-              <FormControl isRequired>
-                <FormLabel>Challenge</FormLabel>
-                <Select
-                  value={selectedChallengeId}
-                  onChange={handleChallengeChange}
-                >
-                  <option value="">Select challenge</option>
-                  {challenges.map((challenge: Challenge) => (
-                    <option key={challenge.id} value={challenge.id}>
-                      {challenge.title} ({challenge.submission_fee} SLN)
-                    </option>
-                  ))}
-                </Select>
-                <FormHelperText>
-                  Submission fee: {submissionFee} SLN
-                </FormHelperText>
-              </FormControl>
-
-              <Alert status="info">
-                <AlertIcon />
-                <Text>
-                  Submitting this artwork will cost {submissionFee} SLN. The artwork will be displayed in the challenge for voting.
-                </Text>
-              </Alert>
             </VStack>
-          </ModalBody>
-          <ModalFooter>
-            <HStack spacing={4}>
-              <Button variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button
-                colorScheme="blue"
-                onClick={handleSubmitToChallenge}
-                isLoading={isLoading}
-                isDisabled={!selectedChallengeId}
-              >
-                Submit to Challenge
-              </Button>
-            </HStack>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </Box>
+
+          {preview && (
+            <Box
+              borderWidth={1}
+              borderRadius="lg"
+              overflow="hidden"
+              bg={bgColor}
+              borderColor={borderColor}
+            >
+              <Image
+                src={preview}
+                alt="Preview"
+                objectFit="cover"
+                width="100%"
+                height="400px"
+              />
+              <Box p={4}>
+                <Heading size="md" mb={2}>{title || 'Untitled'}</Heading>
+                <Text color="gray.600" noOfLines={3}>
+                  {description || 'No description'}
+                </Text>
+                <HStack mt={4}>
+                  <Badge colorScheme="blue">
+                    {step === 'draft' ? 'Draft' : 'Ready to Submit'}
+                  </Badge>
+                </HStack>
+              </Box>
+            </Box>
+          )}
+        </SimpleGrid>
+      </VStack>
     </Container>
   );
 } 

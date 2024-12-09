@@ -97,7 +97,10 @@ export function VotePanel({ artworkId }: VotePanelProps) {
     }
   };
 
-  const activePacks = (votePacks || []).filter((pack: VotePack) => pack.status === 'active');
+  const activePacks = (votePacks || []).filter((pack: VotePack) => 
+    pack.votes_remaining > 0 && (!pack.expires_at || new Date(pack.expires_at) > new Date())
+  );
+
   const consumptionProgress = consumptionStats 
     ? (consumptionStats.consumedVotes / consumptionStats.totalVotes) * 100 
     : 0;
@@ -161,11 +164,12 @@ export function VotePanel({ artworkId }: VotePanelProps) {
           <Select
             placeholder="Select vote pack"
             value={selectedPackId}
-            onChange={(e: { target: { value: string } }) => setSelectedPackId(e.target.value)}
+            onChange={(e) => setSelectedPackId(e.target.value)}
           >
             {activePacks.map((pack: VotePack) => (
               <option key={pack.id} value={pack.id}>
-                Vote Pack ({pack.votes} votes)
+                {pack.type.charAt(0).toUpperCase() + pack.type.slice(1)} Pack ({pack.votes_remaining} votes)
+                {pack.vote_power > 1 && ` - ${pack.vote_power}x Power`}
               </option>
             ))}
           </Select>
@@ -174,7 +178,7 @@ export function VotePanel({ artworkId }: VotePanelProps) {
             min={1}
             max={100}
             value={voteAmount}
-            onChange={(_, valueNumber: number) => setVoteAmount(valueNumber)}
+            onChange={(_, valueNumber) => setVoteAmount(valueNumber)}
           >
             <NumberInputField />
             <NumberInputStepper>

@@ -1,113 +1,139 @@
-import { supabase } from '../lib/supabase';
-import type { Album, Artwork } from '../types/database.types';
-
-interface UploadResult {
-  url: string;
-  metadata: {
-    size: number;
-    format: string;
-  };
-}
-
-interface ArtworkMetadata {
-  size: number;
-  format: string;
-}
+import { supabase } from '../lib/supabaseClient';
+import { handleError } from '../utils/errorHandling';
+import type { Artwork } from '../types/database.types';
 
 export class ArtworkService {
-  static async getUserAlbums(userId: string): Promise<Album[]> {
-    const { data, error } = await supabase
-      .from('albums')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+  /**
+   * Get all artworks
+   */
+  static async getAllArtworks(): Promise<Artwork[]> {
+    try {
+      const { data, error } = await supabase
+        .from('artworks')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return data || [];
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      throw handleError(error, 'Failed to get artworks');
+    }
   }
 
-  static async uploadArtwork(userId: string, file: File): Promise<UploadResult> {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/${Date.now()}.${fileExt}`;
+  /**
+   * Get artwork by ID
+   */
+  static async getArtwork(id: string): Promise<Artwork | null> {
+    try {
+      const { data, error } = await supabase
+        .from('artworks')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-    const { error: uploadError } = await supabase.storage
-      .from('artworks')
-      .upload(fileName, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('artworks')
-      .getPublicUrl(fileName);
-
-    return {
-      url: publicUrl,
-      metadata: {
-        size: file.size,
-        format: file.type
-      }
-    };
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    } catch (error) {
+      throw handleError(error, 'Failed to get artwork');
+    }
   }
 
-  static async createArtwork(
-    userId: string,
-    albumId: string,
+  /**
+   * Step 1: Create artwork in draft state
+   */
+  static async createDraftArtwork(
     title: string,
     description: string,
-    imageUrl: string,
-    metadata: ArtworkMetadata
-  ): Promise<Artwork> {
-    const { data, error } = await supabase
-      .from('artworks')
-      .insert([
-        {
-          user_id: userId,
-          album_id: albumId,
+    imageFile: File
+  ): Promise<string> {
+    try {
+      // Get current user
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) {
+        throw new Error('Not authenticated');
+      }
+
+      // Get user's default album
+      const { data: album, error: albumError } = await supabase
+        .from('albums')
+        .select('id')
+        .eq('user_id', session.data.session.user.id)
+        .eq('is_default', true)
+        .single();
+
+      if (albumError) throw albumError;
+      if (!album) throw new Error('No default album found');
+
+      // Upload image
+      const fileName = `${Date.now()}-${imageFile.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('artworks')
+        .upload(fileName, imageFile);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('artworks')
+        .getPublicUrl(fileName);
+
+      // Create artwork in draft state
+      const { data, error } = await supabase
+        .from('artworks')
+        .insert({
           title,
           description,
-          image_url: imageUrl,
-          metadata,
-          status: 'draft'
-        }
-      ])
-      .select()
-      .single();
+          image_url: publicUrl,
+          status: 'draft',
+          user_id: session.data.session.user.id,
+          album_id: album.id
+        })
+        .select()
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data.id;
+    } catch (error) {
+      throw handleError(error, 'Failed to create draft artwork');
+    }
   }
 
-  static async submitToChallenge(artworkId: string, challengeId: string, submissionFee: number): Promise<void> {
-    const { error } = await supabase
-      .rpc('submit_artwork_to_challenge', {
+  /**
+   * Step 2: Submit artwork to challenge
+   */
+  static async submitArtworkToChallenge(
+    artworkId: string,
+    challengeId: string,
+    submissionFee: number
+  ): Promise<void> {
+    try {
+      const { error } = await supabase.rpc('submit_artwork_to_challenge', {
         p_artwork_id: artworkId,
         p_challenge_id: challengeId,
         p_submission_fee: submissionFee
       });
 
-    if (error) throw error;
+      if (error) throw error;
+    } catch (error) {
+      throw handleError(error, 'Failed to submit artwork to challenge');
+    }
   }
 
-  static async getDraftArtworks(userId: string): Promise<Artwork[]> {
-    const { data, error } = await supabase
-      .from('artworks')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('status', 'draft')
-      .order('created_at', { ascending: false });
+  /**
+   * Get artworks by challenge ID
+   */
+  static async getChallengeArtworks(challengeId: string): Promise<Artwork[]> {
+    try {
+      const { data, error } = await supabase
+        .from('artworks')
+        .select('*')
+        .eq('challenge_id', challengeId)
+        .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return data || [];
-  }
-
-  static async getActiveChallenges() {
-    const { data, error } = await supabase
-      .from('challenges')
-      .select('*')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      throw handleError(error, 'Failed to get challenge artworks');
+    }
   }
 } 

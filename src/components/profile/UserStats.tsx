@@ -1,69 +1,62 @@
 import {
-  SimpleGrid,
   Box,
+  SimpleGrid,
   Stat,
   StatLabel,
   StatNumber,
   StatHelpText,
-  useColorModeValue,
-  Spinner,
-  Center,
-  Text,
+  Icon,
+  Tooltip,
 } from '@chakra-ui/react';
+import { FaCoins, FaVoteYea, FaHistory } from 'react-icons/fa';
+import { useTokens } from '../../hooks/token/useTokens';
 import { useTokenQueries } from '../../hooks/token/useTokenQueries';
 import type { VotePack } from '../../types/database.types';
 
-interface Props {
+interface UserStatsProps {
   userId: string;
 }
 
-export function UserStats(props: Props) {
-  const bgColor = useColorModeValue('gray.50', 'gray.700');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
-
-  const { balance, votePacks, transactions, isLoading, error } = useTokenQueries(props.userId);
-
-  if (isLoading) {
-    return (
-      <Center py={8}>
-        <Spinner />
-      </Center>
-    );
-  }
-
-  if (error) {
-    return (
-      <Center py={8}>
-        <Text color="red.500">Error loading stats</Text>
-      </Center>
-    );
-  }
+export function UserStats({ userId }: UserStatsProps) {
+  const { balance, votePacks } = useTokens();
+  const { transactions } = useTokenQueries(userId);
 
   const totalVotes = votePacks?.reduce((sum: number, pack: VotePack) => 
-    sum + (pack.votes || 0), 0) || 0;
+    sum + (pack.votes_remaining || 0), 0) || 0;
   const totalTransactions = transactions?.length || 0;
 
   return (
-    <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} w="full">
-      <Box p={4} bg={bgColor} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
+    <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+      <Box p={4} borderWidth={1} borderRadius="lg" bg="white">
         <Stat>
-          <StatLabel>Balance</StatLabel>
-          <StatNumber>{balance || 0}</StatNumber>
-          <StatHelpText>Available tokens</StatHelpText>
+          <StatLabel>
+            <Icon as={FaCoins} mr={2} />
+            Balance
+          </StatLabel>
+          <StatNumber>{balance}</StatNumber>
+          <StatHelpText>Available SLN</StatHelpText>
         </Stat>
       </Box>
 
-      <Box p={4} bg={bgColor} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
+      <Box p={4} borderWidth={1} borderRadius="lg" bg="white">
         <Stat>
-          <StatLabel>Votes</StatLabel>
+          <StatLabel>
+            <Icon as={FaVoteYea} mr={2} />
+            Votes
+          </StatLabel>
           <StatNumber>{totalVotes}</StatNumber>
-          <StatHelpText>Available votes</StatHelpText>
+          <Tooltip label="Total votes available across all vote packs">
+            <StatHelpText>Available votes</StatHelpText>
+          </Tooltip>
         </Stat>
       </Box>
 
-      <Box p={4} bg={bgColor} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
+      <Box p={4} borderWidth={1} borderRadius="lg" bg="white">
         <Stat>
-          <StatLabel>Transactions</StatLabel>
+          <StatLabel>
+            <Icon as={FaHistory} mr={2} />
+            Transactions
+          </StatLabel>
           <StatNumber>{totalTransactions}</StatNumber>
           <StatHelpText>Total transactions</StatHelpText>
         </Stat>

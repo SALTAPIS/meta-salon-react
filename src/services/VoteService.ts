@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseClient';
 import type { Vote, VaultState } from '../types/database.types';
 import { handleError } from '../utils/errors';
 

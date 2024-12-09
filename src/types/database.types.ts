@@ -218,14 +218,33 @@ export interface Artwork {
   vault_value: number;
 }
 
-export type Profile = Database['public']['Tables']['profiles']['Row'];
-export type Transaction = Database['public']['Tables']['transactions']['Row'];
+export interface Profile {
+  id: string;
+  email: string;
+  role: 'user' | 'admin';
+  balance: number;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface VotePack {
   id: string;
   user_id: string;
-  votes: number;
-  status: 'active' | 'used' | 'expired';
+  type: 'basic' | 'art_lover' | 'pro' | 'expert' | 'elite';
+  votes_remaining: number;
+  vote_power: number;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Transaction {
+  id: string;
+  user_id: string;
+  type: 'grant' | 'purchase' | 'vote_pack' | 'reward';
+  amount: number;
+  description: string;
+  status: 'pending' | 'completed' | 'failed';
   created_at: string;
   updated_at: string;
 } 
