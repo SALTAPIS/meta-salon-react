@@ -46,13 +46,14 @@ export class ArtworkService {
         });
 
       if (uploadError) {
-        console.error('Upload error:', {
+        const errorDetails = {
           message: uploadError.message,
           name: uploadError.name,
           path: filePath,
           error: uploadError
-        });
-        throw uploadError;
+        };
+        console.error('Upload error:', errorDetails);
+        throw new Error(`Failed to upload artwork: ${uploadError.message}`);
       }
 
       console.log('Upload successful:', uploadData);
@@ -79,9 +80,13 @@ export class ArtworkService {
         userId,
         fileName: file.name,
         fileSize: file.size,
-        fileType: file.type
+        fileType: file.type,
+        stack: error instanceof Error ? error.stack : undefined
       });
-      throw error;
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to upload artwork: Unknown error');
     }
   }
 
