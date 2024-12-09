@@ -7,6 +7,8 @@ export class VoteService {
    * Cast votes for an artwork using a specific vote pack
    */
   static async castVote(artworkId: string, packId: string, value: number): Promise<string> {
+    let timeoutId: NodeJS.Timeout | undefined;
+
     try {
       // Get current session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -72,66 +74,64 @@ export class VoteService {
         auth_token: `Bearer ${session.access_token}`
       });
 
-      // Create an AbortController for the timeout
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      // Set up timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error('Vote operation timed out. Please try again.'));
+        }, 10000); // 10 second timeout
+      });
 
-      try {
-        const { data, error } = await supabase.functions.invoke('cast-vote', {
-          body: {
-            artwork_id: artworkId,
-            pack_id: packId,
-            value: value
-          },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          },
-          signal: controller.signal
-        });
-
-        clearTimeout(timeout);
-
-        if (error) {
-          console.error('Edge Function error:', {
-            message: error.message,
-            name: error.name,
-            cause: error.cause,
-            details: error
-          });
-          throw error;
-        }
-
-        if (!data?.vote_id) {
-          console.error('No vote_id in response:', data);
-          throw new Error('Invalid response from server');
-        }
-
-        console.log('Vote cast successfully:', {
-          vote_id: data.vote_id,
+      // Call Edge Function with race against timeout
+      const functionPromise = supabase.functions.invoke('cast-vote', {
+        body: {
           artwork_id: artworkId,
-          pack_id: packId
-        });
-
-        return data.vote_id;
-      } catch (error) {
-        if (error.name === 'AbortError') {
-          console.error('Edge Function timeout after 10 seconds');
-          throw new Error('Vote operation timed out. Please try again.');
+          pack_id: packId,
+          value: value
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
         }
+      });
+
+      const { data, error } = await Promise.race([functionPromise, timeoutPromise]);
+
+      if (error) {
+        console.error('Edge Function error:', {
+          message: error.message,
+          name: error.name,
+          cause: error.cause,
+          details: error
+        });
         throw error;
-      } finally {
-        clearTimeout(timeout);
       }
-    } catch (error) {
+
+      if (!data?.vote_id) {
+        console.error('No vote_id in response:', data);
+        throw new Error('Invalid response from server');
+      }
+
+      console.log('Vote cast successfully:', {
+        vote_id: data.vote_id,
+        artwork_id: artworkId,
+        pack_id: packId
+      });
+
+      return data.vote_id;
+    } catch (err) {
+      const error = err as Error;
       console.error('Vote casting error:', {
         error,
         artwork_id: artworkId,
         pack_id: packId,
         value: value,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
+        message: error.message,
+        stack: error.stack
       });
       throw handleError(error, 'Failed to cast vote');
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     }
   }
 
