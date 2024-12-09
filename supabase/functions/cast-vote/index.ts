@@ -19,6 +19,8 @@ serve(async (req: Request) => {
       status: 204,
       headers: {
         ...corsHeaders,
+        'Access-Control-Allow-Methods': 'POST',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
       },
     });
   }
@@ -73,7 +75,13 @@ serve(async (req: Request) => {
     let body: VoteRequest;
     try {
       body = await req.json();
+      console.log('Received request body:', body);
       if (!body.artwork_id || !body.pack_id || typeof body.value !== 'number') {
+        console.error('Validation failed:', {
+          has_artwork_id: !!body.artwork_id,
+          has_pack_id: !!body.pack_id,
+          value_is_number: typeof body.value === 'number'
+        });
         throw new Error('Missing required fields');
       }
     } catch (error) {
@@ -91,6 +99,11 @@ serve(async (req: Request) => {
     }
 
     // Call the cast_vote function
+    console.log('Calling cast_vote with params:', {
+      p_artwork_id: body.artwork_id,
+      p_pack_id: body.pack_id,
+      p_value: body.value
+    });
     const { data, error: voteError } = await supabaseClient.rpc('cast_vote', {
       p_artwork_id: body.artwork_id,
       p_pack_id: body.pack_id,
@@ -118,6 +131,9 @@ serve(async (req: Request) => {
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
         },
       }
     );
@@ -130,6 +146,9 @@ serve(async (req: Request) => {
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
         },
       }
     );
