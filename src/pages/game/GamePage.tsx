@@ -1,14 +1,24 @@
 import React from 'react';
-import { Box, Container, Heading, Text, Button, VStack, Fade } from '@chakra-ui/react';
+import { Box, Container, Heading, Text, Button, VStack, Fade, Spinner, Center } from '@chakra-ui/react';
 import { GameArena } from './GameArena';
 import { useAuth } from '../../hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 
 export default function GamePage() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [isPlaying, setIsPlaying] = React.useState(false);
 
-  if (!user) {
+  // Show loading spinner while auth state is being determined
+  if (isLoading) {
+    return (
+      <Center py={20}>
+        <Spinner size="xl" />
+      </Center>
+    );
+  }
+
+  // Only redirect if we're sure there's no user (not loading)
+  if (!isLoading && !user) {
     return <Navigate to="/auth/signin" />;
   }
 
