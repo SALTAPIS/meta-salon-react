@@ -3,7 +3,7 @@ export interface ArtworkMetadata {
   width?: number;
   height?: number;
   format?: string;
-  [key: string]: any;
+  [key: string]: number | string | undefined;
 }
 
 export interface Challenge {
@@ -219,4 +219,13 @@ export interface Artwork {
 }
 
 export type Profile = Database['public']['Tables']['profiles']['Row'];
-export type Transaction = Database['public']['Tables']['transactions']['Row']; 
+export type Transaction = Database['public']['Tables']['transactions']['Row'];
+
+export interface VotePack {
+  id: string;
+  user_id: string;
+  votes: number;
+  status: 'active' | 'used' | 'expired';
+  created_at: string;
+  updated_at: string;
+} 

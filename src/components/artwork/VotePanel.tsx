@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   VStack,
   HStack,
   Text,
   Button,
-  Progress,
   useToast,
   NumberInput,
   NumberInputField,
@@ -20,13 +19,24 @@ import {
   StatNumber,
   StatHelpText,
   Divider,
+  Tooltip,
+  CircularProgress,
+  CircularProgressLabel,
 } from '@chakra-ui/react';
 import { useVoting } from '../../hooks/useVoting';
 import { useTokens } from '../../hooks/token/useTokens';
+import { VoteService } from '../../services/VoteService';
 import type { VotePack } from '../../types/database.types';
 
 interface VotePanelProps {
   artworkId: string;
+}
+
+interface ConsumptionStats {
+  totalVotes: number;
+  consumedVotes: number;
+  unconsumedVotes: number;
+  vaultValue: number;
 }
 
 export function VotePanel({ artworkId }: VotePanelProps) {
@@ -45,6 +55,25 @@ export function VotePanel({ artworkId }: VotePanelProps) {
 
   const [selectedPackId, setSelectedPackId] = useState<string>('');
   const [voteAmount, setVoteAmount] = useState<number>(1);
+  const [consumptionStats, setConsumptionStats] = useState<ConsumptionStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+
+  // Load consumption stats
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        setIsLoadingStats(true);
+        const stats = await VoteService.getVoteConsumptionStats(artworkId);
+        setConsumptionStats(stats);
+      } catch (err) {
+        console.error('Failed to load consumption stats:', err);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    loadStats();
+  }, [artworkId, votes]);
 
   const handleVote = async () => {
     try {
@@ -67,7 +96,10 @@ export function VotePanel({ artworkId }: VotePanelProps) {
     }
   };
 
-  const activePacks = votePacks.filter((pack: VotePack) => pack.status === 'active');
+  const activePacks = (votePacks || []).filter((pack: VotePack) => pack.status === 'active');
+  const consumptionProgress = consumptionStats 
+    ? (consumptionStats.consumedVotes / consumptionStats.totalVotes) * 100 
+    : 0;
 
   return (
     <Box p={4} borderWidth={1} borderRadius="lg" bg="white">
@@ -86,6 +118,41 @@ export function VotePanel({ artworkId }: VotePanelProps) {
           </Stat>
         </HStack>
 
+        {/* Consumption Stats */}
+        {consumptionStats && (
+          <Box>
+            <Text fontWeight="bold" mb={2}>Vote Consumption</Text>
+            <HStack spacing={4} align="center">
+              <CircularProgress 
+                value={consumptionProgress} 
+                color="green.400"
+                size="80px"
+              >
+                <CircularProgressLabel>
+                  {Math.round(consumptionProgress)}%
+                </CircularProgressLabel>
+              </CircularProgress>
+              <VStack align="start" flex={1}>
+                <Tooltip label="Votes that have been converted to vault value">
+                  <Text fontSize="sm">
+                    Consumed: {consumptionStats.consumedVotes} votes
+                  </Text>
+                </Tooltip>
+                <Tooltip label="Votes waiting to be consumed">
+                  <Text fontSize="sm">
+                    Pending: {consumptionStats.unconsumedVotes} votes
+                  </Text>
+                </Tooltip>
+                <Tooltip label="Current vault value from consumed votes">
+                  <Text fontSize="sm" fontWeight="bold">
+                    Vault Value: {consumptionStats.vaultValue}
+                  </Text>
+                </Tooltip>
+              </VStack>
+            </HStack>
+          </Box>
+        )}
+
         <Divider />
 
         {/* Vote Input */}
@@ -93,7 +160,7 @@ export function VotePanel({ artworkId }: VotePanelProps) {
           <Select
             placeholder="Select vote pack"
             value={selectedPackId}
-            onChange={(e) => setSelectedPackId(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedPackId(e.target.value)}
           >
             {activePacks.map((pack: VotePack) => (
               <option key={pack.id} value={pack.id}>
@@ -106,7 +173,7 @@ export function VotePanel({ artworkId }: VotePanelProps) {
             min={1}
             max={100}
             value={voteAmount}
-            onChange={(_, value) => setVoteAmount(value)}
+            onChange={(valueString: string, valueNumber: number) => setVoteAmount(valueNumber)}
           >
             <NumberInputField />
             <NumberInputStepper>
@@ -144,7 +211,14 @@ export function VotePanel({ artworkId }: VotePanelProps) {
                   <Text fontSize="sm">
                     {vote.user_id === userVotes[0]?.user_id ? 'You' : 'Someone'} voted
                   </Text>
-                  <Text fontWeight="bold">{vote.value} votes</Text>
+                  <HStack spacing={2}>
+                    <Text fontWeight="bold">{vote.value} votes</Text>
+                    {vote.consumed && (
+                      <Tooltip label="This vote has been consumed and added to the vault value">
+                        <Text fontSize="xs" color="green.500">✓ Consumed</Text>
+                      </Tooltip>
+                    )}
+                  </HStack>
                 </HStack>
               ))}
             </VStack>

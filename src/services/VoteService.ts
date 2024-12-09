@@ -106,4 +106,84 @@ export class VoteService {
       throw handleError(error, 'Failed to get available votes');
     }
   }
+
+  /**
+   * Get unconsumed votes for an artwork
+   */
+  static async getUnconsumedVotes(artworkId: string): Promise<Vote[]> {
+    try {
+      const { data, error } = await supabase
+        .from('votes')
+        .select('*')
+        .eq('artwork_id', artworkId)
+        .eq('consumed', false)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      throw handleError(error, 'Failed to get unconsumed votes');
+    }
+  }
+
+  /**
+   * Get vote consumption stats for an artwork
+   */
+  static async getVoteConsumptionStats(artworkId: string): Promise<{
+    totalVotes: number;
+    consumedVotes: number;
+    unconsumedVotes: number;
+    vaultValue: number;
+  }> {
+    try {
+      // Get all votes
+      const { data: votes, error: votesError } = await supabase
+        .from('votes')
+        .select('value, consumed')
+        .eq('artwork_id', artworkId);
+
+      if (votesError) throw votesError;
+
+      // Get artwork vault value
+      const { data: artwork, error: artworkError } = await supabase
+        .from('artworks')
+        .select('vault_value')
+        .eq('id', artworkId)
+        .single();
+
+      if (artworkError) throw artworkError;
+
+      const totalVotes = votes?.reduce((sum, vote) => sum + vote.value, 0) || 0;
+      const consumedVotes = votes?.filter(v => v.consumed).reduce((sum, vote) => sum + vote.value, 0) || 0;
+      const unconsumedVotes = totalVotes - consumedVotes;
+
+      return {
+        totalVotes,
+        consumedVotes,
+        unconsumedVotes,
+        vaultValue: artwork.vault_value
+      };
+    } catch (error) {
+      throw handleError(error, 'Failed to get vote consumption stats');
+    }
+  }
+
+  /**
+   * Trigger manual vote consumption for an artwork
+   * Note: This is mainly for testing/admin purposes
+   */
+  static async triggerVoteConsumption(artworkId: string): Promise<number> {
+    try {
+      const { data, error } = await supabase
+        .rpc('consume_votes', {
+          p_artwork_id: artworkId,
+          p_max_votes: 100
+        });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      throw handleError(error, 'Failed to trigger vote consumption');
+    }
+  }
 } 
