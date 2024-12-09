@@ -20,11 +20,56 @@ export class VoteService {
         throw new Error('Authentication error: No active session');
       }
 
-      console.log('Casting vote:', {
+      console.log('Starting vote cast with:', {
         artwork_id: artworkId,
         pack_id: packId,
         value: value,
-        user_id: session.user.id
+        user_id: session.user.id,
+        access_token: session.access_token ? '✓ Present' : '✗ Missing'
+      });
+
+      // Check if artwork exists
+      const { data: artwork, error: artworkError } = await supabase
+        .from('artworks')
+        .select('id, vault_status')
+        .eq('id', artworkId)
+        .single();
+
+      if (artworkError) {
+        console.error('Failed to verify artwork:', artworkError);
+        throw new Error('Failed to verify artwork');
+      }
+
+      console.log('Artwork check:', {
+        exists: !!artwork,
+        vault_status: artwork?.vault_status
+      });
+
+      // Check vote pack
+      const { data: pack, error: packError } = await supabase
+        .from('vote_packs')
+        .select('*')
+        .eq('id', packId)
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (packError) {
+        console.error('Failed to verify vote pack:', packError);
+        throw new Error('Failed to verify vote pack');
+      }
+
+      console.log('Vote pack check:', {
+        exists: !!pack,
+        votes_remaining: pack?.votes_remaining,
+        expires_at: pack?.expires_at
+      });
+
+      // Call Edge Function
+      console.log('Calling Edge Function with:', {
+        artwork_id: artworkId,
+        pack_id: packId,
+        value: value,
+        auth_token: `Bearer ${session.access_token}`
       });
 
       const { data, error } = await supabase.functions.invoke('cast-vote', {
@@ -65,7 +110,9 @@ export class VoteService {
         error,
         artwork_id: artworkId,
         pack_id: packId,
-        value: value
+        value: value,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
       });
       throw handleError(error, 'Failed to cast vote');
     }
