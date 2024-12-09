@@ -1,4 +1,4 @@
--- Create challenges table
+-- Create challenges table if not exists
 create table if not exists public.challenges (
     id uuid primary key default uuid_generate_v4(),
     title text not null,
@@ -16,10 +16,15 @@ create table if not exists public.challenges (
 );
 
 -- Create index for active challenges
-create index idx_active_challenges on public.challenges(status) where status = 'active';
+create index if not exists idx_active_challenges on public.challenges(status) where status = 'active';
 
 -- Enable RLS
 alter table public.challenges enable row level security;
+
+-- Drop existing policies if they exist
+drop policy if exists "Challenges are viewable by everyone" on public.challenges;
+drop policy if exists "Only admins can create challenges" on public.challenges;
+drop policy if exists "Only admins can update challenges" on public.challenges;
 
 -- RLS policies
 create policy "Challenges are viewable by everyone"

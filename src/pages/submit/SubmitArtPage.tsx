@@ -1,4 +1,4 @@
-import { type ChangeEvent, type FormEvent } from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -230,7 +230,7 @@ export default function SubmitArtPage() {
             onChange={handleAlbumChange}
           >
             <option value="">Select album</option>
-            {albums.map((album) => (
+            {albums.map((album: Album) => (
               <option key={album.id} value={album.id}>
                 {album.name}
               </option>
@@ -245,7 +245,7 @@ export default function SubmitArtPage() {
             onChange={handleChallengeChange}
           >
             <option value="">Select challenge</option>
-            {challenges.map((challenge) => (
+            {challenges.map((challenge: Challenge) => (
               <option key={challenge.id} value={challenge.id}>
                 {challenge.title} ({challenge.submission_fee} SLN)
               </option>
