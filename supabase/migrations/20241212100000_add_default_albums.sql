@@ -2,7 +2,7 @@
 create table if not exists public.albums (
     id uuid primary key default uuid_generate_v4(),
     user_id uuid references auth.users(id) not null,
-    name text not null,
+    title text not null,
     description text,
     is_default boolean default false,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -11,6 +11,24 @@ create table if not exists public.albums (
 
 -- Enable RLS
 alter table public.albums enable row level security;
+
+-- Add is_default column if it doesn't exist
+do $$
+begin
+    if not exists (
+        select 1
+        from information_schema.columns
+        where table_name = 'albums'
+        and column_name = 'is_default'
+    ) then
+        alter table public.albums add column is_default boolean default false;
+    end if;
+end $$;
+
+-- Drop existing policies if they exist
+drop policy if exists "Users can view their own albums" on public.albums;
+drop policy if exists "Users can create their own albums" on public.albums;
+drop policy if exists "Users can update their own albums" on public.albums;
 
 -- RLS policies
 create policy "Users can view their own albums"
@@ -33,7 +51,7 @@ security definer
 as $$
 begin
     -- Create default album if user doesn't have one
-    insert into public.albums (user_id, name, description, is_default)
+    insert into public.albums (user_id, title, description, is_default)
     select
         new.id,
         'My First Album',
@@ -57,7 +75,7 @@ create trigger ensure_user_has_default_album_trigger
     execute function public.ensure_user_has_default_album();
 
 -- Create default albums for existing users
-insert into public.albums (user_id, name, description, is_default)
+insert into public.albums (user_id, title, description, is_default)
 select
     p.id,
     'My First Album',
