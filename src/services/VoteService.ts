@@ -64,7 +64,7 @@ export class VoteService {
         expires_at: pack?.expires_at
       });
 
-      // Call Edge Function
+      // Call Edge Function with timeout
       console.log('Calling Edge Function with:', {
         artwork_id: artworkId,
         pack_id: packId,
@@ -72,39 +72,56 @@ export class VoteService {
         auth_token: `Bearer ${session.access_token}`
       });
 
-      const { data, error } = await supabase.functions.invoke('cast-vote', {
-        body: {
-          artwork_id: artworkId,
-          pack_id: packId,
-          value: value
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
+      // Create an AbortController for the timeout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      if (error) {
-        console.error('Edge Function error:', {
-          message: error.message,
-          name: error.name,
-          cause: error.cause,
-          details: error
+      try {
+        const { data, error } = await supabase.functions.invoke('cast-vote', {
+          body: {
+            artwork_id: artworkId,
+            pack_id: packId,
+            value: value
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          },
+          signal: controller.signal
         });
+
+        clearTimeout(timeout);
+
+        if (error) {
+          console.error('Edge Function error:', {
+            message: error.message,
+            name: error.name,
+            cause: error.cause,
+            details: error
+          });
+          throw error;
+        }
+
+        if (!data?.vote_id) {
+          console.error('No vote_id in response:', data);
+          throw new Error('Invalid response from server');
+        }
+
+        console.log('Vote cast successfully:', {
+          vote_id: data.vote_id,
+          artwork_id: artworkId,
+          pack_id: packId
+        });
+
+        return data.vote_id;
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          console.error('Edge Function timeout after 10 seconds');
+          throw new Error('Vote operation timed out. Please try again.');
+        }
         throw error;
+      } finally {
+        clearTimeout(timeout);
       }
-
-      if (!data?.vote_id) {
-        console.error('No vote_id in response:', data);
-        throw new Error('Invalid response from server');
-      }
-
-      console.log('Vote cast successfully:', {
-        vote_id: data.vote_id,
-        artwork_id: artworkId,
-        pack_id: packId
-      });
-
-      return data.vote_id;
     } catch (error) {
       console.error('Vote casting error:', {
         error,
