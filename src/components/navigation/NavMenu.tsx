@@ -12,12 +12,11 @@ import {
   useColorModeValue,
 } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 export function NavMenu() {
   const { user, signOut, isLoading } = useAuth();
-  const navigate = useNavigate();
   const menuBg = useColorModeValue('white', 'gray.800');
   const iconColor = useColorModeValue('gray.600', 'whiteAlpha.900');
 
