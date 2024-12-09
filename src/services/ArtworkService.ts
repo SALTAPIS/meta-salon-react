@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 import type { Album, Artwork, Challenge } from '../types/database.types';
 import { TokenService } from './token/tokenService';
 
@@ -48,7 +48,9 @@ export class ArtworkService {
       if (uploadError) {
         console.error('Upload error:', {
           message: uploadError.message,
-          name: uploadError.name
+          name: uploadError.name,
+          path: filePath,
+          error: uploadError
         });
         throw uploadError;
       }
@@ -72,6 +74,8 @@ export class ArtworkService {
     } catch (error) {
       console.error('Error in uploadArtwork:', {
         error,
+        errorType: error?.constructor?.name,
+        errorMessage: error instanceof Error ? error.message : String(error),
         userId,
         fileName: file.name,
         fileSize: file.size,
