@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabase';
 import type { Album, Artwork } from '../types/database.types';
-import { TokenService } from './token/tokenService';
 
 interface UploadResult {
   url: string;
@@ -8,6 +7,11 @@ interface UploadResult {
     size: number;
     format: string;
   };
+}
+
+interface ArtworkMetadata {
+  size: number;
+  format: string;
 }
 
 export class ArtworkService {
@@ -51,7 +55,7 @@ export class ArtworkService {
     title: string,
     description: string,
     imageUrl: string,
-    metadata: any
+    metadata: ArtworkMetadata
   ): Promise<Artwork> {
     const { data, error } = await supabase
       .from('artworks')

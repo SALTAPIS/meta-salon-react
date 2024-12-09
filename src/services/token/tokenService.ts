@@ -2,6 +2,17 @@ import { supabase } from '../../lib/supabase';
 import type { VotePack } from '../../types/database.types';
 
 export class TokenService {
+  private static instance: TokenService;
+
+  private constructor() {}
+
+  public static getInstance(): TokenService {
+    if (!TokenService.instance) {
+      TokenService.instance = new TokenService();
+    }
+    return TokenService.instance;
+  }
+
   static async getBalance(userId: string): Promise<number> {
     const { data, error } = await supabase
       .from('profiles')

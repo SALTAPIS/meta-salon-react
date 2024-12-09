@@ -73,7 +73,6 @@ export function VotePacks() {
   };
 
   const activePacks = votePacks.filter((pack: VotePack) => pack.status === 'active');
-  const totalVotes = activePacks.reduce((sum, pack) => sum + pack.votes, 0);
 
   return (
     <Box>

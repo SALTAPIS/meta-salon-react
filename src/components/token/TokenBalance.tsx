@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Text, Skeleton } from '@chakra-ui/react';
-import { useAuth } from '../../hooks/useAuth';
 import { useTokens } from '../../hooks/token/useTokens';
 
 interface TokenBalanceProps {
@@ -8,7 +7,6 @@ interface TokenBalanceProps {
 }
 
 export function TokenBalance({ animate = true }: TokenBalanceProps) {
-  const { user } = useAuth();
   const { balance, isLoading } = useTokens();
   const [displayBalance, setDisplayBalance] = useState<number | null>(null);
   const [targetBalance, setTargetBalance] = useState<number | null>(null);
