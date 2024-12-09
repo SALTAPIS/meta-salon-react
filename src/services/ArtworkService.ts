@@ -107,6 +107,7 @@ export class ArtworkService {
         description,
         image_url: imageUrl,
         metadata,
+        status: 'draft' // Always create as draft first
       })
       .select()
       .single();
@@ -181,6 +182,35 @@ export class ArtworkService {
         album:albums(name)
       `)
       .eq('challenge_id', challengeId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return artworks;
+  }
+
+  static async getUserArtworks(userId: string): Promise<Artwork[]> {
+    const { data: artworks, error } = await supabase
+      .from('artworks')
+      .select(`
+        *,
+        album:albums(title)
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return artworks;
+  }
+
+  static async getDraftArtworks(userId: string): Promise<Artwork[]> {
+    const { data: artworks, error } = await supabase
+      .from('artworks')
+      .select(`
+        *,
+        album:albums(title)
+      `)
+      .eq('user_id', userId)
+      .eq('status', 'draft')
       .order('created_at', { ascending: false });
 
     if (error) throw error;

@@ -1,16 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-import { resolve } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load environment variables
 dotenv.config({ path: resolve(__dirname, '../.env') });
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = process.env.VITE_SUPABASE_SERVICE_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Missing Supabase environment variables');
 }
+
+console.log('Initializing Supabase client with:', {
+  url: supabaseUrl,
+  serviceKey: supabaseServiceKey ? '✓ Set' : '✗ Missing'
+});
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
@@ -78,6 +87,12 @@ async function fixStorage() {
     console.log('Storage fix completed successfully');
   } catch (error) {
     console.error('Error fixing storage:', error);
+    console.error('Error details:', {
+      name: error?.name,
+      message: error?.message,
+      status: error?.status,
+      stack: error?.stack
+    });
     process.exit(1);
   }
 }
