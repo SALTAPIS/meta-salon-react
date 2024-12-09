@@ -1,4 +1,4 @@
-import { useState, useEffect, type ChangeEvent } from 'react';
+import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -40,18 +40,18 @@ export default function SubmitArtPage() {
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   
-  const [isLoading, setIsLoading] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [albums, setAlbums] = useState<Album[]>([]);
-  const [selectedAlbumId, setSelectedAlbumId] = useState<string>('');
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [selectedChallengeId, setSelectedChallengeId] = useState<string>('');
-  const [submissionFee, setSubmissionFee] = useState<number>(99);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [title, setTitle] = React.useState('');
+  const [description, setDescription] = React.useState('');
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  const [albums, setAlbums] = React.useState<Album[]>([]);
+  const [selectedAlbumId, setSelectedAlbumId] = React.useState<string>('');
+  const [challenges, setChallenges] = React.useState<Challenge[]>([]);
+  const [selectedChallengeId, setSelectedChallengeId] = React.useState<string>('');
+  const [submissionFee, setSubmissionFee] = React.useState<number>(99);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!user) {
       navigate('/login');
       return;
@@ -96,7 +96,7 @@ export default function SubmitArtPage() {
     loadData();
   }, [user, navigate, toast]);
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -183,19 +183,19 @@ export default function SubmitArtPage() {
     handleSubmit();
   };
 
-  const handleTitleChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
   };
 
-  const handleDescriptionChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setDescription(e.target.value);
   };
 
-  const handleAlbumChange = (e: ChangeEvent<HTMLSelectElement>) => {
+  const handleAlbumChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedAlbumId(e.target.value);
   };
 
-  const handleChallengeChange = (e: ChangeEvent<HTMLSelectElement>) => {
+  const handleChallengeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedChallengeId(e.target.value);
     const challenge = challenges.find((c: Challenge) => c.id === e.target.value);
     if (challenge) {
@@ -236,7 +236,7 @@ export default function SubmitArtPage() {
           >
             {albums.map((album: Album) => (
               <option key={album.id} value={album.id}>
-                {album.name || 'Untitled Album'}
+                {album.title || 'Untitled Album'}
               </option>
             ))}
           </Select>

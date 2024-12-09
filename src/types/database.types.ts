@@ -173,7 +173,18 @@ export type Database = {
   };
 };
 
-export type Album = Database['public']['Tables']['albums']['Row'];
+export interface Album {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  is_default: boolean;
+  is_private: boolean;
+  cover_image: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type Artwork = Database['public']['Tables']['artworks']['Row'];
 export type Profile = Database['public']['Tables']['profiles']['Row'];
 export type Transaction = Database['public']['Tables']['transactions']['Row']; 
