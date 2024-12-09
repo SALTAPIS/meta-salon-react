@@ -47,19 +47,12 @@ serve(async (req: Request) => {
       throw new Error('Missing Supabase configuration');
     }
 
-    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    });
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
-    // Get auth header
+    // Get user from auth header
     const authHeader = req.headers.get('Authorization');
     console.log('Auth header:', {
       present: !!authHeader,
-      prefix: authHeader?.substring(0, 7),
-      length: authHeader?.length,
       timestamp: new Date().toISOString()
     });
 
@@ -76,49 +69,31 @@ serve(async (req: Request) => {
       );
     }
 
-    // Get user from auth token
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const jwt = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(jwt);
 
-    if (authError) {
-      console.error('Auth error:', {
-        message: authError.message,
-        status: authError.status,
-        name: authError.name,
-        timestamp: new Date().toISOString()
-      });
-      return new Response(
-        JSON.stringify({ error: 'Invalid auth token', details: authError }),
-        { 
-          status: 401,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
-
-    if (!user) {
-      console.error('No user found in auth response');
-      return new Response(
-        JSON.stringify({ error: 'User not found' }),
-        { 
-          status: 401,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
-
-    console.log('Authenticated user:', {
-      id: user.id,
-      email: user.email,
+    console.log('User verification:', {
+      success: !!user,
+      error: userError?.message,
+      user_id: user?.id,
       timestamp: new Date().toISOString()
     });
+
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid token',
+          details: userError?.message
+        }),
+        { 
+          status: 401,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
 
     // Parse and validate request body
     let body: VoteRequest;
@@ -164,108 +139,12 @@ serve(async (req: Request) => {
       );
     }
 
-    // Check if artwork exists and get its status
-    const { data: artwork, error: artworkError } = await supabaseClient
-      .from('artworks')
-      .select('id, vault_status')
-      .eq('id', body.artwork_id)
-      .single();
-
-    if (artworkError) {
-      console.error('Error fetching artwork:', {
-        error: artworkError,
-        artwork_id: body.artwork_id,
-        timestamp: new Date().toISOString()
-      });
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch artwork', details: artworkError }),
-        { 
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
-
-    if (!artwork) {
-      console.error('Artwork not found:', {
-        artwork_id: body.artwork_id,
-        timestamp: new Date().toISOString()
-      });
-      return new Response(
-        JSON.stringify({ error: 'Artwork not found' }),
-        { 
-          status: 404,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
-
-    console.log('Found artwork:', {
-      ...artwork,
-      timestamp: new Date().toISOString()
-    });
-
-    // Check vote pack ownership
-    const { data: votePack, error: votePackError } = await supabaseClient
-      .from('vote_packs')
-      .select('*')
-      .eq('id', body.pack_id)
-      .eq('user_id', user.id)
-      .single();
-
-    if (votePackError) {
-      console.error('Error fetching vote pack:', {
-        error: votePackError,
-        pack_id: body.pack_id,
-        user_id: user.id,
-        timestamp: new Date().toISOString()
-      });
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch vote pack', details: votePackError }),
-        { 
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
-
-    if (!votePack) {
-      console.error('Vote pack not found or not owned by user:', {
-        pack_id: body.pack_id,
-        user_id: user.id,
-        timestamp: new Date().toISOString()
-      });
-      return new Response(
-        JSON.stringify({ error: 'Vote pack not found or not owned by user' }),
-        { 
-          status: 404,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
-
-    console.log('Found vote pack:', {
-      ...votePack,
-      timestamp: new Date().toISOString()
-    });
-
     // Call the cast_vote function
     console.log('Calling cast_vote with params:', {
       p_artwork_id: body.artwork_id,
       p_pack_id: body.pack_id,
       p_value: body.value,
+      user_id: user.id,
       timestamp: new Date().toISOString()
     });
 
@@ -273,6 +152,14 @@ serve(async (req: Request) => {
       p_artwork_id: body.artwork_id,
       p_pack_id: body.pack_id,
       p_value: body.value,
+    });
+
+    console.log('Vote result:', {
+      success: !!voteResult,
+      error: voteError?.message,
+      details: voteError?.details,
+      result: voteResult,
+      timestamp: new Date().toISOString()
     });
 
     if (voteError) {
@@ -327,7 +214,6 @@ serve(async (req: Request) => {
       timestamp: new Date().toISOString()
     });
 
-    // Return the successful response with all the data
     return new Response(
       JSON.stringify({
         vote_id: voteResult.vote_id,

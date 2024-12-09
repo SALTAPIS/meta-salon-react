@@ -21,6 +21,14 @@ declare
     v_total_value integer;
     v_result jsonb;
 begin
+    -- Input validation
+    if p_value <= 0 then
+        return jsonb_build_object(
+            'success', false,
+            'error', 'Vote value must be greater than 0'
+        );
+    end if;
+
     -- Get user ID
     v_user_id := auth.uid();
     if v_user_id is null then
