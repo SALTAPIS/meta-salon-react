@@ -13,36 +13,16 @@ interface VoteRequest {
 }
 
 serve(async (req: Request) => {
-  // Log request details
-  console.log('Received request:', {
-    method: req.method,
-    url: req.url,
-    headers: Object.fromEntries(req.headers.entries()),
-    timestamp: new Date().toISOString()
-  });
-
-  // Handle CORS preflight requests
+  // Handle CORS
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        ...corsHeaders,
-        'Access-Control-Allow-Methods': 'POST',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
     // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    console.log('Supabase configuration:', {
-      url: supabaseUrl ? '✓ Set' : '✗ Missing',
-      key: supabaseKey ? '✓ Set' : '✗ Missing',
-      timestamp: new Date().toISOString()
-    });
-
+    
     if (!supabaseUrl || !supabaseKey) {
       throw new Error('Missing Supabase configuration');
     }
@@ -51,14 +31,12 @@ serve(async (req: Request) => {
 
     // Get user from auth header
     const authHeader = req.headers.get('Authorization');
-    console.log('Auth header:', {
-      present: !!authHeader,
-      timestamp: new Date().toISOString()
-    });
-
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'No authorization header' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'No authorization header' 
+        }),
         { 
           status: 401,
           headers: {
@@ -72,16 +50,10 @@ serve(async (req: Request) => {
     const jwt = authHeader.replace('Bearer ', '');
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(jwt);
 
-    console.log('User verification:', {
-      success: !!user,
-      error: userError?.message,
-      user_id: user?.id,
-      timestamp: new Date().toISOString()
-    });
-
     if (userError || !user) {
       return new Response(
         JSON.stringify({ 
+          success: false,
           error: 'Invalid token',
           details: userError?.message
         }),
@@ -95,39 +67,41 @@ serve(async (req: Request) => {
       );
     }
 
-    // Parse and validate request body
+    // Parse request body
+    const rawBody = await req.text();
     let body: VoteRequest;
+    
     try {
-      const rawBody = await req.text();
-      console.log('Raw request body:', rawBody);
       body = JSON.parse(rawBody);
-      
-      console.log('Parsed request body:', {
-        ...body,
-        timestamp: new Date().toISOString()
-      });
-
-      if (!body.artwork_id || !body.pack_id || typeof body.value !== 'number') {
-        console.error('Validation failed:', {
-          has_artwork_id: !!body.artwork_id,
-          has_pack_id: !!body.pack_id,
-          value_is_number: typeof body.value === 'number',
-          value: body.value,
-          timestamp: new Date().toISOString()
-        });
-        throw new Error('Missing required fields');
-      }
     } catch (error) {
-      console.error('Request body parsing error:', {
-        error: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString()
-      });
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid request body', 
-          details: error.message,
-          stack: error.stack
+          success: false,
+          error: 'Invalid request body',
+          details: error.message
+        }),
+        { 
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    // Validate request body
+    if (!body.artwork_id || !body.pack_id || typeof body.value !== 'number' || body.value <= 0) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Invalid request parameters',
+          details: {
+            artwork_id: !body.artwork_id ? 'missing' : 'ok',
+            pack_id: !body.pack_id ? 'missing' : 'ok',
+            value: typeof body.value !== 'number' ? 'not a number' : 
+                   body.value <= 0 ? 'must be greater than 0' : 'ok'
+          }
         }),
         { 
           status: 400,
@@ -140,42 +114,22 @@ serve(async (req: Request) => {
     }
 
     // Call the cast_vote function
-    console.log('Calling cast_vote with params:', {
-      p_artwork_id: body.artwork_id,
-      p_pack_id: body.pack_id,
-      p_value: body.value,
-      user_id: user.id,
-      timestamp: new Date().toISOString()
-    });
-
     const { data: voteResult, error: voteError } = await supabaseClient.rpc('cast_vote', {
       p_artwork_id: body.artwork_id,
       p_pack_id: body.pack_id,
       p_value: body.value,
     });
 
-    console.log('Vote result:', {
-      success: !!voteResult,
-      error: voteError?.message,
-      details: voteError?.details,
-      result: voteResult,
-      timestamp: new Date().toISOString()
-    });
-
     if (voteError) {
-      console.error('Vote casting error:', {
-        message: voteError.message,
-        details: voteError.details,
-        hint: voteError.hint,
-        code: voteError.code,
-        timestamp: new Date().toISOString()
-      });
       return new Response(
         JSON.stringify({ 
+          success: false,
           error: voteError.message,
-          details: voteError.details,
-          hint: voteError.hint,
-          code: voteError.code
+          details: {
+            code: voteError.code,
+            hint: voteError.hint,
+            details: voteError.details
+          }
         }),
         { 
           status: 400,
@@ -188,12 +142,9 @@ serve(async (req: Request) => {
     }
 
     if (!voteResult || !voteResult.success) {
-      console.error('Vote casting failed:', {
-        result: voteResult,
-        timestamp: new Date().toISOString()
-      });
       return new Response(
         JSON.stringify({ 
+          success: false,
           error: voteResult?.error || 'Failed to cast vote',
           details: voteResult
         }),
@@ -207,19 +158,12 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log('Vote cast successfully:', {
-      result: voteResult,
-      artwork_id: body.artwork_id,
-      pack_id: body.pack_id,
-      timestamp: new Date().toISOString()
-    });
-
     return new Response(
       JSON.stringify({
+        success: true,
         vote_id: voteResult.vote_id,
         total_value: voteResult.total_value,
-        votes_remaining: voteResult.votes_remaining,
-        success: true
+        votes_remaining: voteResult.votes_remaining
       }),
       { 
         status: 200,
@@ -230,18 +174,14 @@ serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error('Unhandled error:', {
-      message: error.message,
-      stack: error.stack,
-      cause: error.cause,
-      timestamp: new Date().toISOString()
-    });
     return new Response(
       JSON.stringify({ 
-        error: 'Internal server error', 
-        details: error.message,
-        stack: error.stack,
-        cause: error.cause
+        success: false,
+        error: 'Internal server error',
+        details: {
+          message: error.message,
+          cause: error.cause
+        }
       }),
       { 
         status: 500,

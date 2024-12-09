@@ -4,6 +4,15 @@ import { handleError } from '../utils/errors';
 import { getSession } from '../utils/session';
 import { VotePackService } from './VotePackService';
 
+interface VoteResponse {
+  success: boolean;
+  vote_id?: string;
+  total_value?: number;
+  votes_remaining?: number;
+  error?: string;
+  details?: any;
+}
+
 export class VoteService {
   /**
    * Cast votes for an artwork using a specific vote pack
@@ -97,23 +106,32 @@ export class VoteService {
         throw error;
       }
 
-      if (!data?.success || !data?.vote_id) {
-        console.error('Invalid response from server:', data);
-        throw new Error(data?.error || 'Invalid response from server');
+      const response = data as VoteResponse;
+      if (!response.success) {
+        console.error('Vote casting failed:', {
+          error: response.error,
+          details: response.details
+        });
+        throw new Error(response.error || 'Failed to cast vote');
+      }
+
+      if (!response.vote_id) {
+        console.error('Invalid response from server:', response);
+        throw new Error('Invalid response from server');
       }
 
       console.log('Vote cast successfully:', {
-        vote_id: data.vote_id,
-        total_value: data.total_value,
-        votes_remaining: data.votes_remaining,
+        vote_id: response.vote_id,
+        total_value: response.total_value,
+        votes_remaining: response.votes_remaining,
         artwork_id: artworkId,
         pack_id: packId
       });
 
-      // Update local vote pack state if needed
+      // Update local vote pack state
       await VotePackService.refreshVotePacks();
 
-      return data.vote_id;
+      return response.vote_id;
     } catch (err) {
       const error = err as Error;
       console.error('Vote casting error:', {
