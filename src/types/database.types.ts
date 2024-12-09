@@ -1,12 +1,9 @@
 export interface ArtworkMetadata {
-  dimensions?: {
-    width: number;
-    height: number;
-  };
-  fileSize?: number;
-  mimeType?: string;
-  tags?: string[];
-  exif?: Record<string, string>;
+  size?: number;
+  width?: number;
+  height?: number;
+  format?: string;
+  [key: string]: any;
 }
 
 export interface Challenge {
@@ -185,6 +182,41 @@ export interface Album {
   updated_at: string;
 }
 
-export type Artwork = Database['public']['Tables']['artworks']['Row'];
+export interface Vote {
+  id: string;
+  user_id: string;
+  artwork_id: string;
+  pack_id: string;
+  value: number;
+  consumed: boolean;
+  created_at: string;
+  consumed_at: string | null;
+}
+
+export interface VaultState {
+  artwork_id: string;
+  accumulated_value: number;
+  total_votes: number;
+  last_vote_at: string | null;
+  updated_at: string;
+}
+
+export interface Artwork {
+  id: string;
+  user_id: string;
+  album_id: string;
+  title: string;
+  description: string | null;
+  image_url: string;
+  metadata: ArtworkMetadata;
+  status: 'draft' | 'submitted' | 'approved' | 'rejected';
+  challenge_id: string | null;
+  created_at: string;
+  updated_at: string;
+  vault_status: 'active' | 'locked' | 'distributed';
+  vote_count: number;
+  vault_value: number;
+}
+
 export type Profile = Database['public']['Tables']['profiles']['Row'];
 export type Transaction = Database['public']['Tables']['transactions']['Row']; 
