@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabaseClient';
 import type { Vote, VaultState } from '../types/database.types';
 import { handleError } from '../utils/errors';
+import { getSession } from '../utils/session';
+import { VotePackService } from './VotePackService';
 
 export class VoteService {
   /**
@@ -10,30 +12,20 @@ export class VoteService {
     let timeoutId: NodeJS.Timeout | undefined;
 
     try {
-      // Get current session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        console.error('Failed to get session:', sessionError);
-        throw new Error('Authentication error: Failed to get session');
-      }
-      
+      const session = await getSession();
       if (!session) {
-        console.error('No active session found');
-        throw new Error('Authentication error: No active session');
+        throw new Error('Not authenticated');
       }
 
-      console.log('Starting vote cast with:', {
-        artwork_id: artworkId,
-        pack_id: packId,
-        value: value,
-        user_id: session.user.id,
-        access_token: session.access_token ? '✓ Present' : '✗ Missing'
-      });
+      // Validate inputs
+      if (!artworkId || !packId || typeof value !== 'number' || value <= 0) {
+        throw new Error('Invalid vote parameters');
+      }
 
-      // Check if artwork exists
+      // Check artwork exists and is active
       const { data: artwork, error: artworkError } = await supabase
         .from('artworks')
-        .select('id, vault_status')
+        .select('vault_status')
         .eq('id', artworkId)
         .single();
 
@@ -105,16 +97,21 @@ export class VoteService {
         throw error;
       }
 
-      if (!data?.vote_id) {
-        console.error('No vote_id in response:', data);
-        throw new Error('Invalid response from server');
+      if (!data?.success || !data?.vote_id) {
+        console.error('Invalid response from server:', data);
+        throw new Error(data?.error || 'Invalid response from server');
       }
 
       console.log('Vote cast successfully:', {
         vote_id: data.vote_id,
+        total_value: data.total_value,
+        votes_remaining: data.votes_remaining,
         artwork_id: artworkId,
         pack_id: packId
       });
+
+      // Update local vote pack state if needed
+      await VotePackService.refreshVotePacks();
 
       return data.vote_id;
     } catch (err) {

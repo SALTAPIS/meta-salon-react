@@ -269,7 +269,7 @@ serve(async (req: Request) => {
       timestamp: new Date().toISOString()
     });
 
-    const { data: voteId, error: voteError } = await supabaseClient.rpc('cast_vote', {
+    const { data: voteResult, error: voteError } = await supabaseClient.rpc('cast_vote', {
       p_artwork_id: body.artwork_id,
       p_pack_id: body.pack_id,
       p_value: body.value,
@@ -300,14 +300,18 @@ serve(async (req: Request) => {
       );
     }
 
-    if (!voteId) {
-      console.error('No vote ID returned:', {
+    if (!voteResult || !voteResult.success) {
+      console.error('Vote casting failed:', {
+        result: voteResult,
         timestamp: new Date().toISOString()
       });
       return new Response(
-        JSON.stringify({ error: 'Failed to create vote record' }),
+        JSON.stringify({ 
+          error: voteResult?.error || 'Failed to cast vote',
+          details: voteResult
+        }),
         { 
-          status: 500,
+          status: 400,
           headers: {
             ...corsHeaders,
             'Content-Type': 'application/json',
@@ -317,14 +321,20 @@ serve(async (req: Request) => {
     }
 
     console.log('Vote cast successfully:', {
-      vote_id: voteId,
+      result: voteResult,
       artwork_id: body.artwork_id,
       pack_id: body.pack_id,
       timestamp: new Date().toISOString()
     });
 
+    // Return the successful response with all the data
     return new Response(
-      JSON.stringify({ vote_id: voteId }),
+      JSON.stringify({
+        vote_id: voteResult.vote_id,
+        total_value: voteResult.total_value,
+        votes_remaining: voteResult.votes_remaining,
+        success: true
+      }),
       { 
         status: 200,
         headers: {
