@@ -139,9 +139,13 @@ export default function SubmitArtPage() {
 
     try {
       setIsLoading(true);
+      console.log('Starting artwork submission...');
 
+      console.log('Uploading artwork file...');
       const { url: imageUrl, metadata } = await ArtworkService.uploadArtwork(user.id, selectedFile);
+      console.log('Artwork uploaded successfully:', { imageUrl, metadata });
 
+      console.log('Creating artwork record...');
       const artwork = await ArtworkService.createArtwork(
         user.id,
         selectedAlbumId,
@@ -150,8 +154,11 @@ export default function SubmitArtPage() {
         imageUrl,
         metadata
       );
+      console.log('Artwork record created:', artwork);
 
+      console.log('Submitting to challenge...');
       await ArtworkService.submitToChallenge(artwork.id, selectedChallengeId, submissionFee);
+      console.log('Challenge submission complete');
 
       toast({
         title: 'Artwork submitted successfully',
@@ -164,6 +171,17 @@ export default function SubmitArtPage() {
       navigate('/artworks');
     } catch (error) {
       console.error('Error submitting artwork:', error);
+      console.error('Error details:', {
+        user: user?.id,
+        albumId: selectedAlbumId,
+        challengeId: selectedChallengeId,
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        } : error
+      });
+
       toast({
         title: 'Error submitting artwork',
         description: error instanceof Error ? error.message : 'Unknown error',
