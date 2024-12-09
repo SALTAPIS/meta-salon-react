@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 import {
   Box,
   Button,
@@ -23,11 +23,18 @@ import {
   StatLabel,
   StatNumber,
   StatHelpText,
+  Spinner,
+  Center,
 } from '@chakra-ui/react';
 import { useTokens } from '../../hooks/token/useTokens';
 import type { VotePack } from '../../types/database.types';
 
-const AVAILABLE_PACKS = [
+interface AvailablePack {
+  votes: number;
+  price: number;
+}
+
+const AVAILABLE_PACKS: AvailablePack[] = [
   { votes: 10, price: 99 },
   { votes: 50, price: 450 },
   { votes: 100, price: 850 },
@@ -35,12 +42,12 @@ const AVAILABLE_PACKS = [
 
 export function VotePacks() {
   const toast = useToast();
-  const { votePacks, refreshBalance } = useTokens();
-  const [selectedPack, setSelectedPack] = useState<typeof AVAILABLE_PACKS[number] | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { votePacks, isLoading, error, refreshBalance } = useTokens();
+  const [selectedPack, setSelectedPack] = useState<AvailablePack | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const handlePackSelect = (pack: typeof AVAILABLE_PACKS[number]) => {
+  const handlePackSelect = (pack: AvailablePack) => {
     setSelectedPack(pack);
     onOpen();
   };
@@ -49,7 +56,7 @@ export function VotePacks() {
     if (!selectedPack) return;
 
     try {
-      setIsLoading(true);
+      setIsSubmitting(true);
       await refreshBalance();
       toast({
         title: 'Vote pack purchased',
@@ -68,11 +75,30 @@ export function VotePacks() {
         isClosable: true,
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const activePacks = votePacks.filter((pack: VotePack) => pack.status === 'active');
+  if (isLoading) {
+    return (
+      <Center py={8}>
+        <Spinner />
+      </Center>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert status="error">
+        <AlertIcon />
+        Failed to load vote packs: {error instanceof Error ? error.message : 'Unknown error'}
+      </Alert>
+    );
+  }
+
+  const activePacks = votePacks?.filter((pack: VotePack) => 
+    pack.votes > 0 && pack.status === 'active'
+  ) || [];
 
   return (
     <Box>
@@ -117,7 +143,7 @@ export function VotePacks() {
                       colorScheme="blue"
                       size="sm"
                       width="full"
-                      onClick={(e) => {
+                      onClick={(e: MouseEvent) => {
                         e.stopPropagation();
                         handlePackSelect(pack);
                       }}
@@ -158,7 +184,7 @@ export function VotePacks() {
               <Button
                 colorScheme="blue"
                 onClick={handlePurchase}
-                isLoading={isLoading}
+                isLoading={isSubmitting}
               >
                 Confirm Purchase
               </Button>
