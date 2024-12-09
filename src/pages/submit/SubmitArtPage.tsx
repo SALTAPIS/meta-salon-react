@@ -236,7 +236,7 @@ export default function SubmitArtPage() {
           >
             {albums.map((album: Album) => (
               <option key={album.id} value={album.id}>
-                {album.title || 'Untitled Album'}
+                {album.name || 'Untitled Album'}
               </option>
             ))}
           </Select>
