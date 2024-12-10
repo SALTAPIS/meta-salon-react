@@ -133,7 +133,7 @@ const routes: RouteObject[] = [
           },
           {
             path: ':username/profile',
-            element: <Navigate to=".." replace />,
+            element: <UserProfilePage />,
           },
           {
             path: ':username/dashboard',

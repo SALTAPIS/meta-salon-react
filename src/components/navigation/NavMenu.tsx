@@ -110,7 +110,7 @@ export function NavMenu() {
         <MenuItem as={RouterLink} to={`/${username}`}>
           Profile
         </MenuItem>
-        <MenuItem as={RouterLink} to={getPath('tokens')}>
+        <MenuItem as={RouterLink} to={`${getPath('dashboard')}#vote-packs`}>
           Vote Packs
         </MenuItem>
         {(user.role === 'admin' || user.user_metadata?.role === 'admin') && (
@@ -118,15 +118,6 @@ export function NavMenu() {
             <MenuDivider />
             <MenuItem as={RouterLink} to="/admin">
               Admin Dashboard
-            </MenuItem>
-          </>
-        )}
-        {(user.role === 'artist' || user.user_metadata?.role === 'artist' || 
-          user.role === 'admin' || user.user_metadata?.role === 'admin') && (
-          <>
-            <MenuDivider />
-            <MenuItem as={RouterLink} to="/artist">
-              Artist Dashboard
             </MenuItem>
           </>
         )}

@@ -20,12 +20,14 @@ import {
   Textarea,
   SimpleGrid,
   useColorModeValue,
+  Avatar,
 } from '@chakra-ui/react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../hooks/useAuth';
 import type { Database } from '../../types/database.types';
 import type { Album } from '../../types/database.types';
 import { VotePacks } from '../../components/token/VotePacks';
+import { PayoutHistoryTable } from '../../components/artist/PayoutHistoryTable';
 
 type Profile = Database['public']['Tables']['profiles']['Row'] & {
   bio?: string | null;
@@ -196,12 +198,16 @@ export function UserDashboardPage() {
         </Text>
       </Box>
 
-      <Tabs variant="enclosed">
+      <Tabs variant="enclosed" defaultIndex={window.location.hash === '#vote-packs' ? 2 : 0}>
         <TabList>
           <Tab>Profile</Tab>
           <Tab>Albums</Tab>
           <Tab>Vote Packs</Tab>
           <Tab>Transactions</Tab>
+          {(user.role === 'artist' || user.user_metadata?.role === 'artist' || 
+            user.role === 'admin' || user.user_metadata?.role === 'admin') && (
+            <Tab>Payouts</Tab>
+          )}
         </TabList>
 
         <TabPanels>
@@ -214,8 +220,24 @@ export function UserDashboardPage() {
               borderWidth={1}
               borderColor={borderColor}
             >
+              <VStack spacing={6} align="center">
+                <Avatar
+                  size="2xl"
+                  name={user.display_name || user.email}
+                  src={user.avatar_url || undefined}
+                />
+                <Box textAlign="center">
+                  <Heading size="lg">{user.display_name || user.username || user.email}</Heading>
+                  <Text color="gray.500" mt={2}>
+                    @{user.username}
+                  </Text>
+                  <Text color="gray.500" mt={2}>
+                    Member since {new Date(user.created_at).toLocaleDateString()}
+                  </Text>
+                </Box>
+              </VStack>
               <form onSubmit={handleProfileUpdate}>
-                <VStack spacing={6}>
+                <VStack spacing={6} mt={8}>
                   <FormControl>
                     <FormLabel>Username</FormLabel>
                     <Input
@@ -297,6 +319,25 @@ export function UserDashboardPage() {
           <TabPanel>
             <Text>Transaction history coming soon...</Text>
           </TabPanel>
+
+          {/* Payouts Tab */}
+          {(user.role === 'artist' || user.user_metadata?.role === 'artist' || 
+            user.role === 'admin' || user.user_metadata?.role === 'admin') && (
+            <TabPanel>
+              <Box
+                p={6}
+                bg={bgColor}
+                borderRadius="lg"
+                borderWidth={1}
+                borderColor={borderColor}
+              >
+                <VStack spacing={6} align="stretch">
+                  <Heading size="md">Payouts</Heading>
+                  <PayoutHistoryTable />
+                </VStack>
+              </Box>
+            </TabPanel>
+          )}
         </TabPanels>
       </Tabs>
     </Container>
