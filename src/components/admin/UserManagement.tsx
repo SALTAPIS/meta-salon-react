@@ -13,15 +13,43 @@ import {
   AlertIcon,
   HStack,
   Tag,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  IconButton,
+  useToast,
+  Button,
+  Select,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure,
+  FormControl,
+  FormLabel,
+  VStack,
+  Tooltip,
 } from '@chakra-ui/react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../hooks/useAuth';
+import { FiMoreVertical, FiEdit2, FiDollarSign, FiClock } from 'react-icons/fi';
+
+type UserRole = 'user' | 'artist' | 'moderator' | 'admin';
 
 type User = {
   id: string;
   email: string | null;
-  role: string | null;
+  role: UserRole | null;
   created_at: string;
   balance: number;
   username: string | null;
@@ -32,51 +60,288 @@ type User = {
   premium_until: string | null;
 };
 
+type ModalType = 'role' | 'balance' | 'premium';
+
+interface UserModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  user: User;
+  type: ModalType;
+  onSubmit: (data: any) => Promise<void>;
+}
+
+const UserModal = ({ isOpen, onClose, user, type, onSubmit }: UserModalProps) => {
+  const [role, setRole] = useState<UserRole | null>(user.role);
+  const [balance, setBalance] = useState<number>(user.balance);
+  const [premiumMonths, setPremiumMonths] = useState<number>(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      switch (type) {
+        case 'role':
+          await onSubmit({ role });
+          break;
+        case 'balance':
+          await onSubmit({ balance });
+          break;
+        case 'premium':
+          await onSubmit({ months: premiumMonths });
+          break;
+      }
+      onClose();
+    } catch (error) {
+      console.error('Error in modal submit:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader>
+          {type === 'role' && 'Change User Role'}
+          {type === 'balance' && 'Adjust Balance'}
+          {type === 'premium' && 'Manage Premium Status'}
+        </ModalHeader>
+        <ModalCloseButton />
+        
+        <ModalBody>
+          <VStack spacing={4}>
+            <Text fontWeight="medium">{user.email}</Text>
+            
+            {type === 'role' && (
+              <FormControl>
+                <FormLabel>Role</FormLabel>
+                <Select
+                  value={role || ''}
+                  onChange={(e) => setRole(e.target.value as UserRole)}
+                >
+                  <option value="user">User</option>
+                  <option value="artist">Artist</option>
+                  <option value="moderator">Moderator</option>
+                  <option value="admin">Admin</option>
+                </Select>
+              </FormControl>
+            )}
+
+            {type === 'balance' && (
+              <FormControl>
+                <FormLabel>Balance (SLN)</FormLabel>
+                <NumberInput
+                  value={balance}
+                  onChange={(_, value) => setBalance(value)}
+                  min={0}
+                  max={1000000}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              </FormControl>
+            )}
+
+            {type === 'premium' && (
+              <FormControl>
+                <FormLabel>Premium Duration (Months)</FormLabel>
+                <NumberInput
+                  value={premiumMonths}
+                  onChange={(_, value) => setPremiumMonths(value)}
+                  min={1}
+                  max={12}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              </FormControl>
+            )}
+          </VStack>
+        </ModalBody>
+
+        <ModalFooter>
+          <Button variant="ghost" mr={3} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            colorScheme="blue"
+            onClick={handleSubmit}
+            isLoading={isSubmitting}
+          >
+            Save Changes
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+};
+
 export function UserManagement() {
   const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [modalType, setModalType] = useState<ModalType>('role');
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const toast = useToast();
+
+  const fetchUsers = async () => {
+    if (!user?.id) {
+      setError('No user found');
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      console.log('Fetching profiles using admin function...');
+      
+      const { data: profiles, error: queryError } = await supabase
+        .rpc('get_all_profiles_admin');
+
+      if (queryError) {
+        console.error('Query error:', queryError);
+        throw new Error('Failed to fetch user data: ' + queryError.message);
+      }
+
+      setUsers(profiles || []);
+      setError(null);
+    } catch (error) {
+      console.error('Error in fetchUsers:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load users');
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchUsers() {
-      if (!user?.id) {
-        setError('No user found');
-        setLoading(false);
-        return;
-      }
-      
-      try {
-        console.log('Fetching profiles using admin function...');
-        
-        // Use the get_all_profiles_admin function
-        const { data: profiles, error: queryError } = await supabase
-          .rpc('get_all_profiles_admin');
-
-        if (queryError) {
-          console.error('Query error:', queryError);
-          throw new Error('Failed to fetch user data: ' + queryError.message);
-        }
-
-        console.log('Query response:', {
-          profilesLength: profiles?.length || 0,
-          firstProfile: profiles?.[0],
-          hasMultiple: profiles && profiles.length > 1
-        });
-
-        setUsers(profiles || []);
-        setError(null);
-      } catch (error) {
-        console.error('Error in fetchUsers:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load users');
-        setUsers([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchUsers();
   }, [user]);
+
+  const handleUpdateRole = async (data: { role: UserRole }) => {
+    if (!selectedUser) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: data.role })
+        .eq('id', selectedUser.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Role updated',
+        description: `User role changed to ${data.role}`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+
+      await fetchUsers();
+    } catch (error) {
+      console.error('Error updating role:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update user role',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleUpdateBalance = async (data: { balance: number }) => {
+    if (!selectedUser) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ balance: data.balance })
+        .eq('id', selectedUser.id);
+
+      if (error) throw error;
+
+      // Record the transaction
+      const { error: txError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: selectedUser.id,
+          type: 'admin_adjustment',
+          amount: data.balance - selectedUser.balance,
+          description: `Admin balance adjustment`,
+        });
+
+      if (txError) throw txError;
+
+      toast({
+        title: 'Balance updated',
+        description: `User balance set to ${data.balance} SLN`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+
+      await fetchUsers();
+    } catch (error) {
+      console.error('Error updating balance:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update user balance',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleUpdatePremium = async (data: { months: number }) => {
+    if (!selectedUser) return;
+
+    try {
+      const premiumUntil = new Date();
+      premiumUntil.setMonth(premiumUntil.getMonth() + data.months);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ premium_until: premiumUntil.toISOString() })
+        .eq('id', selectedUser.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Premium status updated',
+        description: `Premium status extended by ${data.months} months`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+
+      await fetchUsers();
+    } catch (error) {
+      console.error('Error updating premium status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update premium status',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleAction = (user: User, type: ModalType) => {
+    setSelectedUser(user);
+    setModalType(type);
+    onOpen();
+  };
 
   if (loading) {
     return (
@@ -123,6 +388,7 @@ export function UserManagement() {
             <Th isNumeric>Balance</Th>
             <Th>Premium Until</Th>
             <Th>Joined</Th>
+            <Th width="50px"></Th>
           </Tr>
         </Thead>
         <Tbody>
@@ -137,43 +403,101 @@ export function UserManagement() {
                   px={2}
                   py={1}
                   rounded="md"
+                  cursor="pointer"
+                  onClick={() => handleAction(user, 'role')}
                 >
                   {user.role || 'user'}
                 </Badge>
               </Td>
               <Td isNumeric>
-                <Text color={user.balance > 0 ? 'green.600' : 'gray.600'} fontWeight="medium">
+                <Text 
+                  color={user.balance > 0 ? 'green.600' : 'gray.600'} 
+                  fontWeight="medium"
+                  cursor="pointer"
+                  onClick={() => handleAction(user, 'balance')}
+                >
                   {user.balance?.toLocaleString() || '0'} SLN
                 </Text>
               </Td>
               <Td>
-                {user.premium_until ? (
-                  <Badge 
-                    colorScheme={new Date(user.premium_until) > new Date() ? 'purple' : 'gray'}
-                    variant="subtle"
-                  >
-                    {new Date(user.premium_until).toLocaleDateString()}
-                  </Badge>
-                ) : (
-                  <Text color="gray.500">—</Text>
-                )}
+                <Box cursor="pointer" onClick={() => handleAction(user, 'premium')}>
+                  {user.premium_until ? (
+                    <Badge 
+                      colorScheme={new Date(user.premium_until) > new Date() ? 'purple' : 'gray'}
+                      variant="subtle"
+                    >
+                      {new Date(user.premium_until).toLocaleDateString()}
+                    </Badge>
+                  ) : (
+                    <Text color="gray.500">—</Text>
+                  )}
+                </Box>
               </Td>
               <Td>
                 <Text color="gray.600">
                   {new Date(user.created_at).toLocaleDateString()}
                 </Text>
               </Td>
+              <Td>
+                <Menu>
+                  <MenuButton
+                    as={IconButton}
+                    icon={<FiMoreVertical />}
+                    variant="ghost"
+                    size="sm"
+                  />
+                  <MenuList>
+                    <MenuItem 
+                      icon={<FiEdit2 />}
+                      onClick={() => handleAction(user, 'role')}
+                    >
+                      Change Role
+                    </MenuItem>
+                    <MenuItem 
+                      icon={<FiDollarSign />}
+                      onClick={() => handleAction(user, 'balance')}
+                    >
+                      Adjust Balance
+                    </MenuItem>
+                    <MenuItem 
+                      icon={<FiClock />}
+                      onClick={() => handleAction(user, 'premium')}
+                    >
+                      Manage Premium
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+              </Td>
             </Tr>
           ))}
           {users.length === 0 && (
             <Tr>
-              <Td colSpan={5} textAlign="center">
+              <Td colSpan={6} textAlign="center">
                 <Text color="gray.500">No users found</Text>
               </Td>
             </Tr>
           )}
         </Tbody>
       </Table>
+
+      {selectedUser && (
+        <UserModal
+          isOpen={isOpen}
+          onClose={() => {
+            onClose();
+            setSelectedUser(null);
+          }}
+          user={selectedUser}
+          type={modalType}
+          onSubmit={
+            modalType === 'role'
+              ? handleUpdateRole
+              : modalType === 'balance'
+              ? handleUpdateBalance
+              : handleUpdatePremium
+          }
+        />
+      )}
     </Box>
   );
 } 
