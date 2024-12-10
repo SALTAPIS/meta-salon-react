@@ -102,8 +102,11 @@ export function Navigation() {
                     <MenuItem as={RouterLink} to={getPath('profile')}>
                       Profile
                     </MenuItem>
-                    <MenuItem as={RouterLink} to="/tokens">
+                    <MenuItem as={RouterLink} to={getPath('tokens')}>
                       Vote Packs
+                    </MenuItem>
+                    <MenuItem as={RouterLink} to={getPath('settings')}>
+                      Settings
                     </MenuItem>
                     {/* Admin Panel Menu Item */}
                     {(user.role === 'admin' || user.user_metadata?.role === 'admin') && (

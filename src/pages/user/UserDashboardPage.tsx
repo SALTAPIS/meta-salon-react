@@ -25,6 +25,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../hooks/useAuth';
 import type { Database } from '../../types/database.types';
 import type { Album } from '../../types/database.types';
+import { VotePacks } from '../../components/token/VotePacks';
 
 type Profile = Database['public']['Tables']['profiles']['Row'] & {
   bio?: string | null;
@@ -281,7 +282,15 @@ export function UserDashboardPage() {
 
           {/* Vote Packs Tab */}
           <TabPanel>
-            <Text>Vote packs content coming soon...</Text>
+            <Box
+              p={6}
+              bg={bgColor}
+              borderRadius="lg"
+              borderWidth={1}
+              borderColor={borderColor}
+            >
+              <VotePacks />
+            </Box>
           </TabPanel>
 
           {/* Transactions Tab */}

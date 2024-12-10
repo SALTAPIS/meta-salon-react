@@ -18,6 +18,19 @@ import { UserProfilePage } from './pages/user/UserProfilePage';
 import { UserDashboardPage } from './pages/user/UserDashboardPage';
 import { UserSettingsPage } from './pages/user/UserSettingsPage';
 import { UserAlbumsPage } from './pages/user/UserAlbumsPage';
+import { useAuth } from './hooks/useAuth';
+
+// Component to handle token redirect
+function TokenRedirect() {
+  const { user } = useAuth();
+  return <Navigate to={`/${user?.username || ''}/tokens`} replace />;
+}
+
+// Component to handle profile redirect
+function ProfileRedirect() {
+  const { user } = useAuth();
+  return <Navigate to={`/${user?.username || ''}`} replace />;
+}
 
 const routes: RouteObject[] = [
   {
@@ -66,7 +79,7 @@ const routes: RouteObject[] = [
           },
           {
             path: '/tokens',
-            element: <ProtectedRoute><TokensPage /></ProtectedRoute>,
+            element: <TokenRedirect />,
           },
           {
             path: '/submit',
@@ -96,11 +109,7 @@ const routes: RouteObject[] = [
           },
           {
             path: '/profile',
-            element: (
-              <ProtectedRoute>
-                <UserProfilePage />
-              </ProtectedRoute>
-            ),
+            element: <ProfileRedirect />,
           },
           {
             path: '/settings',
@@ -147,6 +156,14 @@ const routes: RouteObject[] = [
             element: (
               <ProtectedRoute>
                 <UserAlbumsPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: ':username/tokens',
+            element: (
+              <ProtectedRoute>
+                <TokensPage />
               </ProtectedRoute>
             ),
           },
