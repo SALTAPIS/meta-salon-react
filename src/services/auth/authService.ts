@@ -247,12 +247,23 @@ export class AuthService extends SimpleEventEmitter<Events> {
 
   async setAdminRole(userId: string) {
     try {
+      // Call the update_user_role function
       const { data, error } = await supabase
-        .rpc('set_admin_role', {
-          target_user_id: userId
+        .rpc('update_user_role', {
+          target_user_id: userId,
+          new_role: 'admin'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[AuthService] Set admin role error:', error);
+        throw error;
+      }
+
+      // Invalidate cached user if it's the same user
+      if (this.cachedUser?.id === userId) {
+        this.cachedUser = null;
+      }
+
       return { data, error: null };
     } catch (error) {
       console.error('[AuthService] Set admin role error:', error);
