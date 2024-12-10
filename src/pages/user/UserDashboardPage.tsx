@@ -62,8 +62,6 @@ export function UserDashboardPage() {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const purchaseBgColor = useColorModeValue('green.50', 'green.900');
   const purchaseTextColor = useColorModeValue('green.600', 'green.200');
-  const giftBgColor = useColorModeValue('purple.50', 'purple.900');
-  const giftTextColor = useColorModeValue('purple.600', 'purple.200');
 
   // State hooks
   const [profile, setProfile] = useState<Profile | null>(null);
