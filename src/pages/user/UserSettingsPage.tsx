@@ -59,46 +59,25 @@ export function UserSettingsPage() {
           const fileExt = avatarFile.name.split('.').pop();
           const filePath = `${user.id}/${Math.random()}.${fileExt}`;
 
-          console.log('Attempting avatar upload:', {
-            bucket: 'avatars',
-            filePath,
-            fileSize: avatarFile.size,
-            fileType: avatarFile.type,
-            userId: user.id
-          });
-
           const { error: uploadError } = await supabase.storage
             .from('avatars')
-            .upload(filePath, avatarFile, {
-              cacheControl: '3600',
-              upsert: true
-            });
+            .upload(filePath, avatarFile);
 
           if (uploadError) {
-            console.error('Upload error details:', {
+            console.error('Upload error:', {
               error: uploadError,
-              message: uploadError.message,
-              statusCode: uploadError.statusCode,
-              details: uploadError.details
+              message: uploadError.message
             });
             throw new Error(`Failed to upload avatar: ${uploadError.message}`);
           }
-
-          console.log('Upload successful, getting public URL');
 
           const { data: { publicUrl } } = supabase.storage
             .from('avatars')
             .getPublicUrl(filePath);
 
-          console.log('Got public URL:', publicUrl);
-
           avatar_url = publicUrl;
-        } catch (uploadError) {
-          console.error('Avatar upload error:', {
-            error: uploadError,
-            message: uploadError instanceof Error ? uploadError.message : 'Unknown error',
-            userId: user.id
-          });
+        } catch (error) {
+          console.error('Avatar upload error:', error);
           throw new Error('Failed to upload avatar. Please try again.');
         }
       }
