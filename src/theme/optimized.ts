@@ -55,8 +55,22 @@ const optimizedTheme = extendTheme({
     },
     Container: {
       baseStyle: {
-        maxW: 'container.xl',
+        px: { base: 4, md: 6, lg: 8, xl: 12 },
       },
+      sizes: {
+        regular: {
+          maxW: 'container.xl'
+        },
+        wide: {
+          maxW: '2400px'
+        },
+        full: {
+          maxW: '100%'
+        }
+      },
+      defaultProps: {
+        size: 'regular'
+      }
     },
   },
   semanticTokens: {
