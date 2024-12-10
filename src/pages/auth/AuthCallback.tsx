@@ -21,74 +21,51 @@ export default function AuthCallback() {
           throw new Error(errorDescription || error);
         }
 
-        // Get the token hash from URL
+        // Log all URL parameters for debugging
+        console.log('[AuthCallback] URL parameters:', 
+          Object.fromEntries(searchParams.entries()));
+
+        // Check if we're in PKCE flow (has code parameter)
+        const code = searchParams.get('code');
+        if (code) {
+          console.log('[AuthCallback] Detected PKCE flow with code');
+          // The session should already be established by Supabase client
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError) throw sessionError;
+          if (!session) throw new Error('No session established after PKCE flow');
+          
+          console.log('[AuthCallback] PKCE flow successful, session established');
+          await handleSuccessfulAuth(session);
+          return;
+        }
+
+        // If not PKCE, try OTP flow
         const tokenHash = searchParams.get('token_hash') || searchParams.get('token');
         const type = searchParams.get('type');
 
         if (!tokenHash) {
-          console.error('[AuthCallback] No token hash found in URL params:', 
-            Object.fromEntries(searchParams.entries()));
-          throw new Error('No token found in URL');
+          console.error('[AuthCallback] No authentication parameters found');
+          throw new Error('Invalid authentication callback URL');
         }
 
-        console.log('[AuthCallback] Processing token:', { type, hasToken: !!tokenHash });
+        console.log('[AuthCallback] Processing OTP flow:', { type, hasToken: !!tokenHash });
 
         // Exchange the token for a session
-        let result;
-        if (type === 'recovery') {
-          result = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: 'recovery'
-          });
-        } else {
-          result = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: 'email'
-          });
-        }
+        const result = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: type === 'recovery' ? 'recovery' : 'email'
+        });
 
         if (result.error) {
           console.error('[AuthCallback] Token verification error:', result.error);
           throw result.error;
         }
 
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          console.log('[AuthCallback] Session established:', {
-            userId: session.user.id,
-            email: session.user.email,
-          });
-
-          // Update profile with email_verified status
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-              email_verified: true,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', session.user.id);
-
-          if (updateError) {
-            console.error('[AuthCallback] Profile update error:', updateError);
-          } else {
-            console.log('[AuthCallback] Profile updated successfully');
-          }
-
-          toast({
-            title: 'Email confirmed!',
-            description: 'Your email has been confirmed and you are now signed in.',
-            status: 'success',
-            duration: 5000,
-            isClosable: true,
-          });
-
-          // Redirect to dashboard
-          navigate(`/${session.user.user_metadata.username || ''}/dashboard`, { replace: true });
-        } else {
-          console.error('[AuthCallback] No session found');
-          throw new Error('No session found');
+        if (!result.data.session) {
+          throw new Error('No session established after OTP verification');
         }
+
+        await handleSuccessfulAuth(result.data.session);
       } catch (error) {
         console.error('[AuthCallback] Error:', error);
         toast({
@@ -99,6 +76,44 @@ export default function AuthCallback() {
           isClosable: true,
         });
         navigate('/auth/signin', { replace: true });
+      }
+    };
+
+    const handleSuccessfulAuth = async (session: any) => {
+      try {
+        console.log('[AuthCallback] Session established:', {
+          userId: session.user.id,
+          email: session.user.email,
+        });
+
+        // Update profile with email_verified status
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            email_verified: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', session.user.id);
+
+        if (updateError) {
+          console.error('[AuthCallback] Profile update error:', updateError);
+        } else {
+          console.log('[AuthCallback] Profile updated successfully');
+        }
+
+        toast({
+          title: 'Email confirmed!',
+          description: 'Your email has been confirmed and you are now signed in.',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+
+        // Redirect to dashboard
+        navigate(`/${session.user.user_metadata.username || ''}/dashboard`, { replace: true });
+      } catch (error) {
+        console.error('[AuthCallback] Error in handleSuccessfulAuth:', error);
+        throw error;
       }
     };
 
