@@ -110,8 +110,8 @@ export function NavMenu() {
         <MenuItem as={RouterLink} to={`/${username}`}>
           Profile
         </MenuItem>
-        <MenuItem as={RouterLink} to={`${getPath('dashboard')}#vote-packs`}>
-          Vote Packs
+        <MenuItem as={RouterLink} to={getPath('settings')}>
+          Settings
         </MenuItem>
         {(user.role === 'admin' || user.user_metadata?.role === 'admin') && (
           <>
