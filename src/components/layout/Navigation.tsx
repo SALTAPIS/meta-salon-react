@@ -75,6 +75,9 @@ export function Navigation() {
                     <MenuItem as={RouterLink} to={`/${user.username}/settings`}>
                       Settings
                     </MenuItem>
+                    <MenuItem as={RouterLink} to="/tokens">
+                      Vote Packs
+                    </MenuItem>
                     {user.role === 'admin' && (
                       <MenuItem as={RouterLink} to="/admin">
                         Admin Panel
