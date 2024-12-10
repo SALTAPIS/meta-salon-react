@@ -16,6 +16,10 @@ import GamePage from './pages/game/GamePage';
 import ClassementPage from './pages/classement/ClassementPage';
 import { ArtworkDetailsPage } from './pages/artworks/ArtworkDetailsPage';
 import { DashboardPage as ArtistDashboardPage } from './pages/artist/DashboardPage';
+import { UserProfilePage } from './pages/user/UserProfilePage';
+import { UserSettingsPage } from './pages/user/UserSettingsPage';
+import { UserTransactionsPage } from './pages/user/UserTransactionsPage';
+import { UserAlbumsPage } from './pages/user/UserAlbumsPage';
 
 const routes: RouteObject[] = [
   {
@@ -93,7 +97,35 @@ const routes: RouteObject[] = [
           {
             path: '/classement',
             element: <ClassementPage />,
-          }
+          },
+          {
+            path: ':username',
+            element: <UserProfilePage />,
+          },
+          {
+            path: ':username/settings',
+            element: (
+              <ProtectedRoute>
+                <UserSettingsPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: ':username/transactions',
+            element: (
+              <ProtectedRoute>
+                <UserTransactionsPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: ':username/albums',
+            element: (
+              <ProtectedRoute>
+                <UserAlbumsPage />
+              </ProtectedRoute>
+            ),
+          },
         ],
       },
     ],
