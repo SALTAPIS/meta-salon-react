@@ -86,6 +86,29 @@ export default function AuthCallback() {
           email: session.user.email,
         });
 
+        // Check if profile exists
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError || !profile) {
+          console.log('[AuthCallback] Profile not found, creating it now');
+          // Create profile if it doesn't exist
+          const { error: createError } = await supabase.rpc('create_initial_profile', {
+            user_id: session.user.id,
+            user_email: session.user.email,
+            user_role: 'user',
+            initial_balance: 500
+          });
+
+          if (createError) {
+            console.error('[AuthCallback] Profile creation error:', createError);
+            throw createError;
+          }
+        }
+
         // Update profile with email_verified status
         const { error: updateError } = await supabase
           .from('profiles')
@@ -109,12 +132,14 @@ export default function AuthCallback() {
           isClosable: true,
         });
 
-        // Redirect to dashboard
+        // Get username for redirection
         const username = session.user.user_metadata?.username || session.user.email?.split('@')[0];
         if (!username) {
           console.error('[AuthCallback] No username found in session:', session);
           throw new Error('No username found in session');
         }
+
+        // Redirect to dashboard
         navigate(`/${username}/dashboard`, { replace: true });
       } catch (error) {
         console.error('[AuthCallback] Error in handleSuccessfulAuth:', error);

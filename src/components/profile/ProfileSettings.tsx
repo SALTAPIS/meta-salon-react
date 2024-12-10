@@ -11,7 +11,10 @@ import {
   FormErrorMessage,
   Textarea,
   Switch,
+  IconButton,
+  HStack,
 } from '@chakra-ui/react';
+import { FiUpload, FiX } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 import { AuthService } from '../../services/auth/authService';
 
@@ -31,6 +34,7 @@ export function ProfileSettings() {
     email_notifications: true,
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
@@ -42,7 +46,7 @@ export function ProfileSettings() {
         username: user.username || '',
         display_name: user.display_name || '',
         bio: user.bio || '',
-        email_notifications: user.email_notifications,
+        email_notifications: user.email_notifications || false,
       });
     }
   }, [user]);
@@ -70,7 +74,16 @@ export function ProfileSettings() {
       }
 
       setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
       setError(null);
+    }
+  };
+
+  const clearAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    if (avatarPreview) {
+      URL.revokeObjectURL(avatarPreview);
     }
   };
 
@@ -84,7 +97,7 @@ export function ProfileSettings() {
         throw new Error('Not authenticated');
       }
 
-      let avatarUrl = user?.avatar_url;
+      let avatarUrl = user.avatar_url;
       if (avatarFile) {
         const uploadResult = await authService.uploadAvatar(avatarFile);
         if (uploadResult.error) {
@@ -102,6 +115,9 @@ export function ProfileSettings() {
       if (result.error) {
         throw result.error;
       }
+
+      // Clear avatar preview
+      clearAvatar();
 
       toast({
         title: 'Profile updated',
@@ -135,15 +151,36 @@ export function ProfileSettings() {
             display="none"
             id="avatar-upload"
           />
-          <Box position="relative" width="fit-content">
-            <Avatar
-              size="xl"
-              src={user?.avatar_url || undefined}
-              name={user?.display_name || user?.username || undefined}
-              cursor="pointer"
-              onClick={() => document.getElementById('avatar-upload')?.click()}
-            />
-          </Box>
+          <HStack spacing={4} align="center">
+            <Box position="relative" width="fit-content">
+              <Avatar
+                size="xl"
+                src={avatarPreview || user?.avatar_url || undefined}
+                name={user?.display_name || user?.username || undefined}
+              />
+              <IconButton
+                aria-label="Upload avatar"
+                icon={<FiUpload />}
+                size="sm"
+                position="absolute"
+                bottom="0"
+                right="0"
+                colorScheme="blue"
+                rounded="full"
+                onClick={() => document.getElementById('avatar-upload')?.click()}
+              />
+            </Box>
+            {(avatarPreview || user?.avatar_url) && (
+              <IconButton
+                aria-label="Remove avatar"
+                icon={<FiX />}
+                size="sm"
+                colorScheme="red"
+                variant="ghost"
+                onClick={clearAvatar}
+              />
+            )}
+          </HStack>
         </FormControl>
 
         <FormControl isInvalid={!!error}>
