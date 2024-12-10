@@ -110,7 +110,12 @@ export default function AuthCallback() {
         });
 
         // Redirect to dashboard
-        navigate(`/${session.user.user_metadata.username || ''}/dashboard`, { replace: true });
+        const username = session.user.user_metadata?.username || session.user.email?.split('@')[0];
+        if (!username) {
+          console.error('[AuthCallback] No username found in session:', session);
+          throw new Error('No username found in session');
+        }
+        navigate(`/${username}/dashboard`, { replace: true });
       } catch (error) {
         console.error('[AuthCallback] Error in handleSuccessfulAuth:', error);
         throw error;

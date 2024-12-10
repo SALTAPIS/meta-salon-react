@@ -66,11 +66,14 @@ export function Navigation() {
                     {user.display_name || user.username || user.email}
                   </MenuButton>
                   <MenuList>
-                    <MenuItem as={RouterLink} to={`/${user.username}`}>
-                      Public Profile
+                    <MenuItem as={RouterLink} to={`/${user.username}/profile`}>
+                      Profile
                     </MenuItem>
                     <MenuItem as={RouterLink} to={`/${user.username}/dashboard`}>
                       Dashboard
+                    </MenuItem>
+                    <MenuItem as={RouterLink} to={`/${user.username}/settings`}>
+                      Settings
                     </MenuItem>
                     {user.role === 'admin' && (
                       <MenuItem as={RouterLink} to="/admin">

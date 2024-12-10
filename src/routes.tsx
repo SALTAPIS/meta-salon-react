@@ -70,7 +70,13 @@ const routes: RouteObject[] = [
           },
           {
             path: '/submit',
-            element: <ProtectedRoute><SubmitArtPage /></ProtectedRoute>,
+            element: (
+              <ProtectedRoute>
+                <RoleGuard allowedRoles={['artist', 'admin']}>
+                  <SubmitArtPage />
+                </RoleGuard>
+              </ProtectedRoute>
+            ),
           },
           {
             path: '/artworks',
@@ -89,7 +95,7 @@ const routes: RouteObject[] = [
             element: <ClassementPage />,
           },
           {
-            path: ':username',
+            path: ':username/profile',
             element: <UserProfilePage />,
           },
           {
