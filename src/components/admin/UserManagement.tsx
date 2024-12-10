@@ -24,8 +24,12 @@ type User = {
   role: string | null;
   created_at: string;
   balance: number;
-  premium_until: string | null;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
   updated_at: string;
+  email_verified: boolean;
+  premium_until: string | null;
 };
 
 export function UserManagement() {

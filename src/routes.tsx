@@ -15,10 +15,7 @@ import { Layout } from './components/layout/Layout';
 import GamePage from './pages/game/GamePage';
 import ClassementPage from './pages/classement/ClassementPage';
 import { ArtworkDetailsPage } from './pages/artworks/ArtworkDetailsPage';
-import { EdgeFunctionTestPage } from './pages/test/EdgeFunctionTestPage';
-import { DebugPage } from './pages/debug/DebugPage';
 import { DashboardPage as ArtistDashboardPage } from './pages/artist/DashboardPage';
-import { TokenDistributionTest } from './pages/debug/TokenDistributionTest';
 
 const routes: RouteObject[] = [
   {
@@ -96,24 +93,6 @@ const routes: RouteObject[] = [
           {
             path: '/classement',
             element: <ClassementPage />,
-          },
-          {
-            path: '/test/edge-function',
-            element: <ProtectedRoute><EdgeFunctionTestPage /></ProtectedRoute>,
-          },
-          {
-            path: '/debug',
-            element: <DebugPage />,
-          },
-          {
-            path: '/debug/token-distribution',
-            element: (
-              <ProtectedRoute>
-                <RoleGuard allowedRoles={['admin', 'artist']}>
-                  <TokenDistributionTest />
-                </RoleGuard>
-              </ProtectedRoute>
-            ),
           }
         ],
       },

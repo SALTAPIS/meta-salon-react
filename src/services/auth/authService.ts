@@ -554,10 +554,50 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
 
       // Update user metadata
       const { error: updateError } = await supabase.auth.updateUser({
-        data: { role: 'admin' }
+        data: { 
+          role: 'admin',
+          updated_at: new Date().toISOString()
+        }
       });
 
       if (updateError) throw updateError;
+
+      // Force refresh session to get new role
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        console.warn('[AuthService] Error refreshing session:', refreshError);
+      }
+
+      // Get updated session
+      const { data: { session: newSession }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.warn('[AuthService] Error getting updated session:', sessionError);
+      } else {
+        console.log('[AuthService] Updated session:', {
+          role: newSession?.user?.role,
+          metadata: {
+            user_metadata: newSession?.user?.user_metadata,
+            app_metadata: newSession?.user?.app_metadata
+          }
+        });
+      }
+
+      // Verify role was set
+      if (!newSession?.user?.user_metadata?.role) {
+        console.warn('[AuthService] Role not set in user metadata, retrying...');
+        
+        // Try one more time
+        const { error: retryError } = await supabase.auth.updateUser({
+          data: { 
+            role: 'admin',
+            updated_at: new Date().toISOString()
+          }
+        });
+
+        if (retryError) {
+          console.error('[AuthService] Failed to set role on retry:', retryError);
+        }
+      }
 
       console.log('[AuthService] Admin role set successfully');
       return { error: null };
