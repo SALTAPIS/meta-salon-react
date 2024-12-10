@@ -1,4 +1,4 @@
-import { createBrowserRouter, type RouteObject } from 'react-router-dom';
+import { createBrowserRouter, type RouteObject, Navigate } from 'react-router-dom';
 import App from './App';
 import SignUpPage from './pages/auth/SignUpPage';
 import SignInPage from './pages/auth/SignInPage';
@@ -119,8 +119,12 @@ const routes: RouteObject[] = [
             ),
           },
           {
-            path: ':username/profile',
+            path: ':username',
             element: <UserProfilePage />,
+          },
+          {
+            path: ':username/profile',
+            element: <Navigate to=".." replace />,
           },
           {
             path: ':username/dashboard',
