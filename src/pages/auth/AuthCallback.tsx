@@ -139,8 +139,16 @@ export default function AuthCallback() {
           throw new Error('No username found in session');
         }
 
-        // Redirect to dashboard
-        navigate(`/${username}/dashboard`, { replace: true });
+        // Get user role
+        const userRole = session.user.role || session.user.user_metadata?.role;
+        console.log('[AuthCallback] User role for redirect:', userRole);
+
+        // Determine redirect path based on role
+        const redirectPath = userRole === 'admin' ? '/admin' : `/${username}/dashboard`;
+
+        // Redirect to appropriate dashboard
+        console.log('[AuthCallback] Redirecting to:', redirectPath);
+        navigate(redirectPath, { replace: true });
       } catch (error) {
         console.error('[AuthCallback] Error in handleSuccessfulAuth:', error);
         throw error;

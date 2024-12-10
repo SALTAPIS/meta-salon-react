@@ -105,12 +105,15 @@ export function Navigation() {
                     <MenuItem as={RouterLink} to="/tokens">
                       Vote Packs
                     </MenuItem>
-                    {user.role === 'admin' && (
+                    {/* Admin Panel Menu Item */}
+                    {(user.role === 'admin' || user.user_metadata?.role === 'admin') && (
                       <MenuItem as={RouterLink} to="/admin">
                         Admin Panel
                       </MenuItem>
                     )}
-                    {user.role && ['artist', 'admin'].includes(user.role) && (
+                    {/* Artist Dashboard Menu Item */}
+                    {(user.role === 'artist' || user.user_metadata?.role === 'artist' || 
+                      user.role === 'admin' || user.user_metadata?.role === 'admin') && (
                       <MenuItem as={RouterLink} to="/artist">
                         Artist Dashboard
                       </MenuItem>
