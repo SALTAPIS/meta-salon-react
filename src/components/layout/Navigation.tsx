@@ -3,145 +3,112 @@ import {
   Box,
   Flex,
   HStack,
-  Link,
-  IconButton,
   Button,
   Menu,
   MenuButton,
   MenuList,
   MenuItem,
-  MenuDivider,
-  useDisclosure,
-  useColorModeValue,
-  Stack,
-  useColorMode,
   Text,
+  useColorModeValue,
+  Container,
 } from '@chakra-ui/react';
-import { HamburgerIcon, CloseIcon, MoonIcon, SunIcon } from '@chakra-ui/icons';
-import { useSession } from '../../hooks/useSession';
-
-interface NavLinkProps {
-  children: React.ReactNode;
-  to: string;
-}
-
-const NavLink = ({ children, to }: NavLinkProps) => (
-  <Link
-    as={RouterLink}
-    px={2}
-    py={1}
-    rounded={'md'}
-    _hover={{
-      textDecoration: 'none',
-      bg: useColorModeValue('gray.200', 'gray.700'),
-    }}
-    to={to}
-  >
-    {children}
-  </Link>
-);
+import { useAuth } from '../../hooks/useAuth';
 
 export function Navigation() {
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const { colorMode, toggleColorMode } = useColorMode();
-  const { session } = useSession();
-
-  const userRole = session?.user?.user_metadata?.role;
-  const isArtist = userRole === 'artist';
-  const isAdmin = userRole === 'admin';
+  const { user, signOut } = useAuth();
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
 
   return (
-    <Box bg={useColorModeValue('gray.100', 'gray.900')} px={4}>
-      <Flex h={16} alignItems={'center'} justifyContent={'space-between'}>
-        <IconButton
-          size={'md'}
-          icon={isOpen ? <CloseIcon /> : <HamburgerIcon />}
-          aria-label={'Open Menu'}
-          display={{ md: 'none' }}
-          onClick={isOpen ? onClose : onOpen}
-        />
-        <HStack spacing={8} alignItems={'center'}>
-          <Box>
-            <Link as={RouterLink} to="/" _hover={{ textDecoration: 'none' }}>
+    <Box
+      bg={bgColor}
+      borderBottom={1}
+      borderStyle="solid"
+      borderColor={borderColor}
+      position="sticky"
+      top={0}
+      zIndex={1000}
+    >
+      <Container maxW="container.xl">
+        <Flex h={16} alignItems="center" justifyContent="space-between">
+          {/* Left side */}
+          <HStack spacing={8} alignItems="center">
+            <RouterLink to="/">
               <Text fontSize="xl" fontWeight="bold">
                 Meta Salon
               </Text>
-            </Link>
-          </Box>
-          <HStack as={'nav'} spacing={4} display={{ base: 'none', md: 'flex' }}>
-            <NavLink to="/artworks">Artworks</NavLink>
-            <NavLink to="/game">Game</NavLink>
-            <NavLink to="/classement">Classement</NavLink>
-            {session && (
+            </RouterLink>
+
+            <HStack spacing={4}>
+              <RouterLink to="/artworks">
+                <Text>Artworks</Text>
+              </RouterLink>
+              <RouterLink to="/game">
+                <Text>Game</Text>
+              </RouterLink>
+              <RouterLink to="/classement">
+                <Text>Classement</Text>
+              </RouterLink>
+            </HStack>
+          </HStack>
+
+          {/* Right side */}
+          <HStack spacing={4}>
+            {user ? (
               <>
-                <NavLink to="/tokens">Tokens</NavLink>
-                {(isArtist || isAdmin) && (
-                  <NavLink to="/artist">Artist Dashboard</NavLink>
-                )}
-                {isAdmin && (
-                  <NavLink to="/admin">Admin</NavLink>
-                )}
+                {/* Balance Display */}
+                <Text fontWeight="bold">
+                  {user.balance?.toLocaleString()} SLN
+                </Text>
+
+                <Menu>
+                  <MenuButton as={Button} variant="ghost">
+                    {user.display_name || user.username || user.email}
+                  </MenuButton>
+                  <MenuList>
+                    <MenuItem as={RouterLink} to={`/${user.username}`}>
+                      Public Profile
+                    </MenuItem>
+                    <MenuItem as={RouterLink} to={`/${user.username}/dashboard`}>
+                      Dashboard
+                    </MenuItem>
+                    {user.role === 'admin' && (
+                      <MenuItem as={RouterLink} to="/admin">
+                        Admin Panel
+                      </MenuItem>
+                    )}
+                    {(user.role && ['artist', 'admin'].includes(user.role)) && (
+                      <MenuItem as={RouterLink} to="/artist">
+                        Artist Dashboard
+                      </MenuItem>
+                    )}
+                    <MenuItem onClick={signOut}>
+                      Sign Out
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+              </>
+            ) : (
+              <>
+                <Button
+                  as={RouterLink}
+                  to="/auth/signin"
+                  variant="ghost"
+                >
+                  Sign In
+                </Button>
+                <Button
+                  as={RouterLink}
+                  to="/auth/signup"
+                  colorScheme="blue"
+                >
+                  Sign Up
+                </Button>
               </>
             )}
           </HStack>
-        </HStack>
-
-        <Flex alignItems={'center'}>
-          <Stack direction={'row'} spacing={7}>
-            <Button onClick={toggleColorMode}>
-              {colorMode === 'light' ? <MoonIcon /> : <SunIcon />}
-            </Button>
-
-            {session ? (
-              <Menu>
-                <MenuButton
-                  as={Button}
-                  rounded={'full'}
-                  variant={'link'}
-                  cursor={'pointer'}
-                  minW={0}
-                >
-                  Profile
-                </MenuButton>
-                <MenuList>
-                  <MenuItem as={RouterLink} to="/profile">
-                    Settings
-                  </MenuItem>
-                  <MenuDivider />
-                  <MenuItem as={RouterLink} to="/auth/signout">
-                    Sign Out
-                  </MenuItem>
-                </MenuList>
-              </Menu>
-            ) : (
-              <Button as={RouterLink} to="/auth/signin">
-                Sign In
-              </Button>
-            )}
-          </Stack>
         </Flex>
-      </Flex>
-
-      {isOpen ? (
-        <Box pb={4} display={{ md: 'none' }}>
-          <Stack as={'nav'} spacing={4}>
-            <NavLink to="/artworks">Artworks</NavLink>
-            <NavLink to="/game">Game</NavLink>
-            <NavLink to="/classement">Classement</NavLink>
-            {session && (
-              <>
-                <NavLink to="/tokens">Tokens</NavLink>
-                {(isArtist || isAdmin) && (
-                  <NavLink to="/artist">Artist Dashboard</NavLink>
-                )}
-                {isAdmin && (
-                  <NavLink to="/admin">Admin</NavLink>
-                )}
-              </>
-            )}
-          </Stack>
-        </Box>
-      ) : null}
+      </Container>
     </Box>
   );
 } 

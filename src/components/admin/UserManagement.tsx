@@ -1,5 +1,6 @@
 import {
   Box,
+  Button,
   Table,
   Thead,
   Tbody,
@@ -8,18 +9,17 @@ import {
   Td,
   Text,
   Badge,
-  Spinner,
-  Alert,
-  AlertIcon,
-  HStack,
-  Tag,
   Menu,
   MenuButton,
   MenuList,
   MenuItem,
   IconButton,
   useToast,
-  Button,
+  Spinner,
+  Alert,
+  AlertIcon,
+  HStack,
+  Tag,
   Select,
   NumberInput,
   NumberInputField,
@@ -37,7 +37,6 @@ import {
   FormControl,
   FormLabel,
   VStack,
-  Tooltip,
 } from '@chakra-ui/react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
@@ -58,6 +57,7 @@ type User = {
   updated_at: string;
   email_verified: boolean;
   premium_until: string | null;
+  artwork_count: number;
 };
 
 type ModalType = 'role' | 'balance' | 'premium';
@@ -387,6 +387,7 @@ export function UserManagement() {
             <Th>Role</Th>
             <Th isNumeric>Balance</Th>
             <Th>Premium Until</Th>
+            <Th isNumeric>Artworks</Th>
             <Th>Joined</Th>
             <Th width="50px"></Th>
           </Tr>
@@ -410,31 +411,36 @@ export function UserManagement() {
                 </Badge>
               </Td>
               <Td isNumeric>
-                <Text 
-                  color={user.balance > 0 ? 'green.600' : 'gray.600'} 
-                  fontWeight="medium"
+                <Text
                   cursor="pointer"
                   onClick={() => handleAction(user, 'balance')}
                 >
-                  {user.balance?.toLocaleString() || '0'} SLN
+                  {user.balance.toLocaleString()} SLN
                 </Text>
               </Td>
               <Td>
-                <Box cursor="pointer" onClick={() => handleAction(user, 'premium')}>
-                  {user.premium_until ? (
-                    <Badge 
-                      colorScheme={new Date(user.premium_until) > new Date() ? 'purple' : 'gray'}
-                      variant="subtle"
-                    >
-                      {new Date(user.premium_until).toLocaleDateString()}
-                    </Badge>
-                  ) : (
-                    <Text color="gray.500">—</Text>
-                  )}
-                </Box>
+                <HStack spacing={2}>
+                  <Text>
+                    {user.premium_until
+                      ? new Date(user.premium_until) > new Date()
+                        ? new Date(user.premium_until).toLocaleDateString()
+                        : 'Expired'
+                      : 'No premium'}
+                  </Text>
+                  <IconButton
+                    aria-label="Extend premium"
+                    icon={<FiClock />}
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleAction(user, 'premium')}
+                  />
+                </HStack>
+              </Td>
+              <Td isNumeric>
+                <Text>{user.artwork_count}</Text>
               </Td>
               <Td>
-                <Text color="gray.600">
+                <Text color="gray.600" fontSize="sm">
                   {new Date(user.created_at).toLocaleDateString()}
                 </Text>
               </Td>
@@ -447,23 +453,17 @@ export function UserManagement() {
                     size="sm"
                   />
                   <MenuList>
-                    <MenuItem 
+                    <MenuItem
                       icon={<FiEdit2 />}
                       onClick={() => handleAction(user, 'role')}
                     >
                       Change Role
                     </MenuItem>
-                    <MenuItem 
+                    <MenuItem
                       icon={<FiDollarSign />}
                       onClick={() => handleAction(user, 'balance')}
                     >
                       Adjust Balance
-                    </MenuItem>
-                    <MenuItem 
-                      icon={<FiClock />}
-                      onClick={() => handleAction(user, 'premium')}
-                    >
-                      Manage Premium
                     </MenuItem>
                   </MenuList>
                 </Menu>
@@ -472,7 +472,7 @@ export function UserManagement() {
           ))}
           {users.length === 0 && (
             <Tr>
-              <Td colSpan={6} textAlign="center">
+              <Td colSpan={7} textAlign="center">
                 <Text color="gray.500">No users found</Text>
               </Td>
             </Tr>
