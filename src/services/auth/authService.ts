@@ -165,16 +165,23 @@ export class AuthService extends SimpleEventEmitter<Events> {
       // Combine auth user with profile data
       const user: User = {
         ...data.user,
-        role: profile.role,
+        role: profile.role || data.user.user_metadata?.role || data.user.role,
         balance: profile.balance,
-        username: profile.username,
-        display_name: profile.display_name,
+        username: profile.username || data.user.user_metadata?.username || data.user.email?.split('@')[0],
+        display_name: profile.display_name || data.user.user_metadata?.display_name || data.user.email?.split('@')[0],
         bio: profile.bio,
         avatar_url: profile.avatar_url,
         email_notifications: profile.email_notifications,
         email_verified: profile.email_verified,
         updated_at: profile.updated_at,
       };
+
+      console.log('[AuthService] User data combined:', {
+        profileRole: profile.role,
+        metadataRole: data.user.user_metadata?.role,
+        directRole: data.user.role,
+        finalRole: user.role
+      });
 
       this.cachedUser = user;
       return { user, session: data.session };

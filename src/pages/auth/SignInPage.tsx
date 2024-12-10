@@ -53,7 +53,10 @@ export default function SignInPage() {
       if (error) throw error;
 
       if (isPasswordMode) {
-        navigate('/dashboard');
+        const { user } = await authService.signIn({ email, password });
+        const username = user.username || user.email?.split('@')[0];
+        const redirectPath = user.role === 'admin' ? '/admin' : `/${username}/dashboard`;
+        navigate(redirectPath);
       } else {
         toast({
           title: 'Magic link sent',
