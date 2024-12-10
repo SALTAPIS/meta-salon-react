@@ -61,7 +61,9 @@ export function UserSettingsPage() {
 
           const { error: uploadError } = await supabase.storage
             .from('avatars')
-            .upload(filePath, avatarFile);
+            .upload(filePath, avatarFile, {
+              upsert: true
+            });
 
           if (uploadError) {
             console.error('Upload error:', {

@@ -14,10 +14,6 @@ import {
   Tab,
   Button,
   useToast,
-  FormControl,
-  FormLabel,
-  Input,
-  Textarea,
   SimpleGrid,
   useColorModeValue,
   Avatar,
@@ -27,7 +23,6 @@ import {
   Image,
   Grid,
   GridItem,
-  IconButton,
 } from '@chakra-ui/react';
 import { SettingsIcon } from '@chakra-ui/icons';
 import { Link as RouterLink } from 'react-router-dom';
@@ -58,12 +53,6 @@ export function UserDashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({
-    username: '',
-    display_name: '',
-    bio: '',
-  });
   const toast = useToast();
 
   const bgColor = useColorModeValue('white', 'gray.800');
@@ -85,11 +74,6 @@ export function UserDashboardPage() {
 
       if (profileError) throw profileError;
       setProfile(profiles);
-      setFormData({
-        username: profiles.username || '',
-        display_name: profiles.display_name || '',
-        bio: profiles.bio || '',
-      });
     } catch (error) {
       toast({
         title: 'Error loading profile',
@@ -149,45 +133,14 @@ export function UserDashboardPage() {
         },
       ];
       setActivities(mockActivities);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          ...formData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Profile updated',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-
-      loadProfile();
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to update profile',
+        title: 'Error loading activities',
+        description: error instanceof Error ? error.message : 'An error occurred',
         status: 'error',
         duration: 5000,
         isClosable: true,
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -267,17 +220,48 @@ export function UserDashboardPage() {
                       {activity.images && (
                         <SimpleGrid columns={activity.images.length > 1 ? 3 : 1} spacing={4}>
                           {activity.images.map((image, index) => (
-                            <Image
+                            <Box
                               key={index}
-                              src={image}
-                              alt={`Activity ${index + 1}`}
-                              borderRadius="md"
-                            />
+                              borderRadius="lg"
+                              overflow="hidden"
+                              position="relative"
+                              paddingTop="66.67%"
+                            >
+                              <Image
+                                src={image}
+                                alt={`Activity ${index + 1}`}
+                                position="absolute"
+                                top={0}
+                                left={0}
+                                width="100%"
+                                height="100%"
+                                objectFit="cover"
+                              />
+                            </Box>
                           ))}
                         </SimpleGrid>
                       )}
-                      {activity.details && (
-                        <Text color="gray.600">{activity.details}</Text>
+                      {activity.type === 'purchase' && (
+                        <Box
+                          p={4}
+                          bg={useColorModeValue('green.50', 'green.900')}
+                          borderRadius="lg"
+                        >
+                          <Text fontWeight="medium" color={useColorModeValue('green.600', 'green.200')}>
+                            {activity.details}
+                          </Text>
+                        </Box>
+                      )}
+                      {activity.type === 'gift' && (
+                        <Box
+                          p={4}
+                          bg={useColorModeValue('purple.50', 'purple.900')}
+                          borderRadius="lg"
+                        >
+                          <Text fontWeight="medium" color={useColorModeValue('purple.600', 'purple.200')}>
+                            {activity.details}
+                          </Text>
+                        </Box>
                       )}
                     </VStack>
                   </CardBody>

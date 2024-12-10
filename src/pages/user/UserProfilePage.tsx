@@ -1,141 +1,117 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import {
   Container,
+  Box,
   VStack,
   HStack,
+  Heading,
   Text,
   Avatar,
-  Button,
-  Heading,
-  useToast,
   Badge,
-  Box,
-  Divider,
+  Button,
+  Tabs,
+  TabList,
+  TabPanels,
+  TabPanel,
+  Tab,
+  SimpleGrid,
+  useColorModeValue,
+  Image,
 } from '@chakra-ui/react';
-import { FiEdit2, FiSettings } from 'react-icons/fi';
-import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../hooks/useAuth';
-import type { Database } from '../../types/database.types';
-import type { UserRole } from '../../types/user';
 
-type Profile = Database['public']['Tables']['profiles']['Row'] & {
-  bio?: string | null;
-  premium_until?: string | null;
-  role: UserRole;
+type Artwork = {
+  id: string;
+  title: string;
+  image_url: string;
+  created_at: string;
 };
 
 export function UserProfilePage() {
   const { username } = useParams<{ username: string }>();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const toast = useToast();
   const { user } = useAuth();
+  const [artworks] = useState<Artwork[]>([]);
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
 
-  // Check if this is the user's own profile
-  const isOwnProfile = user?.username === username || user?.email?.split('@')[0] === username;
-
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const { data: profiles, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('username', username)
-          .single();
-
-        if (profileError) throw profileError;
-        setProfile(profiles);
-      } catch (error) {
-        toast({
-          title: 'Error loading profile',
-          description: error instanceof Error ? error.message : 'An error occurred',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    };
-
-    if (username) {
-      loadProfile();
-    }
-  }, [username, toast]);
-
-  if (!profile) {
-    return (
-      <Container maxW="container.xl" py={8}>
-        <Text>Profile not found</Text>
-      </Container>
-    );
-  }
-
-  // Get badge color based on role
-  const getRoleBadgeColor = (role: UserRole) => {
-    switch (role) {
-      case 'admin':
-        return 'red';
-      case 'artist':
-        return 'purple';
-      case 'moderator':
-        return 'orange';
-      default:
-        return 'blue';
-    }
-  };
+  const isOwnProfile = user?.username === username;
 
   return (
     <Container maxW="container.xl" py={8}>
-      <VStack spacing={8} align="stretch">
-        <HStack spacing={4} align="flex-start" justify="space-between">
-          <HStack spacing={4} flex={1}>
-            <Avatar
-              size="2xl"
-              name={profile.display_name || profile.username || undefined}
-              src={profile.avatar_url ?? undefined}
-            />
-            <VStack align="flex-start" spacing={2}>
-              <Heading size="lg">{profile.display_name || profile.username}</Heading>
-              <HStack>
-                <Badge colorScheme={getRoleBadgeColor(profile.role)}>
-                  {profile.role}
-                </Badge>
-                {profile.premium_until && (
-                  <Badge colorScheme="yellow">Premium</Badge>
-                )}
-              </HStack>
-              {profile.bio && <Text color="gray.600">{profile.bio}</Text>}
-            </VStack>
-          </HStack>
-
-          {isOwnProfile && (
-            <HStack>
-              <Button
-                as={RouterLink}
-                to={`/${username}/settings`}
-                leftIcon={<FiSettings />}
-                variant="outline"
-              >
-                Settings
-              </Button>
-              <Button
-                as={RouterLink}
-                to={`/${username}/dashboard`}
-                leftIcon={<FiEdit2 />}
-                colorScheme="blue"
-              >
-                Dashboard
-              </Button>
-            </HStack>
-          )}
+      {/* Profile Header */}
+      <HStack spacing={8} mb={8} align="flex-start" justify="space-between">
+        <HStack spacing={6}>
+          <Avatar
+            size="2xl"
+            name={username}
+            src={user?.avatar_url || undefined}
+          />
+          <VStack align="flex-start" spacing={2}>
+            <Heading size="xl">{username}</Heading>
+            {user?.role && (
+              <Badge colorScheme="purple" fontSize="md">
+                {user.role}
+              </Badge>
+            )}
+          </VStack>
         </HStack>
 
-        <Divider />
+        {isOwnProfile ? (
+          <Button
+            as={RouterLink}
+            to={`/${username}/dashboard`}
+            colorScheme="blue"
+          >
+            Dashboard
+          </Button>
+        ) : null}
+      </HStack>
 
-        <Box>
-          <Heading size="md" mb={4}>Activity</Heading>
-          <Text color="gray.600">No recent activity</Text>
-        </Box>
-      </VStack>
+      {/* Content Tabs */}
+      <Tabs variant="line">
+        <TabList>
+          <Tab>Recent</Tab>
+          <Tab>Albums</Tab>
+        </TabList>
+
+        <TabPanels>
+          {/* Recent Tab */}
+          <TabPanel p={0} pt={6}>
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+              {artworks.map((artwork) => (
+                <Box
+                  key={artwork.id}
+                  borderRadius="lg"
+                  overflow="hidden"
+                  bg={bgColor}
+                  borderWidth={1}
+                  borderColor={borderColor}
+                >
+                  <Image
+                    src={artwork.image_url}
+                    alt={artwork.title}
+                    width="100%"
+                    height="300px"
+                    objectFit="cover"
+                  />
+                  <Box p={4}>
+                    <Text fontWeight="bold">{artwork.title}</Text>
+                    <Text color="gray.500" fontSize="sm">
+                      {new Date(artwork.created_at).toLocaleDateString()}
+                    </Text>
+                  </Box>
+                </Box>
+              ))}
+            </SimpleGrid>
+          </TabPanel>
+
+          {/* Albums Tab */}
+          <TabPanel>
+            <Text>Albums coming soon...</Text>
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
     </Container>
   );
 } 
