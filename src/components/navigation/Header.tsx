@@ -10,15 +10,17 @@ import {
 } from '@chakra-ui/react';
 import { MoonIcon, SunIcon } from '@chakra-ui/icons';
 import { NavMenu } from './NavMenu';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
 
 export function Header() {
   const { colorMode, toggleColorMode } = useColorMode();
+  const location = useLocation();
+  const isArtworksPage = location.pathname === '/artworks' || location.pathname === '/';
 
   return (
     <Box as="header" py={4} borderBottomWidth={1}>
-      <Container maxW="7xl">
+      <Container size={isArtworksPage ? 'wide' : 'regular'}>
         <Flex align="center" justify="space-between">
           <HStack as={RouterLink} to="/" spacing={2} cursor="pointer">
             <Logo />
