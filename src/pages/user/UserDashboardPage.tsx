@@ -204,7 +204,7 @@ export function UserDashboardPage() {
           <Tab>Albums</Tab>
           <Tab>Vote Packs</Tab>
           <Tab>Transactions</Tab>
-          {(user.role === 'artist' || user.user_metadata?.role === 'artist' || 
+          {user && (user.role === 'artist' || user.user_metadata?.role === 'artist' || 
             user.role === 'admin' || user.user_metadata?.role === 'admin') && (
             <Tab>Payouts</Tab>
           )}
@@ -223,16 +223,16 @@ export function UserDashboardPage() {
               <VStack spacing={6} align="center">
                 <Avatar
                   size="2xl"
-                  name={user.display_name || user.email}
-                  src={user.avatar_url || undefined}
+                  name={user?.display_name || user?.email || ''}
+                  src={user?.avatar_url || undefined}
                 />
                 <Box textAlign="center">
-                  <Heading size="lg">{user.display_name || user.username || user.email}</Heading>
+                  <Heading size="lg">{user?.display_name || user?.username || user?.email}</Heading>
                   <Text color="gray.500" mt={2}>
-                    @{user.username}
+                    @{user?.username}
                   </Text>
                   <Text color="gray.500" mt={2}>
-                    Member since {new Date(user.created_at).toLocaleDateString()}
+                    Member since {user?.created_at ? new Date(user.created_at).toLocaleDateString() : ''}
                   </Text>
                 </Box>
               </VStack>
@@ -321,7 +321,7 @@ export function UserDashboardPage() {
           </TabPanel>
 
           {/* Payouts Tab */}
-          {(user.role === 'artist' || user.user_metadata?.role === 'artist' || 
+          {user && (user.role === 'artist' || user.user_metadata?.role === 'artist' || 
             user.role === 'admin' || user.user_metadata?.role === 'admin') && (
             <TabPanel>
               <Box
