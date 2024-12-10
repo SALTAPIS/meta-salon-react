@@ -98,6 +98,54 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
 
       if (error) {
         console.error('[AuthService] Error loading profile from database:', error);
+        
+        // If profile not found, create one
+        if (error.code === 'PGRST116') {
+          console.log('[AuthService] Profile not found, creating new profile');
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              email: user.email,
+              role: 'user',
+              balance: 500,
+              email_verified: user.email_confirmed_at ? true : false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('[AuthService] Error creating profile:', createError);
+            throw createError;
+          }
+
+          console.log('[AuthService] New profile created:', {
+            id: newProfile.id,
+            role: newProfile.role,
+            timestamp: new Date().toISOString()
+          });
+
+          const extendedUser: User = {
+            ...user,
+            email: user.email || '',
+            role: newProfile.role,
+            balance: newProfile.balance,
+            username: newProfile.username,
+            display_name: newProfile.display_name,
+            bio: newProfile.bio,
+            avatar_url: newProfile.avatar_url,
+            email_verified: newProfile.email_verified,
+            email_notifications: newProfile.email_notifications ?? true,
+          };
+
+          // Cache the profile
+          this.cachedProfile = extendedUser;
+          localStorage.setItem('cached_user', JSON.stringify(extendedUser));
+
+          return extendedUser;
+        }
         throw error;
       }
 
@@ -118,7 +166,6 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         avatar_url: profile?.avatar_url || null,
         email_verified: profile?.email_verified || false,
         email_notifications: profile?.email_notifications ?? true,
-        updated_at: profile?.updated_at || user.created_at,
       };
 
       // Cache the profile
@@ -127,26 +174,8 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
 
       return extendedUser;
     } catch (error) {
-      console.error('[AuthService] Error loading profile, using defaults:', error);
-      const defaultUser: User = {
-        ...user,
-        email: user.email || '',
-        role: 'user',
-        balance: 0,
-        username: null,
-        display_name: null,
-        bio: null,
-        avatar_url: null,
-        email_verified: false,
-        email_notifications: true,
-        updated_at: user.created_at,
-      };
-
-      // Cache the default profile
-      this.cachedProfile = defaultUser;
-      localStorage.setItem('cached_user', JSON.stringify(defaultUser));
-
-      return defaultUser;
+      console.error('[AuthService] Error in loadUserProfile:', error);
+      throw error;
     }
   }
 
@@ -331,8 +360,9 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
-            role: email === 'admin@meta.salon' ? 'admin' : 'user' // Special handling for admin
+            role: email === 'admin@meta.salon' ? 'admin' : 'user'
           }
         }
       });
@@ -353,22 +383,15 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         timestamp: new Date().toISOString()
       });
 
-      // Create initial profile
+      // Create initial profile using service role client
       try {
         const role = email === 'admin@meta.salon' ? 'admin' : 'user';
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: data.user.id,
-            email: data.user.email,
-            role: role,
-            balance: 500, // Initial balance
-            email_verified: false,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'id'
-          });
+        const { error: profileError } = await supabase.rpc('create_initial_profile', {
+          user_id: data.user.id,
+          user_email: data.user.email,
+          user_role: role,
+          initial_balance: 500
+        });
 
         if (profileError) {
           console.error('[AuthService] Error creating profile:', profileError);
