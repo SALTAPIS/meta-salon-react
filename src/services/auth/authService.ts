@@ -138,6 +138,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
             avatar_url: newProfile.avatar_url,
             email_verified: newProfile.email_verified,
             email_notifications: newProfile.email_notifications ?? true,
+            updated_at: newProfile.updated_at || new Date().toISOString(),
           };
 
           // Cache the profile
@@ -166,6 +167,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         avatar_url: profile?.avatar_url || null,
         email_verified: profile?.email_verified || false,
         email_notifications: profile?.email_notifications ?? true,
+        updated_at: profile?.updated_at || new Date().toISOString(),
       };
 
       // Cache the profile
