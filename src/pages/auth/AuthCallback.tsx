@@ -132,22 +132,35 @@ export default function AuthCallback() {
           isClosable: true,
         });
 
-        // Get username for redirection
+        // Get username and role for redirection
         const username = session.user.user_metadata?.username || session.user.email?.split('@')[0];
         if (!username) {
           console.error('[AuthCallback] No username found in session:', session);
           throw new Error('No username found in session');
         }
 
-        // Get user role
+        // Get user role from both possible sources
         const userRole = session.user.role || session.user.user_metadata?.role;
         console.log('[AuthCallback] User role for redirect:', userRole);
 
         // Determine redirect path based on role
-        const redirectPath = userRole === 'admin' ? '/admin' : `/${username}/dashboard`;
+        let redirectPath;
+        if (userRole === 'admin') {
+          redirectPath = '/admin';
+        } else {
+          // For all other users (including artists), redirect to username-based dashboard
+          redirectPath = `/${username}/dashboard`;
+        }
+
+        // Log the redirect for debugging
+        console.log('[AuthCallback] Redirecting to:', redirectPath, {
+          username,
+          userRole,
+          metadata: session.user.user_metadata,
+          role: session.user.role
+        });
 
         // Redirect to appropriate dashboard
-        console.log('[AuthCallback] Redirecting to:', redirectPath);
         navigate(redirectPath, { replace: true });
       } catch (error) {
         console.error('[AuthCallback] Error in handleSuccessfulAuth:', error);

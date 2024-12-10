@@ -103,14 +103,6 @@ const routes: RouteObject[] = [
             ),
           },
           {
-            path: '/dashboard',
-            element: (
-              <ProtectedRoute>
-                <UserDashboardPage />
-              </ProtectedRoute>
-            ),
-          },
-          {
             path: '/settings',
             element: (
               <ProtectedRoute>
