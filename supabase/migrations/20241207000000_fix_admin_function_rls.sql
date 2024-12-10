@@ -80,16 +80,20 @@ ON profiles FOR INSERT
 TO authenticated
 WITH CHECK (true);
 
--- Create admin policies
+-- Create admin policies with updated role checks
 CREATE POLICY "Admins can view all profiles"
 ON profiles FOR SELECT
 TO authenticated
 USING (
     EXISTS (
         SELECT 1
-        FROM profiles
-        WHERE id = auth.uid()
-        AND role = 'admin'
+        FROM profiles p
+        WHERE p.id = auth.uid()
+        AND (
+            p.role = 'admin' 
+            OR auth.jwt() ->> 'role' = 'admin'
+            OR auth.jwt() -> 'user_metadata' ->> 'role' = 'admin'
+        )
     )
 );
 
@@ -99,17 +103,25 @@ TO authenticated
 USING (
     EXISTS (
         SELECT 1
-        FROM profiles
-        WHERE id = auth.uid()
-        AND role = 'admin'
+        FROM profiles p
+        WHERE p.id = auth.uid()
+        AND (
+            p.role = 'admin'
+            OR auth.jwt() ->> 'role' = 'admin'
+            OR auth.jwt() -> 'user_metadata' ->> 'role' = 'admin'
+        )
     )
 )
 WITH CHECK (
     EXISTS (
         SELECT 1
-        FROM profiles
-        WHERE id = auth.uid()
-        AND role = 'admin'
+        FROM profiles p
+        WHERE p.id = auth.uid()
+        AND (
+            p.role = 'admin'
+            OR auth.jwt() ->> 'role' = 'admin'
+            OR auth.jwt() -> 'user_metadata' ->> 'role' = 'admin'
+        )
     )
 );
 
@@ -119,8 +131,12 @@ TO authenticated
 USING (
     EXISTS (
         SELECT 1
-        FROM profiles
-        WHERE id = auth.uid()
-        AND role = 'admin'
+        FROM profiles p
+        WHERE p.id = auth.uid()
+        AND (
+            p.role = 'admin'
+            OR auth.jwt() ->> 'role' = 'admin'
+            OR auth.jwt() -> 'user_metadata' ->> 'role' = 'admin'
+        )
     )
 ); 

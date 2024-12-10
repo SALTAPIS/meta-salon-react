@@ -231,9 +231,10 @@ export function UserManagement() {
 
     try {
       const { error } = await supabase
-        .from('profiles')
-        .update({ role: data.role })
-        .eq('id', selectedUser.id);
+        .rpc('update_user_role', {
+          target_user_id: selectedUser.id,
+          new_role: data.role
+        });
 
       if (error) throw error;
 

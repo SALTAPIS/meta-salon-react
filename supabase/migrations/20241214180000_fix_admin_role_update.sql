@@ -14,14 +14,13 @@ AS $$
 DECLARE
   v_current_user_id uuid;
   v_is_admin boolean;
+  result json;
 BEGIN
   -- Get current user ID
   v_current_user_id := auth.uid();
   
-  -- Check if current user is admin
-  SELECT role = 'admin' INTO v_is_admin
-  FROM profiles
-  WHERE id = v_current_user_id;
+  -- Check if current user is admin by checking user_metadata
+  SELECT (auth.jwt() ->> 'role' = 'admin' OR auth.jwt() -> 'user_metadata' ->> 'role' = 'admin') INTO v_is_admin;
 
   IF NOT v_is_admin THEN
     RAISE EXCEPTION 'Only admins can update user roles';
@@ -32,7 +31,18 @@ BEGIN
     RAISE EXCEPTION 'Invalid role: %. Must be one of: user, admin, artist, moderator', new_role;
   END IF;
 
-  -- Update the user's role
+  -- Update the user's role in both profiles and user_metadata
+  UPDATE auth.users
+  SET raw_user_meta_data = 
+    CASE 
+      WHEN raw_user_meta_data IS NULL THEN 
+        jsonb_build_object('role', new_role)
+      ELSE
+        raw_user_meta_data || jsonb_build_object('role', new_role)
+    END
+  WHERE id = target_user_id;
+
+  -- Update the profiles table
   UPDATE profiles
   SET 
     role = new_role,
@@ -42,7 +52,7 @@ BEGIN
     'id', id,
     'role', role,
     'updated_at', updated_at
-  ) INTO STRICT result;
+  ) INTO result;
 
   RETURN result;
 END;
