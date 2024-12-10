@@ -99,7 +99,7 @@ export function Navigation() {
                     <MenuItem as={RouterLink} to={getPath('dashboard')}>
                       Dashboard
                     </MenuItem>
-                    <MenuItem as={RouterLink} to={getPath('profile')}>
+                    <MenuItem as={RouterLink} to={`/${user?.username || ''}`}>
                       Profile
                     </MenuItem>
                     <MenuItem as={RouterLink} to={getPath('tokens')}>
