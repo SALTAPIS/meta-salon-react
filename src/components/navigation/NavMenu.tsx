@@ -78,6 +78,10 @@ export function NavMenu() {
   }
 
   const displayName = user.display_name || user.username || user.email;
+  const username = user.username || user.email?.split('@')[0];
+
+  // Get the base path for user routes
+  const getPath = (route: string) => `/${username}/${route}`;
 
   return (
     <Menu>
@@ -100,13 +104,13 @@ export function NavMenu() {
         </HStack>
       </MenuButton>
       <MenuList bg={menuBg}>
-        <MenuItem as={RouterLink} to="/dashboard">
+        <MenuItem as={RouterLink} to={getPath('dashboard')}>
           Dashboard
         </MenuItem>
-        <MenuItem as={RouterLink} to="/profile">
+        <MenuItem as={RouterLink} to={getPath('profile')}>
           Profile
         </MenuItem>
-        {user.role === 'admin' && (
+        {(user.role === 'admin' || user.user_metadata?.role === 'admin') && (
           <>
             <MenuDivider />
             <MenuItem as={RouterLink} to="/admin">
