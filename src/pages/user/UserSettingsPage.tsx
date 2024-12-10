@@ -55,20 +55,28 @@ export function UserSettingsPage() {
       // Upload avatar if changed
       let avatar_url = user.avatar_url;
       if (avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `avatars/${user.id}/${Math.random()}.${fileExt}`;
+        try {
+          const fileExt = avatarFile.name.split('.').pop();
+          const filePath = `${user.id}/${Math.random()}.${fileExt}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('public')
-          .upload(filePath, avatarFile);
+          const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(filePath, avatarFile);
 
-        if (uploadError) throw uploadError;
+          if (uploadError) {
+            console.error('Upload error:', uploadError);
+            throw new Error('Failed to upload avatar');
+          }
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('public')
-          .getPublicUrl(filePath);
+          const { data: { publicUrl } } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
 
-        avatar_url = publicUrl;
+          avatar_url = publicUrl;
+        } catch (uploadError) {
+          console.error('Avatar upload error:', uploadError);
+          throw new Error('Failed to upload avatar. Please try again.');
+        }
       }
 
       // Update profile
