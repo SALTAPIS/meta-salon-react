@@ -95,6 +95,38 @@ const routes: RouteObject[] = [
             element: <ClassementPage />,
           },
           {
+            path: '/profile',
+            element: (
+              <ProtectedRoute>
+                <UserProfilePage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: '/dashboard',
+            element: (
+              <ProtectedRoute>
+                <UserDashboardPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: '/settings',
+            element: (
+              <ProtectedRoute>
+                <UserSettingsPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: '/albums',
+            element: (
+              <ProtectedRoute>
+                <UserAlbumsPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
             path: ':username/profile',
             element: <UserProfilePage />,
           },

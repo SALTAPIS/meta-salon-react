@@ -11,13 +11,26 @@ import {
   Text,
   useColorModeValue,
   Container,
+  Spinner,
 } from '@chakra-ui/react';
 import { useAuth } from '../../hooks/useAuth';
 
 export function Navigation() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isLoading } = useAuth();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
+
+  // Get the display name for the menu button
+  const displayName = user?.display_name || user?.username || user?.email?.split('@')[0] || 'Profile';
+  
+  // Get the base path for user routes
+  const getPath = (route: string) => {
+    if (!user?.username) {
+      // If no username, use the route directly
+      return `/${route}`;
+    }
+    return `/${user.username}/${route}`;
+  };
 
   return (
     <Box
@@ -54,25 +67,29 @@ export function Navigation() {
 
           {/* Right side */}
           <HStack spacing={4}>
-            {user ? (
+            {isLoading ? (
+              <Spinner size="sm" />
+            ) : user ? (
               <>
                 {/* Balance Display */}
-                <Text fontWeight="bold">
-                  {user.balance?.toLocaleString()} SLN
-                </Text>
+                {typeof user.balance === 'number' && (
+                  <Text fontWeight="bold">
+                    {user.balance.toLocaleString()} SLN
+                  </Text>
+                )}
 
                 <Menu>
                   <MenuButton as={Button} variant="ghost">
-                    {user.display_name || user.username || user.email}
+                    {displayName}
                   </MenuButton>
                   <MenuList>
-                    <MenuItem as={RouterLink} to={`/${user.username}/profile`}>
+                    <MenuItem as={RouterLink} to={getPath('profile')}>
                       Profile
                     </MenuItem>
-                    <MenuItem as={RouterLink} to={`/${user.username}/dashboard`}>
+                    <MenuItem as={RouterLink} to={getPath('dashboard')}>
                       Dashboard
                     </MenuItem>
-                    <MenuItem as={RouterLink} to={`/${user.username}/settings`}>
+                    <MenuItem as={RouterLink} to={getPath('settings')}>
                       Settings
                     </MenuItem>
                     <MenuItem as={RouterLink} to="/tokens">
@@ -83,7 +100,7 @@ export function Navigation() {
                         Admin Panel
                       </MenuItem>
                     )}
-                    {(user.role && ['artist', 'admin'].includes(user.role)) && (
+                    {user.role && ['artist', 'admin'].includes(user.role) && (
                       <MenuItem as={RouterLink} to="/artist">
                         Artist Dashboard
                       </MenuItem>
