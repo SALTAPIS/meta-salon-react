@@ -94,22 +94,48 @@ export class AuthService extends SimpleEventEmitter<Events> {
         throw new Error('No user ID returned from sign up');
       }
 
-      // Create initial profile
-      const { error: profileError } = await supabase.rpc('create_initial_profile', {
-        user_id: signUpData.user.id,
-        user_email: email,
-        user_role: 'user',
-        initial_balance: 500
-      });
+      // Create initial profile with retry logic
+      let retryCount = 0;
+      const maxRetries = 3;
+      let profileError;
 
-      if (profileError) {
-        console.error('[AuthService] Error creating profile:', profileError);
-        throw profileError;
+      while (retryCount < maxRetries) {
+        try {
+          const { error } = await supabase.rpc('create_initial_profile', {
+            user_id: signUpData.user.id,
+            user_email: email,
+            user_role: 'user',
+            initial_balance: 500
+          });
+
+          if (!error) {
+            console.log('[AuthService] Profile created successfully');
+            break;
+          }
+
+          profileError = error;
+          retryCount++;
+          
+          if (retryCount < maxRetries) {
+            console.log(`[AuthService] Retrying profile creation (attempt ${retryCount + 1}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          }
+        } catch (error) {
+          profileError = error;
+          retryCount++;
+          
+          if (retryCount < maxRetries) {
+            console.log(`[AuthService] Retrying profile creation (attempt ${retryCount + 1}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          }
+        }
       }
 
-      console.log('[AuthService] Profile created successfully');
+      if (profileError) {
+        console.error('[AuthService] Error creating profile after retries:', profileError);
+        // Don't throw here, let the sign-up complete and handle profile creation in AuthCallback
+      }
 
-      // Don't try to update metadata here - it will be handled during email confirmation
       console.log('[AuthService] User needs to confirm email to complete setup');
       return signUpData;
     } catch (error) {
@@ -221,12 +247,33 @@ export class AuthService extends SimpleEventEmitter<Events> {
 
   async setAdminRole(userId: string) {
     try {
+      // First check if the current user is an admin
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser || currentUser.role !== 'admin') {
+        throw new Error('Only admins can set admin roles');
+      }
+
+      // Update the profile with the admin role
       const { data, error } = await supabase
         .from('profiles')
-        .update({ role: 'admin' })
-        .eq('id', userId);
+        .update({ 
+          role: 'admin',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[AuthService] Set admin role error:', error);
+        throw error;
+      }
+
+      // Invalidate cached user if it's the same user
+      if (this.cachedUser?.id === userId) {
+        this.cachedUser = null;
+      }
+
       return { data, error: null };
     } catch (error) {
       console.error('[AuthService] Set admin role error:', error);
@@ -234,14 +281,13 @@ export class AuthService extends SimpleEventEmitter<Events> {
     }
   }
 
-  async uploadAvatar(file: File): Promise<{ data: { url: string | null }, error: Error | null }> {
+  async uploadAvatar(file: File) {
     try {
-      if (!this.cachedUser?.id) {
-        throw new Error('No user logged in');
-      }
+      const user = await this.getCurrentUser();
+      if (!user) throw new Error('Not authenticated');
 
       const fileExt = file.name.split('.').pop();
-      const filePath = `${this.cachedUser.id}/avatar.${fileExt}`;
+      const filePath = `${user.id}/avatar.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -256,13 +302,14 @@ export class AuthService extends SimpleEventEmitter<Events> {
       return { data: { url: publicUrl }, error: null };
     } catch (error) {
       console.error('[AuthService] Upload avatar error:', error);
-      return { data: { url: null }, error: error instanceof Error ? error : new Error('Upload failed') };
+      return { data: null, error };
     }
   }
 
-  async updateProfile(userId: string, updates: Partial<User>): Promise<{ error: Error | null }> {
+  async updateProfile(userId: string, updates: Partial<User>) {
     try {
-      const { error } = await supabase
+      // First update the profile
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .update({
           username: updates.username,
@@ -270,21 +317,40 @@ export class AuthService extends SimpleEventEmitter<Events> {
           bio: updates.bio,
           avatar_url: updates.avatar_url,
           email_notifications: updates.email_notifications,
-          updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
-        .eq('id', userId);
+        .eq('id', userId)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      // Update cached user if it exists
-      if (this.cachedUser && this.cachedUser.id === userId) {
-        this.cachedUser = { ...this.cachedUser, ...updates };
-      }
+      // Get the current auth user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error('No user found');
 
-      return { error: null };
+      // Combine auth user with updated profile data
+      const updatedUser: User = {
+        ...user,
+        role: profile.role,
+        balance: profile.balance,
+        username: profile.username,
+        display_name: profile.display_name,
+        bio: profile.bio,
+        avatar_url: profile.avatar_url,
+        email_notifications: profile.email_notifications,
+        email_verified: profile.email_verified,
+        updated_at: profile.updated_at,
+      };
+
+      // Update the cached user
+      this.cachedUser = updatedUser;
+
+      return { data: updatedUser, error: null };
     } catch (error) {
       console.error('[AuthService] Update profile error:', error);
-      return { error: error instanceof Error ? error : new Error('Update failed') };
+      return { data: null, error };
     }
   }
 
