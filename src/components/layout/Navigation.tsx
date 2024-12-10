@@ -22,6 +22,16 @@ export function Navigation() {
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
+  // Debug logging
+  console.log('[Navigation] User state:', {
+    isLoading,
+    userId: user?.id,
+    username: user?.username,
+    email: user?.email,
+    role: user?.role,
+    metadata: user?.user_metadata,
+  });
+
   // Get the base path for user routes
   const getPath = (route: string) => {
     const username = user?.username || user?.email?.split('@')[0];
