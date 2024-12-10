@@ -17,10 +17,12 @@ import { FiEdit2, FiSettings } from 'react-icons/fi';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../hooks/useAuth';
 import type { Database } from '../../types/database.types';
+import type { UserRole } from '../../types/user';
 
 type Profile = Database['public']['Tables']['profiles']['Row'] & {
   bio?: string | null;
   premium_until?: string | null;
+  role: UserRole;
 };
 
 export function UserProfilePage() {
@@ -67,6 +69,20 @@ export function UserProfilePage() {
     );
   }
 
+  // Get badge color based on role
+  const getRoleBadgeColor = (role: UserRole) => {
+    switch (role) {
+      case 'admin':
+        return 'red';
+      case 'artist':
+        return 'purple';
+      case 'moderator':
+        return 'orange';
+      default:
+        return 'blue';
+    }
+  };
+
   return (
     <Container maxW="container.xl" py={8}>
       <VStack spacing={8} align="stretch">
@@ -80,11 +96,11 @@ export function UserProfilePage() {
             <VStack align="flex-start" spacing={2}>
               <Heading size="lg">{profile.display_name || profile.username}</Heading>
               <HStack>
-                <Badge colorScheme={profile.role === 'admin' ? 'red' : profile.role === 'artist' ? 'purple' : 'blue'}>
+                <Badge colorScheme={getRoleBadgeColor(profile.role)}>
                   {profile.role}
                 </Badge>
                 {profile.premium_until && (
-                  <Badge colorScheme="gold">Premium</Badge>
+                  <Badge colorScheme="yellow">Premium</Badge>
                 )}
               </HStack>
               {profile.bio && <Text color="gray.600">{profile.bio}</Text>}
