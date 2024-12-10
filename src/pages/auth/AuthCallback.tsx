@@ -139,9 +139,13 @@ export default function AuthCallback() {
           throw new Error('No username found in session');
         }
 
-        // Get user role from both possible sources
-        const userRole = session.user.role || session.user.user_metadata?.role;
-        console.log('[AuthCallback] User role for redirect:', userRole);
+        // Get user role from both possible sources and profile
+        const userRole = session.user.role || session.user.user_metadata?.role || profile?.role;
+        console.log('[AuthCallback] User role for redirect:', userRole, {
+          sessionRole: session.user.role,
+          metadataRole: session.user.user_metadata?.role,
+          profileRole: profile?.role
+        });
 
         // Determine redirect path based on role
         let redirectPath;
@@ -157,11 +161,14 @@ export default function AuthCallback() {
           username,
           userRole,
           metadata: session.user.user_metadata,
-          role: session.user.role
+          role: session.user.role,
+          profile
         });
 
-        // Redirect to appropriate dashboard
-        navigate(redirectPath, { replace: true });
+        // Redirect to appropriate dashboard with a slight delay to ensure profile is updated
+        setTimeout(() => {
+          navigate(redirectPath, { replace: true });
+        }, 500);
       } catch (error) {
         console.error('[AuthCallback] Error in handleSuccessfulAuth:', error);
         throw error;

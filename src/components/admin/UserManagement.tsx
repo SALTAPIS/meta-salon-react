@@ -397,7 +397,15 @@ export function UserManagement() {
           {users.map((user) => (
             <Tr key={user.id}>
               <Td>
-                <Text fontWeight="medium">{user.email || 'No email'}</Text>
+                <VStack align="start" spacing={1}>
+                  <Text fontWeight="medium">{user.email || 'No email'}</Text>
+                  <Badge 
+                    colorScheme={user.email_verified ? 'green' : 'yellow'}
+                    fontSize="xs"
+                  >
+                    {user.email_verified ? 'Verified' : 'Unverified'}
+                  </Badge>
+                </VStack>
               </Td>
               <Td>
                 <Badge 
