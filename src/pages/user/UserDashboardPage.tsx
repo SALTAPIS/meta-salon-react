@@ -21,7 +21,16 @@ import {
   SimpleGrid,
   useColorModeValue,
   Avatar,
+  Badge,
+  Card,
+  CardBody,
+  Image,
+  Grid,
+  GridItem,
+  IconButton,
 } from '@chakra-ui/react';
+import { SettingsIcon } from '@chakra-ui/icons';
+import { Link as RouterLink } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../hooks/useAuth';
 import type { Database } from '../../types/database.types';
@@ -34,11 +43,21 @@ type Profile = Database['public']['Tables']['profiles']['Row'] & {
   premium_until?: string | null;
 };
 
+type Activity = {
+  id: string;
+  type: 'submission' | 'vote' | 'purchase' | 'gift' | 'join';
+  title: string;
+  timestamp: string;
+  images?: string[];
+  details?: string;
+};
+
 export function UserDashboardPage() {
   const { username } = useParams<{ username: string }>();
   const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     username: '',
@@ -53,6 +72,7 @@ export function UserDashboardPage() {
   useEffect(() => {
     loadProfile();
     loadAlbums();
+    loadActivities();
   }, [username]);
 
   const loadProfile = async () => {
@@ -99,6 +119,36 @@ export function UserDashboardPage() {
         duration: 5000,
         isClosable: true,
       });
+    }
+  };
+
+  const loadActivities = async () => {
+    try {
+      // TODO: Replace with actual activity loading logic
+      const mockActivities: Activity[] = [
+        {
+          id: '1',
+          type: 'submission',
+          title: 'Submitted',
+          timestamp: 'just now',
+          images: ['https://example.com/image1.jpg'],
+        },
+        {
+          id: '2',
+          type: 'vote',
+          title: 'Voting session',
+          timestamp: '2h ago',
+          images: ['https://example.com/image2.jpg', 'https://example.com/image3.jpg'],
+        },
+        {
+          id: '3',
+          type: 'purchase',
+          title: 'Vote pack purchase',
+          timestamp: '1d ago',
+          details: 'Pro Pack - 25 Votes',
+        },
+      ];
+      setActivities(mockActivities);
     } finally {
       setLoading(false);
     }
@@ -110,16 +160,10 @@ export function UserDashboardPage() {
 
     try {
       setLoading(true);
-
-      // Upload avatar if changed
-      let avatar_url = profile?.avatar_url;
-
-      // Update profile
       const { error } = await supabase
         .from('profiles')
         .update({
           ...formData,
-          avatar_url,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
@@ -147,60 +191,58 @@ export function UserDashboardPage() {
     }
   };
 
-  const handleCreateAlbum = async () => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('albums')
-        .insert({
-          user_id: user.id,
-          title: 'New Album',
-          description: '',
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Album created',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-
-      loadAlbums();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create album',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    }
-  };
-
   return (
     <Container maxW="container.xl" py={8}>
-      {/* Balance Display */}
-      <Box
-        mb={8}
-        p={4}
-        bg={bgColor}
-        borderRadius="lg"
-        borderWidth={1}
-        borderColor={borderColor}
-        textAlign="center"
-      >
-        <Text fontSize="sm" color="gray.500">Balance</Text>
-        <Text fontSize="3xl" fontWeight="bold">
-          {profile?.balance?.toLocaleString()} SLN
-        </Text>
-      </Box>
+      {/* Profile Header */}
+      <Grid templateColumns="auto 1fr auto" gap={8} mb={8} alignItems="center">
+        <GridItem>
+          <Avatar
+            size="2xl"
+            name={user?.display_name || user?.email || ''}
+            src={user?.avatar_url || undefined}
+          />
+        </GridItem>
+        <GridItem>
+          <HStack spacing={4}>
+            <Heading size="xl">{user?.display_name || user?.username}</Heading>
+            {user?.role && (
+              <Badge colorScheme="purple" fontSize="md">
+                {user.role}
+              </Badge>
+            )}
+          </HStack>
+        </GridItem>
+        <GridItem>
+          <VStack align="flex-end" spacing={4}>
+            <Text fontSize="3xl" fontWeight="bold">
+              {profile?.balance?.toLocaleString()} SLN
+            </Text>
+            <HStack>
+              <Button
+                as={RouterLink}
+                to={`/${username}/settings`}
+                leftIcon={<SettingsIcon />}
+                variant="outline"
+              >
+                Settings
+              </Button>
+              <Button
+                as={RouterLink}
+                to={`/${username}/dashboard`}
+                colorScheme="blue"
+              >
+                Dashboard
+              </Button>
+            </HStack>
+          </VStack>
+        </GridItem>
+      </Grid>
 
-      <Tabs variant="enclosed" defaultIndex={window.location.hash === '#vote-packs' ? 2 : 0}>
+      {/* Main Content */}
+      <Tabs variant="line">
         <TabList>
-          <Tab>Profile</Tab>
+          <Tab>Activity</Tab>
+          <Tab>Submissions</Tab>
           <Tab>Albums</Tab>
           <Tab>Vote Packs</Tab>
           <Tab>Transactions</Tab>
@@ -211,63 +253,42 @@ export function UserDashboardPage() {
         </TabList>
 
         <TabPanels>
-          {/* Profile Tab */}
+          {/* Activity Tab */}
           <TabPanel>
-            <Box
-              p={6}
-              bg={bgColor}
-              borderRadius="lg"
-              borderWidth={1}
-              borderColor={borderColor}
-            >
-              <VStack spacing={6} align="center">
-                <Avatar
-                  size="2xl"
-                  name={user?.display_name || user?.email || ''}
-                  src={user?.avatar_url || undefined}
-                />
-                <Box textAlign="center">
-                  <Heading size="lg">{user?.display_name || user?.username || user?.email}</Heading>
-                  <Text color="gray.500" mt={2}>
-                    @{user?.username}
-                  </Text>
-                  <Text color="gray.500" mt={2}>
-                    Member since {user?.created_at ? new Date(user.created_at).toLocaleDateString() : ''}
-                  </Text>
-                </Box>
-              </VStack>
-              <form onSubmit={handleProfileUpdate}>
-                <VStack spacing={6} mt={8}>
-                  <FormControl>
-                    <FormLabel>Username</FormLabel>
-                    <Input
-                      value={formData.username}
-                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    />
-                  </FormControl>
+            <SimpleGrid columns={1} spacing={4}>
+              {activities.map((activity) => (
+                <Card key={activity.id}>
+                  <CardBody>
+                    <VStack align="stretch" spacing={4}>
+                      <HStack justify="space-between">
+                        <Text fontWeight="bold">{activity.title}</Text>
+                        <Text color="gray.500">{activity.timestamp}</Text>
+                      </HStack>
+                      {activity.images && (
+                        <SimpleGrid columns={activity.images.length > 1 ? 3 : 1} spacing={4}>
+                          {activity.images.map((image, index) => (
+                            <Image
+                              key={index}
+                              src={image}
+                              alt={`Activity ${index + 1}`}
+                              borderRadius="md"
+                            />
+                          ))}
+                        </SimpleGrid>
+                      )}
+                      {activity.details && (
+                        <Text color="gray.600">{activity.details}</Text>
+                      )}
+                    </VStack>
+                  </CardBody>
+                </Card>
+              ))}
+            </SimpleGrid>
+          </TabPanel>
 
-                  <FormControl>
-                    <FormLabel>Display Name</FormLabel>
-                    <Input
-                      value={formData.display_name}
-                      onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-                    />
-                  </FormControl>
-
-                  <FormControl>
-                    <FormLabel>Bio</FormLabel>
-                    <Textarea
-                      value={formData.bio}
-                      onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    />
-                  </FormControl>
-
-                  <Button type="submit" colorScheme="blue" isLoading={loading}>
-                    Save Changes
-                  </Button>
-                </VStack>
-              </form>
-            </Box>
+          {/* Submissions Tab */}
+          <TabPanel>
+            <Text>Submissions coming soon...</Text>
           </TabPanel>
 
           {/* Albums Tab */}
@@ -275,7 +296,7 @@ export function UserDashboardPage() {
             <VStack spacing={6} align="stretch">
               <HStack justify="space-between">
                 <Heading size="md">Your Albums</Heading>
-                <Button colorScheme="blue" onClick={handleCreateAlbum}>
+                <Button colorScheme="blue" onClick={() => {}}>
                   Create Album
                 </Button>
               </HStack>
