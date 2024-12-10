@@ -1,10 +1,11 @@
 -- Drop existing function if it exists
-DROP FUNCTION IF EXISTS update_user_role;
+DROP FUNCTION IF EXISTS update_user_role(text, uuid);
+DROP FUNCTION IF EXISTS update_user_role(uuid, text);
 
 -- Create function to update user role
 CREATE OR REPLACE FUNCTION update_user_role(
-  target_user_id uuid,
-  new_role text
+  new_role text,
+  target_user_id uuid
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -59,7 +60,7 @@ END;
 $$;
 
 -- Grant execute permission to authenticated users
-GRANT EXECUTE ON FUNCTION update_user_role TO authenticated;
+GRANT EXECUTE ON FUNCTION update_user_role(text, uuid) TO authenticated;
 
 -- Notify PostgREST to reload schema cache
 NOTIFY pgrst, 'reload schema';
