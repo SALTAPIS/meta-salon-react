@@ -1,180 +1,144 @@
-import * as React from 'react';
-import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { AuthService } from '../services/auth/authService';
-import type { User, AuthContextType, SignInResponse, SignUpResponse } from '../types/user';
-import { createAuthError } from '../utils/errors';
+import type { User } from '../types/user';
 
-const defaultContext: AuthContextType = {
-  user: null,
-  isLoading: true,
-  signInWithPassword: async () => ({ data: null, error: null }),
-  signInWithEmail: async () => ({ data: null, error: null }),
-  signUpWithPassword: async () => ({ data: null, error: null }),
-  signOut: async () => {},
-  refreshUser: async () => {},
-  updateUserBalance: () => {},
-};
-
-export const AuthContext = React.createContext<AuthContextType>(defaultContext);
-AuthContext.displayName = 'AuthContext';
-
-interface AuthProviderProps {
-  children: React.ReactNode;
+export interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  error: Error | null;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  isLoading: boolean;
 }
 
-export const AuthProvider = ({ children }: AuthProviderProps) => {
-  console.log('[AuthContext] Rendering AuthProvider');
-  const [user, setUser] = React.useState<User | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const authService = React.useMemo(() => AuthService.getInstance(), []);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-  const loadUserProfile = React.useCallback(async (supabaseUser: SupabaseUser): Promise<User> => {
-    console.log('[AuthContext] Loading user profile...');
-    const user = await authService.loadUserProfile(supabaseUser);
-    console.log('[AuthContext] User profile loaded:', user);
-    return user;
-  }, [authService]);
+interface AuthProviderProps {
+  children: ReactNode;
+}
 
-  const signInWithPassword = React.useCallback(async (email: string, password: string): Promise<SignInResponse> => {
-    try {
-      const result = await authService.signInWithPassword(email, password);
-      if (result.error) {
-        return { data: null, error: result.error };
-      }
+export function AuthProvider({ children }: AuthProviderProps) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const authService = AuthService.getInstance();
 
-      if (!result.data?.user) {
-        return { 
-          data: null, 
-          error: createAuthError('No user data in response') 
-        };
-      }
-
-      const userProfile = await loadUserProfile(result.data.user);
-      return {
-        data: {
-          user: userProfile,
-          session: result.data.session
-        },
-        error: null
-      };
-    } catch (error) {
-      return {
-        data: null,
-        error: createAuthError(error instanceof Error ? error.message : 'Unknown error')
-      };
-    }
-  }, [authService, loadUserProfile]);
-
-  const signInWithEmail = React.useCallback(async (email: string): Promise<SignInResponse> => {
-    try {
-      const result = await authService.signInWithEmail(email);
-      return result;
-    } catch (error) {
-      return {
-        data: null,
-        error: createAuthError(error instanceof Error ? error.message : 'Unknown error')
-      };
-    }
-  }, [authService]);
-
-  const signUpWithPassword = React.useCallback(async (email: string, password: string): Promise<SignUpResponse> => {
-    try {
-      const result = await authService.signUpWithPassword(email, password);
-      if (result.error) {
-        return { data: null, error: result.error };
-      }
-
-      if (!result.data?.user) {
-        return { 
-          data: null, 
-          error: createAuthError('No user data in response') 
-        };
-      }
-
-      // Create a default user profile
-      const defaultUser: User = {
-        ...result.data.user,
-        email: result.data.user.email || '',
-        role: 'user',
-        balance: 0,
-        username: null,
-        display_name: null,
-        bio: null,
-        avatar_url: null,
-        email_verified: false,
-        email_notifications: true,
-        created_at: result.data.user.created_at,
-        updated_at: result.data.user.created_at,
-      };
-
-      return {
-        data: { user: defaultUser },
-        error: null
-      };
-    } catch (error) {
-      return {
-        data: null,
-        error: error instanceof Error ? error : new Error('Unknown error')
-      };
-    }
-  }, [authService]);
-
-  const signOut = React.useCallback(async () => {
-    await authService.signOut();
-    setUser(null);
-  }, [authService]);
-
-  const refreshUser = React.useCallback(async () => {
-    const user = await authService.getCurrentUser();
-    setUser(user);
-  }, [authService]);
-
-  const updateUserBalance = React.useCallback((newBalance: number) => {
-    setUser((prev: User | null) => prev ? { ...prev, balance: newBalance } : null);
-  }, []);
-
-  React.useEffect(() => {
+  useEffect(() => {
     console.log('[AuthContext] Setting up auth state listener');
-    const { data: { subscription } } = authService.onAuthStateChange(async (event: string, session: Session | null) => {
-      console.log('[AuthContext] Auth state changed:', event, session?.user?.id);
-      setIsLoading(true);
-      if (session?.user) {
-        const userProfile = await loadUserProfile(session.user);
-        setUser(userProfile);
-      } else {
-        setUser(null);
+    
+    const loadUser = async () => {
+      try {
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+      } catch (err) {
+        console.error('[AuthContext] Error loading user:', err);
+        setError(err instanceof Error ? err : new Error('Failed to load user'));
+      } finally {
+        setLoading(false);
       }
-      setIsLoading(false);
-    });
+    };
+
+    loadUser();
+
+    const handleAuthChange = (event: string, session: Session | null) => {
+      console.log('[AuthContext] Auth state changed:', event, session?.user?.id);
+      
+      if (event === 'SIGNED_IN') {
+        authService.getCurrentUser().then(user => {
+          setUser(user);
+          setError(null);
+        });
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setError(null);
+      } else if (event === 'USER_UPDATED') {
+        authService.getCurrentUser().then(user => {
+          setUser(user);
+          setError(null);
+        });
+      }
+    };
+
+    authService.on('authStateChange', handleAuthChange);
 
     return () => {
-      console.log('[AuthContext] Cleaning up auth state listener');
-      subscription.unsubscribe();
+      authService.off('authStateChange', handleAuthChange);
     };
-  }, [authService, loadUserProfile]);
+  }, []);
 
-  const value = React.useMemo(() => ({
-    user,
-    isLoading,
-    signInWithPassword,
-    signInWithEmail,
-    signUpWithPassword,
-    signOut,
-    refreshUser,
-    updateUserBalance,
-  }), [user, isLoading, signInWithPassword, signInWithEmail, signUpWithPassword, signOut, refreshUser, updateUserBalance]);
+  const signIn = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { user: signedInUser } = await authService.signIn({ email, password });
+      setUser(signedInUser);
+    } catch (err) {
+      console.error('[AuthContext] Sign in error:', err);
+      setError(err instanceof Error ? err : new Error('Failed to sign in'));
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUp = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await authService.signUp({
+        email,
+        password,
+        username: email.split('@')[0], // Default username from email
+        displayName: email.split('@')[0], // Default display name from email
+      });
+      console.log('Signup response:', result);
+    } catch (err) {
+      console.error('[AuthContext] Sign up error:', err);
+      setError(err instanceof Error ? err : new Error('Failed to sign up'));
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await authService.signOut();
+      setUser(null);
+    } catch (err) {
+      console.error('[AuthContext] Sign out error:', err);
+      setError(err instanceof Error ? err : new Error('Failed to sign out'));
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        error,
+        signIn,
+        signUp,
+        signOut,
+        isLoading: loading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
-  const context = React.useContext(AuthContext);
-  if (!context) {
+export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}; 
+} 

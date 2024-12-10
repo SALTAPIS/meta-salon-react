@@ -21,25 +21,35 @@ export default function AuthCallback() {
           throw new Error(errorDescription || error);
         }
 
-        // Get the access_token and refresh_token from URL
-        const accessToken = searchParams.get('access_token');
-        const refreshToken = searchParams.get('refresh_token');
+        // Get the token type and token from URL
+        const type = searchParams.get('type');
+        const token = searchParams.get('token');
 
-        if (!accessToken) {
-          console.error('[AuthCallback] No access token found');
-          throw new Error('No access token found');
+        if (!token) {
+          console.error('[AuthCallback] No token found');
+          throw new Error('No token found');
         }
 
-        // Exchange the tokens for a session
-        const { data: { session }, error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken || '',
-        });
-
-        if (sessionError) {
-          console.error('[AuthCallback] Session error:', sessionError);
-          throw sessionError;
+        // Exchange the token for a session
+        let result;
+        if (type === 'recovery') {
+          result = await supabase.auth.verifyOtp({
+            token_hash: token,
+            type: 'recovery'
+          });
+        } else {
+          result = await supabase.auth.verifyOtp({
+            token_hash: token,
+            type: 'email'
+          });
         }
+
+        if (result.error) {
+          console.error('[AuthCallback] Token verification error:', result.error);
+          throw result.error;
+        }
+
+        const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user) {
           console.log('[AuthCallback] Session established:', {
@@ -90,7 +100,7 @@ export default function AuthCallback() {
     };
 
     handleAuthCallback();
-  }, [navigate, toast]);
+  }, [navigate, toast, searchParams]);
 
   return (
     <Center h="100vh">
