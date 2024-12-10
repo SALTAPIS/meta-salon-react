@@ -1,4 +1,4 @@
-import { AuthError, User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabaseClient';
 import { User } from '../../types/user';
 
@@ -193,6 +193,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
               role: user.role || undefined,
               user_metadata: {
                 ...session.user.user_metadata,
+                role: user.role, // Ensure role is in user_metadata
                 balance: user.balance,
                 username: user.username,
                 display_name: user.display_name,
@@ -211,7 +212,6 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         }
       } catch (error) {
         console.error('[AuthService] Error in auth state change handler:', error);
-        // Still call callback even if there's an error, to prevent UI from getting stuck
         callback(event, session);
       }
     });
@@ -221,9 +221,12 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
     try {
       console.log('[AuthService] Attempting sign in for email:', email);
 
+      // Clear any existing session first
+      await supabase.auth.signOut();
+
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email, 
-        password 
+        password
       });
       
       if (error) {
@@ -241,29 +244,52 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         throw new Error('Unable to retrieve user data. Please try again.');
       }
 
+      // Load profile and update user metadata
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) {
+          console.error('[AuthService] Error loading profile:', profileError);
+        } else if (profile) {
+          // Update user metadata with role from profile
+          const { error: updateError } = await supabase.auth.updateUser({
+            data: { 
+              role: profile.role,
+              balance: profile.balance,
+              email_verified: profile.email_verified
+            }
+          });
+
+          if (updateError) {
+            console.error('[AuthService] Error updating user metadata:', updateError);
+          } else {
+            console.log('[AuthService] User metadata updated successfully:', {
+              role: profile.role,
+              userId: data.user.id
+            });
+          }
+        }
+      } catch (profileError) {
+        console.error('[AuthService] Error handling profile:', profileError);
+      }
+
       console.log('[AuthService] Sign in successful:', {
         userId: data.user.id,
         email: data.user.email,
         timestamp: new Date().toISOString()
       });
 
-      // Load user profile immediately after sign in
-      try {
-        const user = await this.loadUserProfile(data.user);
-        console.log('[AuthService] User profile loaded after sign in:', {
-          id: user.id,
-          email: user.email,
-          role: user.role
-        });
-      } catch (profileError) {
-        console.error('[AuthService] Error loading profile after sign in:', profileError);
-        // Don't throw here, we still want to return success since auth worked
-      }
-
       return { data, error: null };
     } catch (error) {
       console.error('[AuthService] Sign in error:', error);
-      return { data: null, error: error as AuthError };
+      return {
+        data: null,
+        error: error instanceof Error ? error : new Error('An unknown error occurred')
+      };
     }
   }
 
@@ -274,7 +300,7 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/auth/callback`
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
 
@@ -287,7 +313,10 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
       return { data: null, error: null };
     } catch (error) {
       console.error('[AuthService] Magic link error:', error);
-      return { data: null, error: error as AuthError };
+      return {
+        data: null,
+        error: error instanceof Error ? error : new Error('An unknown error occurred')
+      };
     }
   }
 
@@ -295,11 +324,16 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
     try {
       console.log('[AuthService] Attempting sign up for email:', email);
 
+      // Clear any existing session first
+      await supabase.auth.signOut();
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/auth/callback`
+          data: {
+            role: email === 'admin@meta.salon' ? 'admin' : 'user' // Special handling for admin
+          }
         }
       });
 
@@ -321,50 +355,48 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
 
       // Create initial profile
       try {
+        const role = email === 'admin@meta.salon' ? 'admin' : 'user';
         const { error: profileError } = await supabase
           .from('profiles')
           .upsert({
             id: data.user.id,
             email: data.user.email,
-            role: 'user',
+            role: role,
             balance: 500, // Initial balance
             email_verified: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'id'
           });
 
         if (profileError) {
           console.error('[AuthService] Error creating profile:', profileError);
-          // Don't throw here, we still want to return success since auth worked
         } else {
           console.log('[AuthService] Profile created successfully');
-          
-          // Create initial vote pack
-          try {
-            const { error: votePackError } = await supabase.rpc('purchase_vote_pack', {
-              p_user_id: data.user.id,
-              p_type: 'basic',
-              p_amount: 10,
-            });
+        }
 
-            if (votePackError) {
-              console.error('[AuthService] Error creating initial vote pack:', votePackError);
-            } else {
-              console.log('[AuthService] Initial vote pack created successfully');
-            }
-          } catch (votePackError) {
-            console.error('[AuthService] Error creating initial vote pack:', votePackError);
-          }
+        // Update user metadata with role
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: { role: role }
+        });
+
+        if (updateError) {
+          console.error('[AuthService] Error updating user metadata:', updateError);
+        } else {
+          console.log('[AuthService] User metadata updated successfully');
         }
       } catch (profileError) {
         console.error('[AuthService] Error creating profile:', profileError);
-        // Don't throw here, we still want to return success since auth worked
       }
 
       return { data: { user: data.user }, error: null };
     } catch (error) {
       console.error('[AuthService] Sign up error:', error);
-      return { data: null, error: error as AuthError };
+      return {
+        data: null,
+        error: error instanceof Error ? error : new Error('An unknown error occurred')
+      };
     }
   }
 
@@ -372,41 +404,33 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
     try {
       console.log('[AuthService] Signing out');
       const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error('[AuthService] Sign out error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      // Clear cached profile
+      // Clear cached user
       this.cachedProfile = null;
       localStorage.removeItem('cached_user');
-      
+
       console.log('[AuthService] Sign out successful');
+      return { error: null };
     } catch (error) {
       console.error('[AuthService] Sign out error:', error);
-      throw error;
+      return { error };
     }
   }
 
   async resendConfirmationEmail(email: string) {
     try {
       console.log('[AuthService] Resending confirmation email to:', email);
-      const { error } = await supabase.auth.resend({
+      return await supabase.auth.resend({
         type: 'signup',
         email,
         options: {
-          emailRedirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/auth/callback`,
-        },
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
       });
-      
-      if (error) throw error;
-      
-      console.log('[AuthService] Confirmation email resent successfully');
-      return { error: null };
     } catch (error) {
       console.error('[AuthService] Error resending confirmation email:', error);
-      return { error: error as AuthError };
+      return { error };
     }
   }
 
@@ -441,13 +465,26 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
         localStorage.setItem('cached_user', JSON.stringify(this.cachedProfile));
       }
 
+      // Update user metadata with role if it changed
+      if (updates.role) {
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: { role: updates.role }
+        });
+
+        if (updateError) {
+          console.error('[AuthService] Error updating user metadata:', updateError);
+        } else {
+          console.log('[AuthService] User metadata updated successfully');
+        }
+      }
+
       // Emit profile update event
       this.emit('profileUpdate', profile as User);
 
       return { error: null };
     } catch (error) {
       console.error('[AuthService] Error updating profile:', error);
-      return { error: error as Error };
+      return { error: error instanceof Error ? error : new Error('An unknown error occurred') };
     }
   }
 
@@ -496,7 +533,37 @@ export class AuthService extends SimpleEventEmitter<EventMap> {
       return { data: { url: publicUrl }, error: null };
     } catch (error) {
       console.error('[AuthService] Error uploading avatar:', error);
-      return { error: error as Error };
+      return { error: error instanceof Error ? error : new Error('An unknown error occurred') };
+    }
+  }
+
+  async setAdminRole(userId: string): Promise<{ error: Error | null }> {
+    try {
+      console.log('[AuthService] Setting admin role for user:', userId);
+
+      // Update profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          role: 'admin',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      if (profileError) throw profileError;
+
+      // Update user metadata
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { role: 'admin' }
+      });
+
+      if (updateError) throw updateError;
+
+      console.log('[AuthService] Admin role set successfully');
+      return { error: null };
+    } catch (error) {
+      console.error('[AuthService] Error setting admin role:', error);
+      return { error: error instanceof Error ? error : new Error('An unknown error occurred') };
     }
   }
 } 

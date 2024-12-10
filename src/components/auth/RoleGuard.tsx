@@ -1,18 +1,39 @@
-import React from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import type { UserRole } from '../../types/user';
+import { ReactNode } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useSession } from '../../hooks/useSession';
+
+export type UserRole = 'user' | 'admin' | 'artist' | 'moderator';
 
 interface RoleGuardProps {
-  children: React.ReactNode;
+  children: ReactNode;
   allowedRoles: UserRole[];
-  fallback?: React.ReactNode;
 }
 
-export function RoleGuard({ children, allowedRoles, fallback = null }: RoleGuardProps) {
-  const { user } = useAuth();
+export function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
+  const { session } = useSession();
+  
+  // Check both metadata and user data for role
+  const userRole = (
+    session?.user?.role as UserRole || 
+    session?.user?.user_metadata?.role as UserRole
+  );
 
-  if (!user || !user.role || !allowedRoles.includes(user.role as UserRole)) {
-    return <>{fallback}</>;
+  console.log('[RoleGuard] Checking access:', {
+    userRole,
+    allowedRoles,
+    userId: session?.user?.id,
+    metadata: session?.user?.user_metadata,
+    hasRole: allowedRoles.includes(userRole)
+  });
+
+  if (!userRole || !allowedRoles.includes(userRole)) {
+    console.warn('[RoleGuard] Access denied:', {
+      userRole,
+      allowedRoles,
+      userId: session?.user?.id,
+      metadata: session?.user?.user_metadata
+    });
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

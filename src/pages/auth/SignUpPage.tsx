@@ -24,7 +24,7 @@ import { AuthService } from '../../services/auth/authService';
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -45,7 +45,7 @@ export default function SignUpPage() {
         console.error('Resend email error:', error);
         toast({
           title: 'Error',
-          description: error.message,
+          description: error instanceof Error ? error.message : 'Failed to resend email',
           status: 'error',
           duration: 5000,
           isClosable: true,
@@ -85,10 +85,10 @@ export default function SignUpPage() {
 
       if (error) {
         console.error('Signup error:', error);
-        setError(error.message);
+        setError(error);
         toast({
           title: 'Error',
-          description: error.message,
+          description: error instanceof Error ? error.message : 'Failed to sign up',
           status: 'error',
           duration: 5000,
           isClosable: true,
@@ -113,7 +113,7 @@ export default function SignUpPage() {
     } catch (error) {
       console.error('Signup process error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An error occurred during sign up';
-      setError(errorMessage);
+      setError(new Error(errorMessage));
       toast({
         title: 'Error',
         description: errorMessage,
@@ -219,7 +219,7 @@ export default function SignUpPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
-                {error && <FormErrorMessage>{error}</FormErrorMessage>}
+                {error && <FormErrorMessage>{error.message}</FormErrorMessage>}
               </FormControl>
 
               <Button

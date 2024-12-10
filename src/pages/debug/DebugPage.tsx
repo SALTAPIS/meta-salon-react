@@ -1,174 +1,129 @@
-import { useState, useEffect } from 'react';
+import React from 'react';
 import {
-  Box,
   Container,
   VStack,
   Heading,
   Text,
-  Button,
-  FormControl,
-  FormLabel,
-  Input,
+  Box,
   Code,
+  Button,
   useToast,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
 } from '@chakra-ui/react';
-import { getSession } from '../../utils/session';
-import { VoteService } from '../../services/VoteService';
-
-interface TestResponse {
-  status: number;
-  data: Record<string, unknown> | null;
-  error?: Error;
-}
-
-interface DebugInfo {
-  session: unknown;
-  environment: {
-    supabaseUrl: string;
-    hasAnonKey: boolean;
-    hasServiceKey: boolean;
-  };
-}
+import { useSession } from '../../hooks/useSession';
+import { AuthService } from '../../services/auth/authService';
 
 export function DebugPage() {
-  // Pre-filled test values
-  const [artworkId] = useState('2aea6257-3bcf-417b-a51c-bae0c87451dd');
-  const [packId] = useState('7282e82c-9ef9-4e4f-9a6b-60e4b7e00f04');
-  const [voteValue, setVoteValue] = useState('1');
-  const [response, setResponse] = useState<TestResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [, setDebugInfo] = useState<DebugInfo | null>(null);
+  const { session } = useSession();
   const toast = useToast();
+  const authService = AuthService.getInstance();
 
-  // Load debug info on mount
-  useEffect(() => {
-    loadDebugInfo();
-  }, []);
-
-  const loadDebugInfo = async () => {
-    const session = await getSession();
-    const env = {
-      supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
-      hasAnonKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
-      hasServiceKey: !!import.meta.env.VITE_SUPABASE_SERVICE_KEY,
-    };
-
-    setDebugInfo({
-      session,
-      environment: env
-    });
-  };
-
-  const handleTest = async () => {
+  const handleSetAdmin = async () => {
+    if (!session?.user?.id) return;
+    
     try {
-      setLoading(true);
-      setResponse(null);
-
-      // Call VoteService directly
-      await VoteService.castVote(artworkId, packId, parseInt(voteValue));
-
-      // Set success response
-      setResponse({
-        status: 200,
-        data: { success: true },
-        error: undefined
-      });
-
+      const { error } = await authService.setAdminRole(session.user.id);
+      if (error) throw error;
+      
       toast({
-        title: 'Success',
-        description: 'Vote cast successfully',
+        title: 'Admin role set',
+        description: 'Please sign out and sign back in to apply the changes.',
         status: 'success',
         duration: 5000,
         isClosable: true,
       });
-
-    } catch (err) {
-      console.error('Test error:', err);
-      setResponse({
-        status: 500,
-        data: null,
-        error: err as Error
-      });
-
+    } catch (error) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Unknown error',
+        description: error instanceof Error ? error.message : 'Failed to set admin role',
         status: 'error',
         duration: 5000,
         isClosable: true,
       });
-    } finally {
-      setLoading(false);
     }
   };
 
+  if (!session) {
+    return (
+      <Container maxW="container.lg" py={8}>
+        <Alert
+          status="warning"
+          variant="subtle"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          textAlign="center"
+          height="200px"
+          borderRadius="lg"
+        >
+          <AlertIcon boxSize="40px" mr={0} />
+          <AlertTitle mt={4} mb={1} fontSize="lg">
+            Not Signed In
+          </AlertTitle>
+          <AlertDescription maxWidth="sm">
+            Please sign in first to see debug information and access admin controls.
+          </AlertDescription>
+        </Alert>
+      </Container>
+    );
+  }
+
+  const isAdmin = session.user?.role === 'admin' || session.user?.user_metadata?.role === 'admin';
+
   return (
     <Container maxW="container.lg" py={8}>
-      <VStack spacing={6} align="stretch">
-        <Heading size="lg">Vote Testing</Heading>
+      <VStack spacing={8} align="stretch">
+        <Heading size="xl">Debug Information</Heading>
 
-        <Box p={6} borderWidth={1} borderRadius="lg" width="100%">
-          <VStack spacing={4}>
-            <FormControl>
-              <FormLabel>Artwork ID (pre-filled)</FormLabel>
-              <Input value={artworkId} isReadOnly />
-            </FormControl>
-
-            <FormControl>
-              <FormLabel>Vote Pack ID (pre-filled)</FormLabel>
-              <Input value={packId} isReadOnly />
-            </FormControl>
-
-            <FormControl>
-              <FormLabel>Vote Value</FormLabel>
-              <Input
-                type="number"
-                value={voteValue}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVoteValue(e.target.value)}
-                min="1"
-                max="100"
-              />
-            </FormControl>
-
-            <Button
-              colorScheme="blue"
-              onClick={handleTest}
-              isLoading={loading}
-              loadingText="Testing..."
-              width="full"
-            >
-              Cast Vote
-            </Button>
-          </VStack>
+        <Box>
+          <Heading size="md" mb={4}>Session Information</Heading>
+          <Code p={4} borderRadius="md" whiteSpace="pre-wrap">
+            {JSON.stringify({
+              user_id: session?.user?.id,
+              email: session?.user?.email,
+              role: session?.user?.role,
+              metadata: session?.user?.user_metadata,
+              aud: session?.user?.aud,
+              created_at: session?.user?.created_at,
+            }, null, 2)}
+          </Code>
         </Box>
 
-        {response && (
-          <Box p={6} borderWidth={1} borderRadius="lg" bg={response.error ? 'red.50' : 'green.50'}>
-            <VStack spacing={4} align="stretch">
-              <Text fontWeight="bold">
-                Status: {response.status}
-              </Text>
-              
-              {response.data && (
-                <>
-                  <Text fontWeight="bold">Response:</Text>
-                  <Code p={4} borderRadius="md" whiteSpace="pre-wrap">
-                    {JSON.stringify(response.data, null, 2)}
-                  </Code>
-                </>
-              )}
+        <Box>
+          <Heading size="md" mb={4}>Role Information</Heading>
+          <Text>Direct Role: {session?.user?.role || 'none'}</Text>
+          <Text>Metadata Role: {session?.user?.user_metadata?.role || 'none'}</Text>
+          {!isAdmin && (
+            <Alert status="info" mt={4}>
+              <AlertIcon />
+              Not an admin? Click the button below to set your account as admin.
+            </Alert>
+          )}
+          <Button
+            mt={4}
+            colorScheme="blue"
+            onClick={handleSetAdmin}
+            isDisabled={isAdmin}
+          >
+            {isAdmin ? 'Already Admin' : 'Set Admin Role'}
+          </Button>
+        </Box>
 
-              {response.error && (
-                <>
-                  <Text fontWeight="bold" color="red.500">Error:</Text>
-                  <Code p={4} borderRadius="md" whiteSpace="pre-wrap" bg="red.100">
-                    {JSON.stringify(response.error, null, 2)}
-                  </Code>
-                </>
-              )}
-            </VStack>
-          </Box>
-        )}
+        <Box>
+          <Heading size="md" mb={4}>Environment Information</Heading>
+          <Code p={4} borderRadius="md" whiteSpace="pre-wrap">
+            {JSON.stringify({
+              NODE_ENV: import.meta.env.MODE,
+              VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL ? '✓ Set' : '✗ Missing',
+              VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? '✓ Set' : '✗ Missing',
+              VITE_SUPABASE_SERVICE_KEY: import.meta.env.VITE_SUPABASE_SERVICE_KEY ? '✓ Set' : '✗ Missing',
+              VITE_SITE_URL: import.meta.env.VITE_SITE_URL || window.location.origin,
+            }, null, 2)}
+          </Code>
+        </Box>
       </VStack>
     </Container>
   );

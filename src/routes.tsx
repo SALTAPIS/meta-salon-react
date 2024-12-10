@@ -17,6 +17,8 @@ import ClassementPage from './pages/classement/ClassementPage';
 import { ArtworkDetailsPage } from './pages/artworks/ArtworkDetailsPage';
 import { EdgeFunctionTestPage } from './pages/test/EdgeFunctionTestPage';
 import { DebugPage } from './pages/debug/DebugPage';
+import { DashboardPage as ArtistDashboardPage } from './pages/artist/DashboardPage';
+import { TokenDistributionTest } from './pages/debug/TokenDistributionTest';
 
 const routes: RouteObject[] = [
   {
@@ -27,6 +29,10 @@ const routes: RouteObject[] = [
         path: '/',
         element: <Layout />,
         children: [
+          {
+            path: '/',
+            element: <ArtworksPage />,
+          },
           {
             path: '/auth/signup',
             element: <SignUpPage />,
@@ -53,6 +59,16 @@ const routes: RouteObject[] = [
               <ProtectedRoute>
                 <RoleGuard allowedRoles={['admin']}>
                   <AdminDashboard />
+                </RoleGuard>
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: '/artist',
+            element: (
+              <ProtectedRoute>
+                <RoleGuard allowedRoles={['artist', 'admin']}>
+                  <ArtistDashboardPage />
                 </RoleGuard>
               </ProtectedRoute>
             ),
@@ -87,11 +103,17 @@ const routes: RouteObject[] = [
           },
           {
             path: '/debug',
-            element: <ProtectedRoute><DebugPage /></ProtectedRoute>,
+            element: <DebugPage />,
           },
           {
-            path: '/',
-            element: <ArtworksPage />,
+            path: '/debug/token-distribution',
+            element: (
+              <ProtectedRoute>
+                <RoleGuard allowedRoles={['admin', 'artist']}>
+                  <TokenDistributionTest />
+                </RoleGuard>
+              </ProtectedRoute>
+            ),
           }
         ],
       },

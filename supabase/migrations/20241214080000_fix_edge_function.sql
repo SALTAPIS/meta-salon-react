@@ -19,6 +19,7 @@ declare
     v_vote_id uuid;
     v_artwork_status text;
     v_total_value integer;
+    v_sln_value numeric;
     v_result jsonb;
 begin
     -- Input validation
@@ -79,10 +80,12 @@ begin
         );
     end if;
 
-    -- Calculate total vote value
+    -- Calculate total vote value and SLN value
     v_total_value := p_value * v_vote_power;
+    -- Each vote is worth 0.1 SLN, multiplied by vote power
+    v_sln_value := (p_value * 0.1) * v_vote_power;
 
-    -- Create vote record
+    -- Create vote record with SLN value
     insert into public.votes (
         user_id,
         artwork_id,
@@ -90,6 +93,7 @@ begin
         value,
         vote_power,
         total_value,
+        sln_value,
         created_at,
         updated_at
     )
@@ -100,6 +104,7 @@ begin
         p_value,
         v_vote_power,
         v_total_value,
+        v_sln_value,
         now(),
         now()
     )
@@ -112,37 +117,60 @@ begin
         updated_at = now()
     where id = p_pack_id;
 
-    -- Update artwork vote count
+    -- Update artwork vote count and SLN value
     update public.artworks
     set 
         vote_count = coalesce(vote_count, 0) + v_total_value,
+        vault_value = coalesce(vault_value, 0) + v_sln_value,
         updated_at = now()
     where id = p_artwork_id;
 
-    -- Update or insert vault state
+    -- Update or insert vault state with SLN value
     insert into public.vault_states (
         artwork_id,
         vote_count,
+        accumulated_value,
         last_vote_at,
         updated_at
     )
     values (
         p_artwork_id,
         v_total_value,
+        v_sln_value,
         now(),
         now()
     )
     on conflict (artwork_id) do update
     set
         vote_count = vault_states.vote_count + v_total_value,
+        accumulated_value = vault_states.accumulated_value + v_sln_value,
         last_vote_at = now(),
         updated_at = now();
+
+    -- Record SLN token transaction
+    insert into public.transactions (
+        user_id,
+        artwork_id,
+        type,
+        amount,
+        description,
+        created_at
+    )
+    values (
+        v_user_id,
+        p_artwork_id,
+        'vote',
+        v_sln_value,
+        format('Vote cast: %s votes with %sx power', p_value, v_vote_power),
+        now()
+    );
 
     -- Build success response
     return jsonb_build_object(
         'success', true,
         'vote_id', v_vote_id,
         'total_value', v_total_value,
+        'sln_value', v_sln_value,
         'votes_remaining', v_pack_votes - p_value
     );
 

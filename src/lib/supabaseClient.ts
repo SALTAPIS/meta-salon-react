@@ -19,12 +19,19 @@ export const supabase = supabaseInstance || createClient<Database>(supabaseUrl, 
     persistSession: true,
     storageKey: 'meta-salon-auth',
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    flowType: 'pkce'
   },
-  // Use local Edge Functions in development
-  ...(import.meta.env.DEV ? {
-    edgeFunctionUrl: 'http://localhost:54321/functions/v1'
-  } : {})
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  },
+  global: {
+    headers: {
+      'x-client-info': 'meta-salon-react'
+    }
+  }
 });
 
 // Get or create the admin client for operations that need elevated privileges
@@ -32,11 +39,22 @@ export const supabaseAdmin = supabaseServiceKey ? (
   supabaseAdminInstance || createClient<Database>(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
-      persistSession: false
+      persistSession: false,
+      flowType: 'pkce'
     }
   })
 ) : null;
 
 // Store instances
 supabaseInstance = supabase;
-supabaseAdminInstance = supabaseAdmin; 
+supabaseAdminInstance = supabaseAdmin;
+
+// Initialize auth state
+supabase.auth.getSession().then(({ data: { session } }) => {
+  if (session) {
+    console.log('Initial session loaded:', {
+      user: session.user.id,
+      role: session.user.role
+    });
+  }
+}); 
