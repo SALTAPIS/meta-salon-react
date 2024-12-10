@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link as RouterLink } from 'react-router-dom';
 import {
   Container,
   VStack,
   HStack,
   Text,
   Avatar,
-  IconButton,
+  Button,
   Heading,
   useToast,
+  Badge,
+  Box,
+  Divider,
 } from '@chakra-ui/react';
-import { FiMoreVertical } from 'react-icons/fi';
+import { FiEdit2, FiSettings } from 'react-icons/fi';
 import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../hooks/useAuth';
 import type { Database } from '../../types/database.types';
 
 type Profile = Database['public']['Tables']['profiles']['Row'] & {
@@ -23,6 +27,10 @@ export function UserProfilePage() {
   const { username } = useParams<{ username: string }>();
   const [profile, setProfile] = useState<Profile | null>(null);
   const toast = useToast();
+  const { user } = useAuth();
+
+  // Check if this is the user's own profile
+  const isOwnProfile = user?.username === username || user?.email?.split('@')[0] === username;
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -62,22 +70,55 @@ export function UserProfilePage() {
   return (
     <Container maxW="container.xl" py={8}>
       <VStack spacing={8} align="stretch">
-        <HStack spacing={4} align="flex-start">
-          <Avatar
-            size="2xl"
-            name={profile.display_name || profile.username || undefined}
-            src={profile.avatar_url ?? undefined}
-          />
-          <VStack align="flex-start" flex={1} spacing={2}>
-            <Heading size="lg">{profile.display_name || profile.username}</Heading>
-            {profile.bio && <Text color="gray.600">{profile.bio}</Text>}
-          </VStack>
-          <IconButton
-            aria-label="More options"
-            icon={<FiMoreVertical />}
-            variant="ghost"
-          />
+        <HStack spacing={4} align="flex-start" justify="space-between">
+          <HStack spacing={4} flex={1}>
+            <Avatar
+              size="2xl"
+              name={profile.display_name || profile.username || undefined}
+              src={profile.avatar_url ?? undefined}
+            />
+            <VStack align="flex-start" spacing={2}>
+              <Heading size="lg">{profile.display_name || profile.username}</Heading>
+              <HStack>
+                <Badge colorScheme={profile.role === 'admin' ? 'red' : profile.role === 'artist' ? 'purple' : 'blue'}>
+                  {profile.role}
+                </Badge>
+                {profile.premium_until && (
+                  <Badge colorScheme="gold">Premium</Badge>
+                )}
+              </HStack>
+              {profile.bio && <Text color="gray.600">{profile.bio}</Text>}
+            </VStack>
+          </HStack>
+
+          {isOwnProfile && (
+            <HStack>
+              <Button
+                as={RouterLink}
+                to={`/${username}/settings`}
+                leftIcon={<FiSettings />}
+                variant="outline"
+              >
+                Settings
+              </Button>
+              <Button
+                as={RouterLink}
+                to={`/${username}/dashboard`}
+                leftIcon={<FiEdit2 />}
+                colorScheme="blue"
+              >
+                Dashboard
+              </Button>
+            </HStack>
+          )}
         </HStack>
+
+        <Divider />
+
+        <Box>
+          <Heading size="md" mb={4}>Activity</Heading>
+          <Text color="gray.600">No recent activity</Text>
+        </Box>
       </VStack>
     </Container>
   );

@@ -24,10 +24,8 @@ export function Navigation() {
 
   // Get the base path for user routes
   const getPath = (route: string) => {
-    if (!user?.username) {
-      return `/${route}`;
-    }
-    return `/${user.username}/${route}`;
+    const username = user?.username || user?.email?.split('@')[0];
+    return `/${username}/${route}`;
   };
 
   return (
