@@ -8,10 +8,12 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
+  MenuDivider,
   Text,
   useColorModeValue,
   Container,
   Spinner,
+  Avatar,
 } from '@chakra-ui/react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -20,13 +22,9 @@ export function Navigation() {
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
-  // Get the display name for the menu button
-  const displayName = user?.display_name || user?.username || user?.email?.split('@')[0] || 'Profile';
-  
   // Get the base path for user routes
   const getPath = (route: string) => {
     if (!user?.username) {
-      // If no username, use the route directly
       return `/${route}`;
     }
     return `/${user.username}/${route}`;
@@ -79,18 +77,22 @@ export function Navigation() {
                 )}
 
                 <Menu>
-                  <MenuButton as={Button} variant="ghost">
-                    {displayName}
+                  <MenuButton as={Button} variant="ghost" px={2}>
+                    <HStack spacing={2}>
+                      <Avatar
+                        size="sm"
+                        name={user.display_name || user.username || undefined}
+                        src={user.avatar_url || undefined}
+                      />
+                      <Text>{user.display_name || user.username || user.email?.split('@')[0]}</Text>
+                    </HStack>
                   </MenuButton>
                   <MenuList>
-                    <MenuItem as={RouterLink} to={getPath('profile')}>
-                      Profile
-                    </MenuItem>
                     <MenuItem as={RouterLink} to={getPath('dashboard')}>
                       Dashboard
                     </MenuItem>
-                    <MenuItem as={RouterLink} to={getPath('settings')}>
-                      Settings
+                    <MenuItem as={RouterLink} to={getPath('profile')}>
+                      Profile
                     </MenuItem>
                     <MenuItem as={RouterLink} to="/tokens">
                       Vote Packs
@@ -105,6 +107,7 @@ export function Navigation() {
                         Artist Dashboard
                       </MenuItem>
                     )}
+                    <MenuDivider />
                     <MenuItem onClick={signOut}>
                       Sign Out
                     </MenuItem>
