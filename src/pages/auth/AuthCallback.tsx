@@ -21,25 +21,28 @@ export default function AuthCallback() {
           throw new Error(errorDescription || error);
         }
 
-        // Get the token type and token from URL
+        // Get the token hash from URL
+        const tokenHash = searchParams.get('token_hash') || searchParams.get('token');
         const type = searchParams.get('type');
-        const token = searchParams.get('token');
 
-        if (!token) {
-          console.error('[AuthCallback] No token found');
-          throw new Error('No token found');
+        if (!tokenHash) {
+          console.error('[AuthCallback] No token hash found in URL params:', 
+            Object.fromEntries(searchParams.entries()));
+          throw new Error('No token found in URL');
         }
+
+        console.log('[AuthCallback] Processing token:', { type, hasToken: !!tokenHash });
 
         // Exchange the token for a session
         let result;
         if (type === 'recovery') {
           result = await supabase.auth.verifyOtp({
-            token_hash: token,
+            token_hash: tokenHash,
             type: 'recovery'
           });
         } else {
           result = await supabase.auth.verifyOtp({
-            token_hash: token,
+            token_hash: tokenHash,
             type: 'email'
           });
         }
