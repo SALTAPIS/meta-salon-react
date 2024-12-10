@@ -119,7 +119,7 @@ export function UserSettingsPage() {
                 <HStack spacing={4}>
                   <Avatar
                     size="xl"
-                    src={avatarFile ? URL.createObjectURL(avatarFile) : user?.avatar_url}
+                    src={avatarFile ? URL.createObjectURL(avatarFile) : (user?.avatar_url ?? '')}
                     name={formData.display_name || formData.username}
                   />
                   <VStack>

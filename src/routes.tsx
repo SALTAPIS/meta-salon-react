@@ -3,8 +3,6 @@ import App from './App';
 import SignUpPage from './pages/auth/SignUpPage';
 import SignInPage from './pages/auth/SignInPage';
 import AuthCallback from './pages/auth/AuthCallback';
-import DashboardPage from './pages/dashboard/DashboardPage';
-import ProfilePage from './pages/profile/ProfilePage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { TokensPage } from './pages/tokens/TokensPage';
 import SubmitArtPage from './pages/submit/SubmitArtPage';
@@ -17,8 +15,8 @@ import ClassementPage from './pages/classement/ClassementPage';
 import { ArtworkDetailsPage } from './pages/artworks/ArtworkDetailsPage';
 import { DashboardPage as ArtistDashboardPage } from './pages/artist/DashboardPage';
 import { UserProfilePage } from './pages/user/UserProfilePage';
+import { UserDashboardPage } from './pages/user/UserDashboardPage';
 import { UserSettingsPage } from './pages/user/UserSettingsPage';
-import { UserTransactionsPage } from './pages/user/UserTransactionsPage';
 import { UserAlbumsPage } from './pages/user/UserAlbumsPage';
 
 const routes: RouteObject[] = [
@@ -45,14 +43,6 @@ const routes: RouteObject[] = [
           {
             path: '/auth/callback',
             element: <AuthCallback />,
-          },
-          {
-            path: '/dashboard',
-            element: <ProtectedRoute><DashboardPage /></ProtectedRoute>,
-          },
-          {
-            path: '/profile',
-            element: <ProtectedRoute><ProfilePage /></ProtectedRoute>,
           },
           {
             path: '/admin',
@@ -103,18 +93,18 @@ const routes: RouteObject[] = [
             element: <UserProfilePage />,
           },
           {
-            path: ':username/settings',
+            path: ':username/dashboard',
             element: (
               <ProtectedRoute>
-                <UserSettingsPage />
+                <UserDashboardPage />
               </ProtectedRoute>
             ),
           },
           {
-            path: ':username/transactions',
+            path: ':username/settings',
             element: (
               <ProtectedRoute>
-                <UserTransactionsPage />
+                <UserSettingsPage />
               </ProtectedRoute>
             ),
           },
