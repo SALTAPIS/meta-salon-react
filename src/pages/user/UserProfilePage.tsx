@@ -17,7 +17,6 @@ import {
   Tab,
   SimpleGrid,
   useColorModeValue,
-  Image,
   Spinner,
   Center,
   Alert,
@@ -26,6 +25,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabaseClient';
 import type { Artwork } from '../../types/database.types';
+import { ArtworkCard } from '../../pages/game/ArtworkCard';
 
 export function UserProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -136,6 +136,8 @@ export function UserProfilePage() {
                 {artworks.map((artwork) => (
                   <Box
                     key={artwork.id}
+                    as={RouterLink}
+                    to={`/artwork/${artwork.id}`}
                     borderRadius="lg"
                     overflow="hidden"
                     bg={bgColor}
@@ -144,17 +146,8 @@ export function UserProfilePage() {
                     transition="all 0.2s"
                     _hover={{ transform: 'translateY(-4px)', shadow: 'lg' }}
                   >
-                    <Box position="relative" paddingTop="75%">
-                      <Image
-                        src={artwork.image_url}
-                        alt={artwork.title}
-                        position="absolute"
-                        top={0}
-                        left={0}
-                        width="100%"
-                        height="100%"
-                        objectFit="cover"
-                      />
+                    <Box height="300px">
+                      <ArtworkCard artwork={artwork} showStats={true} />
                     </Box>
                     <Box p={4}>
                       <VStack align="stretch" spacing={2}>
@@ -169,21 +162,7 @@ export function UserProfilePage() {
                           {artwork.challenge_id && (
                             <Badge colorScheme="purple">Challenge Entry</Badge>
                           )}
-                          {artwork.vault_value > 0 && (
-                            <Badge colorScheme="green">
-                              {artwork.vault_value.toFixed(2)} SLN
-                            </Badge>
-                          )}
                         </HStack>
-                        <Button
-                          as={RouterLink}
-                          to={`/artwork/${artwork.id}`}
-                          colorScheme="blue"
-                          size="sm"
-                          width="full"
-                        >
-                          View Details
-                        </Button>
                       </VStack>
                     </Box>
                   </Box>
