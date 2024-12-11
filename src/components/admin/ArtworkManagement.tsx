@@ -89,7 +89,19 @@ export function ArtworkManagement() {
       setResetting(true);
       const { data, error } = await supabase.rpc('admin_reset_all_votes');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error resetting votes:', error);
+        toast({
+          title: 'Error Resetting Votes',
+          description: error.message === 'Only admins can reset votes' 
+            ? error.message 
+            : 'Failed to reset votes. Please try again.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
 
       toast({
         title: 'Votes Reset Successfully',
