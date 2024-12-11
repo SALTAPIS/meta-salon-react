@@ -289,6 +289,22 @@ export function AdminDashboard() {
             {/* Artworks Tab */}
             <TabPanel>
               <Stack spacing={8}>
+                <Card width="100%">
+                  <CardHeader>
+                    <HStack justify="space-between" align="center">
+                      <Heading size="md">Artwork Management</Heading>
+                      <Button
+                        colorScheme="red"
+                        onClick={handleResetVotes}
+                        isLoading={resetting}
+                        loadingText="Resetting..."
+                      >
+                        Reset All Votes
+                      </Button>
+                    </HStack>
+                  </CardHeader>
+                </Card>
+
                 {loading ? (
                   <Alert status="info">
                     <AlertIcon />
