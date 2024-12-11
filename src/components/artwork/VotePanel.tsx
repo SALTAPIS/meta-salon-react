@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   VStack,
@@ -18,67 +18,45 @@ import {
   StatLabel,
   StatNumber,
   StatHelpText,
-  Divider,
+  StatGroup,
+  Badge,
+  Progress,
   Tooltip,
-  CircularProgress,
-  CircularProgressLabel,
+  Divider,
 } from '@chakra-ui/react';
 import { useVoting } from '../../hooks/useVoting';
 import { useTokens } from '../../hooks/token/useTokens';
-import { VoteService } from '../../services/VoteService';
-import type { VotePack, Vote } from '../../types/database.types';
+import type { VotePack } from '../../types/database.types';
+import type { Epoch } from '../../services/VoteService';
 
 interface VotePanelProps {
   artworkId: string;
-}
-
-interface ConsumptionStats {
-  totalVotes: number;
-  consumedVotes: number;
-  unconsumedVotes: number;
-  vaultValue: number;
 }
 
 interface VoteError extends Error {
   details?: Record<string, unknown>;
 }
 
-export function VotePanel({ artworkId }: VotePanelProps) {
+export function VotePanel({
+  artworkId,
+}: VotePanelProps) {
   const toast = useToast();
   const { votePacks } = useTokens();
   const {
-    votes,
     vaultState,
+    currentEpoch,
+    hasVoted,
     isLoading,
     error,
     castVote,
     userVotes,
     totalVotes,
-    userTotalVotes
+    userTotalVotes,
+    currentEpochTotalVotes
   } = useVoting(artworkId);
 
   const [selectedPackId, setSelectedPackId] = useState<string>('');
   const [voteAmount, setVoteAmount] = useState<number>(1);
-  const [consumptionStats, setConsumptionStats] = useState<ConsumptionStats | null>(null);
-
-  // Load consumption stats
-  useEffect(() => {
-    let mounted = true;
-
-    const loadStats = async () => {
-      try {
-        const stats = await VoteService.getVoteConsumptionStats(artworkId);
-        if (mounted) {
-          setConsumptionStats(stats);
-        }
-      } catch (err) {
-        console.error('Failed to load consumption stats:', err);
-      }
-    };
-
-    loadStats();
-    return () => { mounted = false; };
-  }, [artworkId, votes]);
 
   const handleVote = async () => {
     try {
@@ -113,63 +91,100 @@ export function VotePanel({ artworkId }: VotePanelProps) {
     pack.votes_remaining > 0 && (!pack.expires_at || new Date(pack.expires_at) > new Date())
   );
 
-  const consumptionProgress = consumptionStats 
-    ? (consumptionStats.consumedVotes / consumptionStats.totalVotes) * 100 
-    : 0;
+  // Calculate time remaining in epoch
+  const getTimeRemaining = (epoch: Epoch) => {
+    const now = new Date();
+    const end = new Date(epoch.end_time);
+    const diff = end.getTime() - now.getTime();
+    
+    if (diff <= 0) return 'Epoch ended';
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m remaining`;
+  };
+
+  // Calculate epoch progress
+  const getEpochProgress = (epoch: Epoch) => {
+    const start = new Date(epoch.start_time).getTime();
+    const end = new Date(epoch.end_time).getTime();
+    const now = new Date().getTime();
+    const total = end - start;
+    const elapsed = now - start;
+    return Math.min(100, Math.max(0, (elapsed / total) * 100));
+  };
 
   return (
     <Box p={4} borderWidth={1} borderRadius="lg" bg="white">
       <VStack spacing={4} align="stretch">
-        {/* Vault Stats */}
-        <HStack justify="space-between">
+        {/* Epoch Info */}
+        {currentEpoch && (
+          <Box>
+            <HStack justify="space-between" mb={2}>
+              <Text fontWeight="bold">Current Epoch</Text>
+              <Badge colorScheme={currentEpoch.status === 'active' ? 'green' : 'gray'}>
+                {currentEpoch.status.toUpperCase()}
+              </Badge>
+            </HStack>
+            <Progress 
+              value={getEpochProgress(currentEpoch)} 
+              size="sm" 
+              colorScheme="blue" 
+              mb={2} 
+            />
+            <HStack justify="space-between" fontSize="sm">
+              <Text>{getTimeRemaining(currentEpoch)}</Text>
+              <Tooltip label="Tokens available for distribution in this epoch">
+                <Badge colorScheme="green">{currentEpoch.tokens_per_epoch} tokens</Badge>
+              </Tooltip>
+            </HStack>
+          </Box>
+        )}
+
+        {/* Vote Stats */}
+        <StatGroup>
           <Stat>
             <StatLabel>Total Votes</StatLabel>
             <StatNumber>{totalVotes}</StatNumber>
-            <StatHelpText>Accumulated Value: {vaultState?.accumulated_value || 0}</StatHelpText>
+            <StatHelpText>This Epoch: {currentEpochTotalVotes}</StatHelpText>
           </Stat>
           <Stat>
             <StatLabel>Your Votes</StatLabel>
             <StatNumber>{userTotalVotes}</StatNumber>
             <StatHelpText>From {userVotes.length} vote(s)</StatHelpText>
           </Stat>
-        </HStack>
-
-        {/* Consumption Stats */}
-        {consumptionStats && (
-          <Box>
-            <Text fontWeight="bold" mb={2}>Vote Consumption</Text>
-            <HStack spacing={4} align="center">
-              <CircularProgress 
-                value={consumptionProgress} 
-                color="green.400"
-                size="80px"
-              >
-                <CircularProgressLabel>
-                  {Math.round(consumptionProgress)}%
-                </CircularProgressLabel>
-              </CircularProgress>
-              <VStack align="start" flex={1}>
-                <Tooltip label="Votes that have been converted to vault value">
-                  <Text fontSize="sm">
-                    Consumed: {consumptionStats.consumedVotes} votes
-                  </Text>
-                </Tooltip>
-                <Tooltip label="Votes waiting to be consumed">
-                  <Text fontSize="sm">
-                    Pending: {consumptionStats.unconsumedVotes} votes
-                  </Text>
-                </Tooltip>
-                <Tooltip label="Current vault value from consumed votes">
-                  <Text fontSize="sm" fontWeight="bold">
-                    Vault Value: {consumptionStats.vaultValue}
-                  </Text>
-                </Tooltip>
-              </VStack>
-            </HStack>
-          </Box>
-        )}
+          <Stat>
+            <StatLabel>Vault Value</StatLabel>
+            <StatNumber>{vaultState?.accumulated_value || 0}</StatNumber>
+            <StatHelpText>Accumulated SLN</StatHelpText>
+          </Stat>
+        </StatGroup>
 
         <Divider />
+
+        {/* Error Alert */}
+        {error && (
+          <Alert status="error">
+            <AlertIcon />
+            {error}
+          </Alert>
+        )}
+
+        {/* Already Voted Alert */}
+        {hasVoted && (
+          <Alert status="info">
+            <AlertIcon />
+            You have already voted in this epoch
+          </Alert>
+        )}
+
+        {/* No Active Epoch Alert */}
+        {!currentEpoch && (
+          <Alert status="warning">
+            <AlertIcon />
+            No active voting epoch at the moment
+          </Alert>
+        )}
 
         {/* Vote Input */}
         <VStack spacing={3}>
@@ -177,6 +192,7 @@ export function VotePanel({ artworkId }: VotePanelProps) {
             placeholder="Select vote pack"
             value={selectedPackId}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedPackId(e.target.value)}
+            isDisabled={hasVoted || !currentEpoch || currentEpoch.status !== 'active'}
           >
             {activePacks.map((pack: VotePack) => (
               <option key={pack.id} value={pack.id}>
@@ -191,6 +207,7 @@ export function VotePanel({ artworkId }: VotePanelProps) {
             max={100}
             value={voteAmount}
             onChange={(_: string, valueNumber: number) => setVoteAmount(valueNumber)}
+            isDisabled={hasVoted || !currentEpoch || currentEpoch.status !== 'active'}
           >
             <NumberInputField />
             <NumberInputStepper>
@@ -203,45 +220,22 @@ export function VotePanel({ artworkId }: VotePanelProps) {
             colorScheme="blue"
             isLoading={isLoading}
             onClick={handleVote}
-            isDisabled={!selectedPackId || voteAmount < 1}
+            isDisabled={
+              !selectedPackId || 
+              voteAmount < 1 || 
+              hasVoted || 
+              !currentEpoch || 
+              currentEpoch.status !== 'active'
+            }
             width="full"
           >
-            Cast Vote
+            {!currentEpoch ? 'No Active Epoch' :
+             hasVoted ? 'Already Voted' :
+             currentEpoch.status !== 'active' ? 'Epoch Not Active' :
+             'Cast Vote'}
           </Button>
         </VStack>
-
-        {/* Error Display */}
-        {error && (
-          <Alert status="error">
-            <AlertIcon />
-            {error}
-          </Alert>
-        )}
-
-        {/* Vote History */}
-        {votes.length > 0 && (
-          <Box>
-            <Text fontWeight="bold" mb={2}>Recent Votes</Text>
-            <VStack spacing={2} align="stretch">
-              {votes.slice(0, 5).map((vote: Vote) => (
-                <HStack key={vote.id} justify="space-between" p={2} bg="gray.50" borderRadius="md">
-                  <Text fontSize="sm">
-                    {vote.user_id === userVotes[0]?.user_id ? 'You' : 'Someone'} voted
-                  </Text>
-                  <HStack spacing={2}>
-                    <Text fontWeight="bold">{vote.value} votes</Text>
-                    {vote.consumed && (
-                      <Tooltip label="This vote has been consumed and added to the vault value">
-                        <Text fontSize="xs" color="green.500">✓ Consumed</Text>
-                      </Tooltip>
-                    )}
-                  </HStack>
-                </HStack>
-              ))}
-            </VStack>
-          </Box>
-        )}
       </VStack>
     </Box>
   );
-} 
+}

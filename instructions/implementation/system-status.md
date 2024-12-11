@@ -50,6 +50,120 @@ Meta Salon is a decentralized art platform that enables artists to showcase thei
 - ✅ Artwork analytics
 - ✅ Challenge participation
 
+## Core Systems
+
+### Epoch System
+- ✅ Epoch-based voting implemented
+- ✅ Automated epoch processing
+- ✅ Token distribution per epoch
+- ✅ Admin monitoring interface
+- ✅ Vote restrictions per epoch
+
+#### Epoch Configuration
+- Duration: 24 hours
+- Default tokens per epoch: 1000
+- Processing interval: Every 10 minutes
+- One vote per artwork per epoch per user
+
+#### Database Structure
+```sql
+epochs
+  - id
+  - start_time
+  - end_time
+  - tokens_per_epoch
+  - status (active/completed/pending)
+  - processed_at
+
+votes
+  - epoch_id (references epochs)
+  - processed (boolean)
+  - value
+  - artwork_id
+  - user_id
+
+tokens
+  - epoch_id (references epochs)
+  - amount
+  - artwork_id
+  - user_id
+  - source
+```
+
+#### Key Functions
+- `process_epoch_votes`: Processes votes and distributes tokens
+- `get_epoch_stats`: Calculates statistics for each epoch
+- `get_token_volume_history`: Tracks token distribution over time
+
+### Token System
+- ✅ SLN token implementation
+- ✅ Vote pack system
+- ✅ Token distribution
+- ✅ Artist payouts
+- ✅ Transaction tracking
+
+### Voting System
+- ✅ Basic voting
+- ✅ Vote packs
+- ✅ Vote power multipliers
+- ✅ Vote tracking
+- ✅ Epoch restrictions
+
+## Frontend Components
+
+### Admin Dashboard
+- ✅ User management
+- ✅ Artwork management
+- ✅ Token distribution testing
+- ✅ Epoch monitoring
+- ✅ System statistics
+
+### Artist Interface
+- ✅ Artwork submission
+- ✅ Payout requests
+- ✅ Transaction history
+- ✅ Stats tracking
+
+### User Interface
+- ✅ Vote casting
+- ✅ Vote pack purchase
+- ✅ Artwork viewing
+- ✅ Profile management
+
+## Security
+
+### Database
+- ✅ Row Level Security (RLS)
+- ✅ Role-based access
+- ✅ Secure functions
+- ✅ Input validation
+
+### Authentication
+- ✅ User authentication
+- ✅ Role management
+- ✅ Session handling
+- ✅ Admin controls
+
+## Deployment
+- ✅ Supabase setup
+- ✅ Database migrations
+- ✅ Frontend deployment
+- ✅ Environment configuration
+
+## Testing Requirements
+1. Epoch transitions
+2. Vote processing
+3. Token distribution
+4. Admin controls
+5. User restrictions
+
+## Next Steps
+1. Monitor epoch processing
+2. Track token distribution
+3. Gather user feedback
+4. Optimize performance
+5. Add analytics
+
 ## Technical Implementation
 
 ### Frontend Architecture
