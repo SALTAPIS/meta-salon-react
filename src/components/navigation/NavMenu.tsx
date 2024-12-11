@@ -89,6 +89,7 @@ export function NavMenu() {
         as={Button}
         variant="ghost"
         rightIcon={<ChevronDownIcon color={iconColor} />}
+        py={6}
       >
         <HStack spacing={2}>
           <Avatar 
