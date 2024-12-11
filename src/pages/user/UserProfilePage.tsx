@@ -109,9 +109,39 @@ export function UserProfilePage() {
 
       {/* Content Tabs */}
       <Tabs variant="line">
-        <TabList>
-          <Tab>Artworks</Tab>
-          <Tab>Albums</Tab>
+        <TabList borderBottom="none" pb="1px">
+          <Tab 
+            fontSize="sm"
+            px={4}
+            py={6}
+            _selected={{
+              color: 'blue.500',
+              borderBottom: '2px solid',
+              borderColor: 'blue.500',
+              marginBottom: '-1px'
+            }}
+            _hover={{
+              color: 'blue.400'
+            }}
+          >
+            Artworks
+          </Tab>
+          <Tab 
+            fontSize="sm"
+            px={4}
+            py={6}
+            _selected={{
+              color: 'blue.500',
+              borderBottom: '2px solid',
+              borderColor: 'blue.500',
+              marginBottom: '-1px'
+            }}
+            _hover={{
+              color: 'blue.400'
+            }}
+          >
+            Albums
+          </Tab>
         </TabList>
 
         <TabPanels>
