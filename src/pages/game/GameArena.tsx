@@ -187,6 +187,8 @@ export function GameArena({ onExit }: GameArenaProps) {
               artwork={currentPair.left}
               data-artwork-id={currentPair.left.id}
               isHovered={hoveredArtwork === currentPair.left.id}
+              showStats={false}
+              hideMetadata={true}
             />
           </Box>
 
@@ -204,6 +206,8 @@ export function GameArena({ onExit }: GameArenaProps) {
               artwork={currentPair.right}
               data-artwork-id={currentPair.right.id}
               isHovered={hoveredArtwork === currentPair.right.id}
+              showStats={false}
+              hideMetadata={true}
             />
           </Box>
         </Flex>
