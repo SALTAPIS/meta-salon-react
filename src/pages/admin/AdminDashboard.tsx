@@ -63,6 +63,7 @@ export function AdminDashboard() {
   const [submittedArtworks, setSubmittedArtworks] = useState<Artwork[]>([]);
   const [unsubmittedArtworks, setUnsubmittedArtworks] = useState<Artwork[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resetting, setResetting] = useState(false);
   const bgColor = useColorModeValue('white', 'gray.800');
 
   const fetchArtworks = async () => {
@@ -129,6 +130,37 @@ export function AdminDashboard() {
         duration: 5000,
         isClosable: true,
       });
+    }
+  };
+
+  const handleResetVotes = async () => {
+    try {
+      setResetting(true);
+      const { data, error } = await supabase.rpc('admin_reset_all_votes');
+
+      if (error) throw error;
+
+      toast({
+        title: 'Votes Reset Successfully',
+        description: `Deleted ${data.deleted_votes} votes and reset ${data.updated_artworks} artworks`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+
+      // Refresh artwork data
+      await fetchArtworks();
+    } catch (error) {
+      console.error('Error resetting votes:', error);
+      toast({
+        title: 'Error Resetting Votes',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setResetting(false);
     }
   };
 
