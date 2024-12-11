@@ -8,7 +8,26 @@ AS $$
 DECLARE
     v_deleted_votes INTEGER;
     v_updated_artworks INTEGER;
+    v_user_id UUID;
+    v_is_admin BOOLEAN;
 BEGIN
+    -- Get user ID
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Check if user is admin
+    SELECT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = v_user_id
+        AND (role = 'admin' OR user_metadata->>'role' = 'admin')
+    ) INTO v_is_admin;
+
+    IF NOT v_is_admin THEN
+        RAISE EXCEPTION 'Only admins can reset votes';
+    END IF;
+
     -- Delete all votes
     WITH deleted AS (
         DELETE FROM public.votes
