@@ -10,3 +10,5 @@ coverage/
 .vercel
 import/
 .env*.local
+*.tsbuildinfo
+supabase/backups/
