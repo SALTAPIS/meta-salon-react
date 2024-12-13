@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  Container,
   VStack,
   Heading,
   Text,
@@ -8,6 +7,7 @@ import {
   useColorModeValue,
   Box,
 } from '@chakra-ui/react';
+import { keyframes } from '@emotion/react';
 import { Fade } from '@chakra-ui/react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { GameArena } from './GameArena';
@@ -16,6 +16,17 @@ import { useTokens } from '../../hooks/token/useTokens';
 import gsap from 'gsap';
 import { ArtworkService } from '../../services/ArtworkService';
 import type { Artwork } from '../../types/database.types';
+
+// Animation keyframes
+const typeIn = keyframes`
+  from { width: 0; }
+  to { width: 100%; }
+`;
+
+const fadeOut = keyframes`
+  from { opacity: 1; }
+  to { opacity: 0; }
+`;
 
 // Key for storing session state in localStorage
 const ACTIVE_SESSION_KEY = 'meta_salon_active_session';
@@ -34,7 +45,7 @@ interface PreviewArtwork extends Artwork {
 export default function GamePage() {
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [previewArtworks, setPreviewArtworks] = React.useState<Artwork[]>([]);
-  const bg = useColorModeValue('gray.50', 'gray.900');
+  const bg = useColorModeValue('#f5f5f5', '#171717');
   const { user } = useAuth();
   const { votePacks, isLoading } = useTokens();
   const navigate = useNavigate();
@@ -366,109 +377,73 @@ export default function GamePage() {
   // Loading state
   if (user && isLoading) {
     return (
-      <Container maxW="container.md" py={20}>
+      <Box maxW="container.md" py={20}>
         <VStack spacing={8} align="stretch">
           <Text textAlign="center">Loading...</Text>
         </VStack>
-      </Container>
+      </Box>
     );
   }
 
   // Main game page content
   return (
-    <Container maxW="100%" p={0} h="100vh" position="relative">
-      <Box
-        ref={previewRef}
-        position="fixed"
+    <Box 
+      position="fixed"
+      top="57px"
+      left={0}
+      right={0}
+      bottom={0}
+      overflow="hidden"
+      bg={bg}
+    >
+      <Box 
+        ref={previewRef} 
+        position="absolute"
         top={0}
         left={0}
         right={0}
         bottom={0}
-        pointerEvents="none"
-        zIndex={0}
-        overflow="hidden"
-        m={0}
-        p={0}
+        width="100vw"
+        height="calc(100vh - 57px)"
       />
-      <Fade in>
+      <Fade in={true}>
         <VStack 
-          spacing={8} 
-          align="stretch" 
-          position="relative" 
+          spacing={8}
+          position="absolute"
+          top="30%"
+          left="50%"
+          transform="translate(-50%, -50%)"
+          textAlign="center"
           zIndex={1}
-          px={4}
-          py={20}
-          maxW="container.md"
-          mx="auto"
         >
-          <VStack spacing={4}>
-            <Heading size="2xl" textAlign="center">
-              The Salon Game
+          <Box>
+            <Heading 
+              mb={4}
+              fontFamily="'Allan', cursive"
+              fontWeight={700}
+              fontSize={['8vw', '10vw', '12vw']}
+              sx={{
+                '@media (min-width: 1200px)': {
+                  fontSize: '144px',
+                },
+              }}
+            >
+              A new Beginning
             </Heading>
-            <Text fontSize="xl" textAlign="center" color="gray.500">
+            <Text fontSize="xl" color="gray.600">
               Vote for your favorite artworks and help curate the collection
             </Text>
-          </VStack>
-
-          {user ? (
-            hasAvailableVotes ? (
-              // Logged in with votes
-              <Button
-                size="lg"
-                height="16"
-                width="full"
-                colorScheme="blue"
-                onClick={handleStartPlaying}
-                _hover={{
-                  transform: 'translateY(-2px)',
-                  boxShadow: 'lg',
-                }}
-                transition="all 0.2s"
-              >
-                Start Playing
-              </Button>
-            ) : (
-              // Logged in but no votes
-              <VStack spacing={4}>
-                <Text color="gray.500" textAlign="center">
-                  You need vote packs to play
-                </Text>
-                <Button
-                  as={RouterLink}
-                  to="/shop"
-                  size="lg"
-                  height="16"
-                  width="full"
-                  colorScheme="blue"
-                  _hover={{
-                    transform: 'translateY(-2px)',
-                    boxShadow: 'lg',
-                  }}
-                  transition="all 0.2s"
-                >
-                  Get Vote Packs
-                </Button>
-              </VStack>
-            )
-          ) : (
-            // Not logged in
-            <Button
-              size="lg"
-              height="16"
-              width="full"
-              colorScheme="blue"
-              onClick={handleSignIn}
-              _hover={{
-                transform: 'translateY(-2px)',
-                boxShadow: 'lg',
-              }}
-              transition="all 0.2s"
-            >
-              Sign In to Play
-            </Button>
-          )}
+          </Box>
+          <Button
+            as={RouterLink}
+            to="/auth/signin"
+            size="lg"
+            colorScheme="blue"
+          >
+            Sign In to Play
+          </Button>
         </VStack>
       </Fade>
-    </Container>
+    </Box>
   );
 } 
