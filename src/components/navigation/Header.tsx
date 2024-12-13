@@ -70,7 +70,7 @@ export function Header() {
     <Box as="header" borderBottomWidth="1px" borderColor={borderColor}>
       <Container size="wide">
         <Flex align="center" justify="space-between">
-          <HStack as={RouterLink} to="/" spacing={2} cursor="pointer" py={4}>
+          <HStack as={RouterLink} to="/game" spacing={2} cursor="pointer" py={4}>
             <Logo />
             <Text 
               fontSize="xl" 

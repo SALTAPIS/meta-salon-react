@@ -152,8 +152,8 @@ export default function AuthCallback() {
         if (userRole === 'admin') {
           redirectPath = '/admin';
         } else {
-          // For all other users (including artists), redirect to username-based dashboard
-          redirectPath = `/${username}/dashboard`;
+          // For all other users, redirect to game page
+          redirectPath = '/game';
         }
 
         // Log the redirect for debugging
@@ -165,7 +165,7 @@ export default function AuthCallback() {
           profile
         });
 
-        // Redirect to appropriate dashboard with a slight delay to ensure profile is updated
+        // Redirect with a slight delay to ensure profile is updated
         setTimeout(() => {
           navigate(redirectPath, { replace: true });
         }, 500);

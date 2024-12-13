@@ -43,7 +43,7 @@ const routes: RouteObject[] = [
         children: [
           {
             path: '/',
-            element: <ArtworksPage />,
+            element: <GamePage />,
           },
           {
             path: '/auth/signup',
