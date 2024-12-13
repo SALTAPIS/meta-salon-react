@@ -67,6 +67,11 @@ export type Database = {
           metadata: ArtworkMetadata;
           created_at: string;
           updated_at: string;
+          user?: {
+            id: string;
+            username: string;
+            display_name: string | null;
+          };
         };
         Insert: {
           id?: string;

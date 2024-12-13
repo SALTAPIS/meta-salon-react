@@ -27,7 +27,14 @@ export class ArtworkService {
     try {
       const { data, error } = await supabase
         .from('artworks')
-        .select('*')
+        .select(`
+          *,
+          user:user_id (
+            id,
+            username,
+            display_name
+          )
+        `)
         .eq('id', id)
         .single();
 
