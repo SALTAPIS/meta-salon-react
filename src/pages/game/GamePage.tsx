@@ -7,26 +7,14 @@ import {
   useColorModeValue,
   Box,
 } from '@chakra-ui/react';
-import { keyframes } from '@emotion/react';
 import { Fade } from '@chakra-ui/react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import { GameArena } from './GameArena';
 import { useAuth } from '../../hooks/useAuth';
 import { useTokens } from '../../hooks/token/useTokens';
 import gsap from 'gsap';
 import { ArtworkService } from '../../services/ArtworkService';
 import type { Artwork } from '../../types/database.types';
-
-// Animation keyframes
-const typeIn = keyframes`
-  from { width: 0; }
-  to { width: 100%; }
-`;
-
-const fadeOut = keyframes`
-  from { opacity: 1; }
-  to { opacity: 0; }
-`;
 
 // Key for storing session state in localStorage
 const ACTIVE_SESSION_KEY = 'meta_salon_active_session';
@@ -48,7 +36,6 @@ export default function GamePage() {
   const bg = useColorModeValue('#f5f5f5', '#171717');
   const { user } = useAuth();
   const { votePacks, isLoading } = useTokens();
-  const navigate = useNavigate();
   const previewRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
   const artworksRef = useRef<PreviewArtwork[]>([]);
@@ -68,30 +55,17 @@ export default function GamePage() {
   // Track used artwork indices to prevent duplicates
   const usedIndices = useRef<Set<number>>(new Set());
 
-  // Get actual artwork dimensions
-  const getArtworkDimensions = (artwork: PreviewArtwork) => {
-    const img = new Image();
-    img.src = artwork.image_url;
-    const ratio = img.naturalWidth / img.naturalHeight;
-    let width = 300;
-    let height = 200;
-    
-    if (ratio > 1.5) { // wider image
-      height = width / ratio;
-    } else if (ratio < 1.5) { // taller image
-      width = height * ratio;
+  // Get unused random artwork index
+  const getUnusedIndex = (maxIndex: number) => {
+    if (usedIndices.current.size >= maxIndex) {
+      usedIndices.current.clear();
     }
-    
-    // Center the artwork in its container
-    const offsetX = (300 - width) / 2;
-    const offsetY = (200 - height) / 2;
-    
-    return {
-      x: artwork.x + offsetX,
-      y: artwork.y + offsetY,
-      width,
-      height
-    };
+    let index;
+    do {
+      index = Math.floor(Math.random() * maxIndex);
+    } while (usedIndices.current.has(index));
+    usedIndices.current.add(index);
+    return index;
   };
 
   // Check collision between two artworks
@@ -138,19 +112,6 @@ export default function GamePage() {
     art1.y -= ny * minSeparation;
     art2.x += nx * minSeparation;
     art2.y += ny * minSeparation;
-  };
-
-  // Get unused random artwork index
-  const getUnusedIndex = (maxIndex: number) => {
-    if (usedIndices.current.size >= maxIndex) {
-      usedIndices.current.clear();
-    }
-    let index;
-    do {
-      index = Math.floor(Math.random() * maxIndex);
-    } while (usedIndices.current.has(index));
-    usedIndices.current.add(index);
-    return index;
   };
 
   // Load preview artworks
@@ -362,11 +323,6 @@ export default function GamePage() {
   const handleExitGame = () => {
     localStorage.removeItem(ACTIVE_SESSION_KEY);
     setIsPlaying(false);
-  };
-
-  // Handle sign in
-  const handleSignIn = () => {
-    navigate('/auth/signin', { state: { returnUrl: '/game' } });
   };
 
   // Show game arena if playing
