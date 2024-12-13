@@ -1,99 +1,153 @@
 import React from 'react';
-import { Box, Container, Heading, Text, Button, VStack, Fade, Spinner, Center } from '@chakra-ui/react';
+import {
+  Container,
+  VStack,
+  Heading,
+  Text,
+  Button,
+  useColorModeValue,
+} from '@chakra-ui/react';
+import { Fade } from '@chakra-ui/react';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { GameArena } from './GameArena';
 import { useAuth } from '../../hooks/useAuth';
-import { Navigate } from 'react-router-dom';
+import { useTokens } from '../../hooks/token/useTokens';
+
+// Key for storing session state in localStorage
+const ACTIVE_SESSION_KEY = 'meta_salon_active_session';
 
 export default function GamePage() {
-  const { user, isLoading } = useAuth();
   const [isPlaying, setIsPlaying] = React.useState(false);
+  const bg = useColorModeValue('gray.50', 'gray.900');
+  const { user } = useAuth();
+  const { votePacks, isLoading } = useTokens();
+  const navigate = useNavigate();
 
-  // Show loading spinner while auth state is being determined
-  if (isLoading) {
+  // Check if user has available votes
+  const hasAvailableVotes = React.useMemo(() => {
+    if (!votePacks) return false;
+    return votePacks.some(pack => 
+      pack.votes_remaining > 0 && 
+      (!pack.expires_at || new Date(pack.expires_at) > new Date())
+    );
+  }, [votePacks]);
+
+  // Check for active session on mount
+  React.useEffect(() => {
+    if (user && hasAvailableVotes) {
+      const hasActiveSession = localStorage.getItem(ACTIVE_SESSION_KEY) === 'true';
+      if (hasActiveSession) {
+        setIsPlaying(true);
+      }
+    }
+  }, [user, hasAvailableVotes]);
+
+  // Handle session start
+  const handleStartPlaying = () => {
+    if (user && hasAvailableVotes) {
+      localStorage.setItem(ACTIVE_SESSION_KEY, 'true');
+      setIsPlaying(true);
+    }
+  };
+
+  // Handle session end
+  const handleExitGame = () => {
+    localStorage.removeItem(ACTIVE_SESSION_KEY);
+    setIsPlaying(false);
+  };
+
+  // Handle sign in
+  const handleSignIn = () => {
+    navigate('/auth/signin', { state: { returnUrl: '/game' } });
+  };
+
+  // Show game arena if playing
+  if (isPlaying && user && hasAvailableVotes) {
+    return <GameArena onExit={handleExitGame} />;
+  }
+
+  // Loading state
+  if (user && isLoading) {
     return (
-      <Center py={20}>
-        <Spinner size="xl" />
-      </Center>
+      <Container maxW="container.md" py={20}>
+        <VStack spacing={8} align="stretch">
+          <Text textAlign="center">Loading...</Text>
+        </VStack>
+      </Container>
     );
   }
 
-  // Only redirect if we're sure there's no user (not loading)
-  if (!isLoading && !user) {
-    return <Navigate to="/auth/signin" />;
-  }
-
-  if (isPlaying) {
-    return <GameArena onExit={() => setIsPlaying(false)} />;
-  }
-
+  // Main game page content
   return (
-    <Container maxW="container.xl" py={8}>
-      <Fade in={!isPlaying}>
+    <Container maxW="container.md" py={20}>
+      <Fade in>
         <VStack spacing={8} align="stretch">
-          <Box textAlign="center">
-            <Heading 
-              as="h1" 
-              size="2xl" 
-              bgGradient="linear(to-r, blue.400, purple.500)"
-              bgClip="text"
-              mb={4}
-            >
+          <VStack spacing={4}>
+            <Heading size="2xl" textAlign="center">
               The Salon Game
             </Heading>
-            <Text fontSize="xl" color="gray.600">
-              Welcome to Meta.Salon, where art meets competition
+            <Text fontSize="xl" textAlign="center" color="gray.500">
+              Vote for your favorite artworks and help curate the collection
             </Text>
-          </Box>
+          </VStack>
 
-          <Box 
-            p={8} 
-            borderRadius="xl" 
-            bg="white" 
-            boxShadow="xl"
-            border="1px"
-            borderColor="gray.100"
-          >
-            <Heading as="h2" size="lg" mb={6} color="gray.700">
-              How It Works
-            </Heading>
-            <VStack spacing={4} align="stretch">
-              {[
-                "You'll be presented with pairs of artworks",
-                "Click on the artwork you prefer",
-                "Your votes help determine the winners",
-                "Each artwork appears once per session",
-                "You need an active vote pack to participate"
-              ].map((text, index) => (
-                <Box 
-                  key={index} 
-                  p={4} 
-                  bg="gray.50" 
-                  borderRadius="md"
-                  _hover={{ bg: 'gray.100', transform: 'translateX(8px)' }}
+          {user ? (
+            hasAvailableVotes ? (
+              // Logged in with votes
+              <Button
+                size="lg"
+                height="16"
+                width="full"
+                colorScheme="blue"
+                onClick={handleStartPlaying}
+                _hover={{
+                  transform: 'translateY(-2px)',
+                  boxShadow: 'lg',
+                }}
+                transition="all 0.2s"
+              >
+                Start Playing
+              </Button>
+            ) : (
+              // Logged in but no votes
+              <VStack spacing={4}>
+                <Text color="gray.500" textAlign="center">
+                  You need vote packs to play
+                </Text>
+                <Button
+                  as={RouterLink}
+                  to="/shop"
+                  size="lg"
+                  height="16"
+                  width="full"
+                  colorScheme="blue"
+                  _hover={{
+                    transform: 'translateY(-2px)',
+                    boxShadow: 'lg',
+                  }}
                   transition="all 0.2s"
                 >
-                  <Text fontSize="lg" color="gray.700">
-                    {text}
-                  </Text>
-                </Box>
-              ))}
-            </VStack>
-          </Box>
-
-          <Button
-            size="lg"
-            height="16"
-            width="full"
-            colorScheme="blue"
-            onClick={() => setIsPlaying(true)}
-            _hover={{
-              transform: 'translateY(-2px)',
-              boxShadow: 'lg',
-            }}
-            transition="all 0.2s"
-          >
-            Start Voting
-          </Button>
+                  Get Vote Packs
+                </Button>
+              </VStack>
+            )
+          ) : (
+            // Not logged in
+            <Button
+              size="lg"
+              height="16"
+              width="full"
+              colorScheme="blue"
+              onClick={handleSignIn}
+              _hover={{
+                transform: 'translateY(-2px)',
+                boxShadow: 'lg',
+              }}
+              transition="all 0.2s"
+            >
+              Sign In to Play
+            </Button>
+          )}
         </VStack>
       </Fade>
     </Container>
