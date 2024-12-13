@@ -73,16 +73,21 @@ export function UserDashboardPage() {
 
   useEffect(() => {
     loadProfile();
-    loadAlbums();
-    loadActivities();
-    loadArtworks();
   }, [username]);
+
+  useEffect(() => {
+    if (profile) {
+      loadAlbums();
+      loadActivities();
+      loadArtworks();
+    }
+  }, [profile]);
 
   const loadProfile = async () => {
     try {
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, avatar_url')
         .eq('username', username)
         .single();
 
@@ -100,7 +105,7 @@ export function UserDashboardPage() {
   };
 
   const loadArtworks = async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     try {
       setIsLoadingArtworks(true);
@@ -109,7 +114,7 @@ export function UserDashboardPage() {
       const { data: artworksData, error: artworksError } = await supabase
         .from('artworks')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
 
       if (artworksError) throw artworksError;
@@ -269,18 +274,18 @@ export function UserDashboardPage() {
           >
             <Avatar
               size="2xl"
-              name={user?.display_name || user?.email || ''}
-              src={user?.avatar_url || undefined}
+              name={profile?.display_name || profile?.username || ''}
+              src={profile?.avatar_url || undefined}
               cursor="pointer"
             />
           </Box>
         </GridItem>
         <GridItem>
           <HStack spacing={4}>
-            <Heading size="xl">{user?.display_name || user?.username}</Heading>
-            {user?.role && (
+            <Heading size="xl">{profile?.display_name || profile?.username}</Heading>
+            {profile?.role && (
               <Badge colorScheme="purple" fontSize="md">
-                {user.role}
+                {profile.role}
               </Badge>
             )}
           </HStack>
@@ -290,23 +295,25 @@ export function UserDashboardPage() {
             <Text fontSize="3xl" fontWeight="bold">
               {profile?.balance?.toLocaleString()} SLN
             </Text>
-            <HStack>
-              <Button
-                as={RouterLink}
-                to={`/${username}/settings`}
-                leftIcon={<SettingsIcon />}
-                variant="outline"
-              >
-                Settings
-              </Button>
-              <Button
-                as={RouterLink}
-                to={`/${username}/dashboard`}
-                colorScheme="blue"
-              >
-                Dashboard
-              </Button>
-            </HStack>
+            {user?.id === profile?.id && (
+              <HStack>
+                <Button
+                  as={RouterLink}
+                  to={`/${username}/settings`}
+                  leftIcon={<SettingsIcon />}
+                  variant="outline"
+                >
+                  Settings
+                </Button>
+                <Button
+                  as={RouterLink}
+                  to={`/${username}/dashboard`}
+                  colorScheme="blue"
+                >
+                  Dashboard
+                </Button>
+              </HStack>
+            )}
           </VStack>
         </GridItem>
       </Grid>

@@ -13,11 +13,16 @@ import {
   useToast,
   Alert,
   AlertIcon,
-  VStack,
   Heading,
   useColorModeValue,
   Spinner,
   Center,
+  Stack,
+  Card,
+  CardHeader,
+  Image,
+  Link,
+  Badge,
 } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
@@ -31,8 +36,13 @@ interface VoteHistory {
   value: number;
   vote_power: number;
   total_value: number;
+  sln_value: number;
   artwork: {
+    id: string;
     title: string;
+    image_url: string;
+    vote_count: number;
+    vault_value: number;
   } | null;
   user: {
     id: string;
@@ -73,8 +83,13 @@ export function VoteManagement() {
           value,
           vote_power,
           total_value,
+          sln_value,
           artwork:artworks (
-            title
+            id,
+            title,
+            image_url,
+            vote_count,
+            vault_value
           )
         `)
         .order('created_at', { ascending: false })
@@ -95,7 +110,7 @@ export function VoteManagement() {
       const votesWithUsers = voteHistory?.map(vote => ({
         ...vote,
         artwork: Array.isArray(vote.artwork) ? vote.artwork[0] : vote.artwork,
-        user: users?.find(user => user.id === vote.user_id) || null
+        user: users?.find(user => user.id === vote.user_id) || null,
       })) as VoteHistory[];
 
       setVotes(votesWithUsers);
@@ -160,59 +175,80 @@ export function VoteManagement() {
   }
 
   return (
-    <VStack spacing={6} align="stretch">
-      <Box>
-        <HStack justify="space-between" mb={4}>
-          <Heading size="md">Vote Management</Heading>
-          <Button
-            colorScheme="red"
-            onClick={handleResetVotes}
-            isLoading={resetting}
-            loadingText="Resetting..."
-          >
-            Reset All Votes
-          </Button>
-        </HStack>
-
-        <HStack spacing={4} mb={6}>
-          <Text color="gray.600">
-            Total Votes Cast: <Tag colorScheme="blue" size="lg">{totalVotes}</Tag>
-          </Text>
-        </HStack>
-      </Box>
+    <Stack spacing={8}>
+      <Card>
+        <CardHeader>
+          <HStack justify="space-between" align="center">
+            <Box>
+              <Heading size="md">Vote Management</Heading>
+              <Text color="gray.600" mt={2}>
+                Total Votes Cast: <Tag colorScheme="blue" size="md">{totalVotes}</Tag>
+              </Text>
+            </Box>
+            <Button
+              colorScheme="red"
+              onClick={handleResetVotes}
+              isLoading={resetting}
+              loadingText="Resetting..."
+            >
+              Reset All Votes
+            </Button>
+          </HStack>
+        </CardHeader>
+      </Card>
 
       <Box overflowX="auto">
         <Table variant="simple" bg={bgColor} borderRadius="lg">
           <Thead>
             <Tr>
-              <Th>Date</Th>
               <Th>Artwork</Th>
+              <Th>Title</Th>
               <Th>Voter</Th>
-              <Th isNumeric>Vote Weight</Th>
-              <Th isNumeric>Total Votes</Th>
-              <Th isNumeric>Value</Th>
+              <Th>Vote Weight</Th>
+              <Th>Total Votes</Th>
+              <Th>Vault Value</Th>
+              <Th>Date</Th>
             </Tr>
           </Thead>
           <Tbody>
             {votes.map((vote) => (
               <Tr key={vote.id}>
-                <Td>{new Date(vote.created_at).toLocaleString()}</Td>
                 <Td>
-                  <RouterLink to={`/artwork/${vote.artwork_id}`}>
+                  {vote.artwork?.image_url ? (
+                    <Image 
+                      src={vote.artwork.image_url} 
+                      alt={vote.artwork.title || 'Artwork'}
+                      boxSize="50px"
+                      objectFit="cover"
+                      borderRadius="md"
+                    />
+                  ) : (
+                    <Box w="50px" h="50px" bg="gray.200" borderRadius="md" />
+                  )}
+                </Td>
+                <Td>
+                  <Link as={RouterLink} to={`/artwork/${vote.artwork_id}`} color="blue.500">
                     {vote.artwork?.title || 'Unknown Artwork'}
-                  </RouterLink>
+                  </Link>
                 </Td>
                 <Td>
-                  {vote.user?.display_name || vote.user?.username || 'Unknown User'}
+                  {vote.user && (
+                    <Link as={RouterLink} to={`/${vote.user.username}`} color="blue.500">
+                      {vote.user.display_name || vote.user.username || 'Unknown User'}
+                    </Link>
+                  )}
                 </Td>
-                <Td isNumeric>{vote.vote_power}x</Td>
-                <Td isNumeric>{vote.value}</Td>
-                <Td isNumeric>{vote.total_value} SLN</Td>
+                <Td>
+                  <Badge colorScheme="purple">{vote.vote_power}x</Badge>
+                </Td>
+                <Td>{vote.artwork?.vote_count || 0}</Td>
+                <Td>{vote.artwork?.vault_value || 0} SLN</Td>
+                <Td>{new Date(vote.created_at).toLocaleString()}</Td>
               </Tr>
             ))}
           </Tbody>
         </Table>
       </Box>
-    </VStack>
+    </Stack>
   );
 } 

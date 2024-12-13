@@ -35,6 +35,7 @@ export class VoteService {
       if (error) {
         console.error('[VoteService] Database error:', {
           error,
+          code: error.code,
           message: error.message,
           details: error.details,
           hint: error.hint,
@@ -60,7 +61,10 @@ export class VoteService {
     } catch (error) {
       console.error('[VoteService] Error:', {
         error,
+        code: error instanceof Error ? (error as any).code : undefined,
         message: error instanceof Error ? error.message : 'Unknown error',
+        details: error instanceof Error ? (error as any).details : undefined,
+        hint: error instanceof Error ? (error as any).hint : undefined,
         artwork_id: artworkId,
         pack_id: packId,
         value: value
@@ -85,8 +89,6 @@ export class VoteService {
           vote_power,
           total_value,
           sln_value,
-          consumed,
-          consumed_at,
           created_at,
           updated_at
         `)
