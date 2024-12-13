@@ -7,14 +7,11 @@ import {
   VStack, 
   Button, 
   HStack,
-  Stat,
-  StatLabel,
-  StatNumber,
   Container,
   useToast,
-  Image
+  Image,
 } from '@chakra-ui/react';
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import gsap from 'gsap';
 import { Link as RouterLink } from 'react-router-dom';
 import { useVotingArena } from '../../hooks/useVotingArena';
@@ -31,6 +28,7 @@ export function GameArena({ onExit }: GameArenaProps) {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
   const [hoveredArtwork, setHoveredArtwork] = React.useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = React.useState(false);
   const arenaRef = React.useRef<HTMLDivElement>(null);
   const timeline = React.useRef<gsap.core.Timeline>();
   const toast = useToast();
@@ -52,41 +50,51 @@ export function GameArena({ onExit }: GameArenaProps) {
     refreshBalance 
   } = useTokens();
 
-  const isLoading = isArenaLoading || isTokensLoading;
-  const error = arenaError || tokensError;
-  
-  // Get active vote packs
-  const activePacks = votePacks?.filter((pack: VotePack) => 
-    pack.votes_remaining > 0 && (!pack.expires_at || new Date(pack.expires_at) > new Date())
-  ) || [];
+  // Memoize active packs calculation
+  const { activePacks, availableVotes } = useMemo(() => {
+    const active = votePacks?.filter((pack: VotePack) => 
+      pack.votes_remaining > 0 && (!pack.expires_at || new Date(pack.expires_at) > new Date())
+    ) || [];
+    
+    const votes = active.reduce((sum: number, pack: VotePack) => 
+      sum + (pack.votes_remaining || 0), 0
+    ) || 0;
+
+    return { activePacks: active, availableVotes: votes };
+  }, [votePacks]);
 
   const hasVotePacks = activePacks.length > 0;
-  const availableVotes = activePacks.reduce((sum: number, pack: VotePack) => 
-    sum + (pack.votes_remaining || 0), 0
-  ) || 0;
+  const isLoading = (isArenaLoading || isTokensLoading) && !isTransitioning;
+  const error = arenaError || tokensError;
 
+  // Animation setup
   React.useEffect(() => {
     timeline.current = gsap.timeline({ paused: true });
-    
-    // Prevent scrolling when artwork is scaled
+    return () => {
+      timeline.current?.kill();
+    };
+  }, []);
+
+  // Prevent scrolling on hover
+  React.useEffect(() => {
     const preventScroll = (e: WheelEvent) => {
       if (hoveredArtwork) {
         e.preventDefault();
       }
     };
     window.addEventListener('wheel', preventScroll, { passive: false });
-    
-    return () => {
-      timeline.current?.kill();
-      window.removeEventListener('wheel', preventScroll);
-    };
+    return () => window.removeEventListener('wheel', preventScroll);
   }, [hoveredArtwork]);
 
-  const handleVote = async (artworkId: string) => {
-    if (!currentPair || !activePacks[0]) return;
+  // Memoize vote handler
+  const handleVote = useCallback(async (artworkId: string) => {
+    if (!currentPair || !activePacks[0] || isTransitioning) return;
     
+    setIsTransitioning(true);
     const winner = document.querySelector(`[data-artwork-id="${artworkId}"]`);
-    const loser = document.querySelector(`[data-artwork-id="${artworkId === currentPair.left.id ? currentPair.right.id : currentPair.left.id}"]`);
+    const loser = document.querySelector(`[data-artwork-id="${
+      artworkId === currentPair.left.id ? currentPair.right.id : currentPair.left.id
+    }"]`);
     
     if (winner && loser && timeline.current) {
       timeline.current
@@ -94,23 +102,20 @@ export function GameArena({ onExit }: GameArenaProps) {
         .to(loser, {
           scale: 0.8,
           opacity: 0,
-          duration: 1.2,
+          duration: 0.8,
           ease: "power2.inOut"
         })
         .to(winner, {
-          scale: 1.2,
-          duration: 1.2,
+          scale: 1.1,
+          duration: 0.8,
           ease: "power2.inOut"
         }, '<')
         .play();
 
       try {
-        // Cast vote while animation is playing
         await castVote(artworkId);
-        // Refresh vote packs after vote
         await refreshBalance();
         
-        // Only show success toast in debug mode
         if (debugMode) {
           toast({
             title: 'Vote recorded',
@@ -137,9 +142,10 @@ export function GameArena({ onExit }: GameArenaProps) {
       setTimeout(() => {
         timeline.current?.clear();
         gsap.set([winner, loser], { clearProps: 'all' });
-      }, 1500);
+        setIsTransitioning(false);
+      }, 1000);
     }
-  };
+  }, [currentPair, activePacks, timeline, castVote, refreshBalance, debugMode, toast, isTransitioning]);
 
   if (isLoading) {
     return (
@@ -200,7 +206,7 @@ export function GameArena({ onExit }: GameArenaProps) {
       {/* Voting Pairs */}
       <Box 
         display="flex"
-        h="calc(90vh - 128px)"
+        h="calc(90vh - 160px)"
         alignItems="center"
         justifyContent="center"
         gap={8}
@@ -212,13 +218,14 @@ export function GameArena({ onExit }: GameArenaProps) {
           maxW="45vw"
           h={hoveredArtwork === currentPair?.left.id ? '55vh' : '40vh'}
           position="relative"
-          transition="all 0.3s"
+          transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
           cursor="pointer"
           data-artwork-id={currentPair?.left.id}
           onClick={() => handleVote(currentPair?.left.id)}
           onMouseEnter={() => setHoveredArtwork(currentPair?.left.id)}
           onMouseLeave={() => setHoveredArtwork(null)}
-          overflow="hidden"
+          overflow="visible"
+          transform={hoveredArtwork === currentPair?.left.id ? 'translateY(-8px)' : 'none'}
         >
           <Image
             src={currentPair?.left.image_url}
@@ -226,8 +233,10 @@ export function GameArena({ onExit }: GameArenaProps) {
             objectFit="contain"
             w="100%"
             h="100%"
-            transition="all 1.2s cubic-bezier(0.4, 0, 0.2, 1)"
+            transition="all 0.8s cubic-bezier(0.4, 0, 0.2, 1)"
             transform={hoveredArtwork === currentPair?.left.id ? 'scale(1.05)' : 'scale(1)'}
+            loading="eager"
+            style={{ maxWidth: '100%', maxHeight: '100%' }}
           />
         </Box>
 
@@ -237,13 +246,14 @@ export function GameArena({ onExit }: GameArenaProps) {
           maxW="45vw"
           h={hoveredArtwork === currentPair?.right.id ? '55vh' : '40vh'}
           position="relative"
-          transition="all 0.3s"
+          transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
           cursor="pointer"
           data-artwork-id={currentPair?.right.id}
           onClick={() => handleVote(currentPair?.right.id)}
           onMouseEnter={() => setHoveredArtwork(currentPair?.right.id)}
           onMouseLeave={() => setHoveredArtwork(null)}
-          overflow="hidden"
+          overflow="visible"
+          transform={hoveredArtwork === currentPair?.right.id ? 'translateY(-8px)' : 'none'}
         >
           <Image
             src={currentPair?.right.image_url}
@@ -251,39 +261,46 @@ export function GameArena({ onExit }: GameArenaProps) {
             objectFit="contain"
             w="100%"
             h="100%"
-            transition="all 1.2s cubic-bezier(0.4, 0, 0.2, 1)"
+            transition="all 0.8s cubic-bezier(0.4, 0, 0.2, 1)"
             transform={hoveredArtwork === currentPair?.right.id ? 'scale(1.05)' : 'scale(1)'}
+            loading="eager"
+            style={{ maxWidth: '100%', maxHeight: '100%' }}
           />
         </Box>
       </Box>
 
       {/* Vote Info Footer */}
       <Box 
-        position="absolute"
-        bottom={0}
-        left={0}
-        right={0}
+        position="fixed"
+        bottom={4}
+        left="50%"
+        transform="translateX(-50%)"
         borderTop="1px" 
         borderColor={borderColor}
         bg={bg} 
-        h="48px"
+        h="64px"
         display="flex"
         alignItems="center"
+        px={8}
+        borderRadius="md"
+        boxShadow="sm"
+        width="calc(100% - 48px)"
+        maxWidth="container.xl"
       >
         <Container maxW="container.xl" centerContent>
-          <HStack spacing={12} justify="center">
-            <Stat size="sm" textAlign="center">
-              <StatLabel fontSize="xs">Votes Available</StatLabel>
-              <StatNumber fontSize="md">{availableVotes}</StatNumber>
-            </Stat>
-            <Stat size="sm" textAlign="center">
-              <StatLabel fontSize="xs">Weight</StatLabel>
-              <StatNumber fontSize="md">{activePacks[0]?.vote_power || 1}x SLN</StatNumber>
-            </Stat>
-            <Stat size="sm" textAlign="center">
-              <StatLabel fontSize="xs">Remaining Pairs</StatLabel>
-              <StatNumber fontSize="md">{remainingArtworks?.length || 0}/{artworks?.length || 0}</StatNumber>
-            </Stat>
+          <HStack spacing={16} justify="center">
+            <VStack spacing={1} align="center">
+              <Text fontSize="xl" fontWeight="bold">{availableVotes}</Text>
+              <Text fontSize="sm" whiteSpace="nowrap">Votes Available</Text>
+            </VStack>
+            <VStack spacing={1} align="center">
+              <Text fontSize="xl" fontWeight="bold">{activePacks[0]?.vote_power || 1}x SLN</Text>
+              <Text fontSize="sm">Weight</Text>
+            </VStack>
+            <VStack spacing={1} align="center">
+              <Text fontSize="xl" fontWeight="bold">{remainingArtworks?.length || 0}/{artworks?.length || 0}</Text>
+              <Text fontSize="sm">Remaining Pairs</Text>
+            </VStack>
           </HStack>
         </Container>
       </Box>
