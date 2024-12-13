@@ -6,12 +6,14 @@ import { ErrorBoundary } from '../error/ErrorBoundary';
 export function Layout() {
   const location = useLocation();
   const isArtworksPage = location.pathname === '/artworks' || location.pathname === '/';
+  const isAdminPage = location.pathname.startsWith('/admin');
+  const useWideContainer = isArtworksPage || isAdminPage;
   
   return (
     <Box minH="100vh">
       <ErrorBoundary>
         <Header />
-        <Container size={isArtworksPage ? 'wide' : 'regular'} py={8}>
+        <Container size={useWideContainer ? 'wide' : 'regular'} py={8}>
           <Outlet />
         </Container>
       </ErrorBoundary>
