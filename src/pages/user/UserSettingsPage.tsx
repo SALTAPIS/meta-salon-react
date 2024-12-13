@@ -19,6 +19,7 @@ import {
 import { FiUpload, FiTrash2 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabaseClient';
+import { DebugSettings } from '../../components/settings/DebugSettings';
 
 export function UserSettingsPage() {
   const { user } = useAuth();
@@ -120,91 +121,102 @@ export function UserSettingsPage() {
 
   return (
     <Container maxW="container.md" py={8}>
-      <Box p={6} bg={bgColor} borderRadius="lg" borderWidth={1} borderColor={borderColor}>
-        <VStack spacing={8} align="stretch">
-          <Heading size="lg">Profile Settings</Heading>
+      <VStack spacing={8} align="stretch">
+        {/* Profile Settings */}
+        <Box p={6} bg={bgColor} borderRadius="lg" borderWidth={1} borderColor={borderColor}>
+          <VStack spacing={8} align="stretch">
+            <Heading size="lg">Profile Settings</Heading>
 
-          <form onSubmit={handleSubmit}>
-            <VStack spacing={6}>
-              {/* Avatar Upload */}
-              <FormControl>
-                <FormLabel>Profile Picture</FormLabel>
-                <HStack spacing={4}>
-                  <Avatar
-                    size="xl"
-                    src={avatarFile ? URL.createObjectURL(avatarFile) : (user?.avatar_url ?? '')}
-                    name={formData.display_name || formData.username}
+            <form onSubmit={handleSubmit}>
+              <VStack spacing={6}>
+                {/* Avatar Upload */}
+                <FormControl>
+                  <FormLabel>Profile Picture</FormLabel>
+                  <HStack spacing={4}>
+                    <Avatar
+                      size="xl"
+                      src={avatarFile ? URL.createObjectURL(avatarFile) : (user?.avatar_url ?? '')}
+                      name={formData.display_name || formData.username}
+                    />
+                    <VStack>
+                      <Button
+                        as="label"
+                        htmlFor="avatar-upload"
+                        leftIcon={<FiUpload />}
+                        cursor="pointer"
+                      >
+                        Upload Image
+                        <input
+                          id="avatar-upload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarChange}
+                          style={{ display: 'none' }}
+                        />
+                      </Button>
+                      {(avatarFile || user?.avatar_url) && (
+                        <IconButton
+                          aria-label="Remove avatar"
+                          icon={<FiTrash2 />}
+                          onClick={handleRemoveAvatar}
+                          variant="ghost"
+                          colorScheme="red"
+                        />
+                      )}
+                    </VStack>
+                  </HStack>
+                </FormControl>
+
+                <FormControl isRequired>
+                  <FormLabel>Username</FormLabel>
+                  <Input
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    placeholder="username"
                   />
-                  <VStack>
-                    <Button
-                      as="label"
-                      htmlFor="avatar-upload"
-                      leftIcon={<FiUpload />}
-                      cursor="pointer"
-                    >
-                      Upload Image
-                      <input
-                        id="avatar-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarChange}
-                        style={{ display: 'none' }}
-                      />
-                    </Button>
-                    {(avatarFile || user?.avatar_url) && (
-                      <IconButton
-                        aria-label="Remove avatar"
-                        icon={<FiTrash2 />}
-                        onClick={handleRemoveAvatar}
-                        variant="ghost"
-                        colorScheme="red"
-                      />
-                    )}
-                  </VStack>
-                </HStack>
-              </FormControl>
+                </FormControl>
 
-              <FormControl isRequired>
-                <FormLabel>Username</FormLabel>
-                <Input
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  placeholder="username"
-                />
-              </FormControl>
+                <FormControl>
+                  <FormLabel>Display Name</FormLabel>
+                  <Input
+                    value={formData.display_name}
+                    onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                    placeholder="Display Name"
+                  />
+                </FormControl>
 
-              <FormControl>
-                <FormLabel>Display Name</FormLabel>
-                <Input
-                  value={formData.display_name}
-                  onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-                  placeholder="Display Name"
-                />
-              </FormControl>
+                <FormControl>
+                  <FormLabel>Bio</FormLabel>
+                  <Textarea
+                    value={formData.bio}
+                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                    placeholder="Tell us about yourself"
+                    rows={4}
+                  />
+                </FormControl>
 
-              <FormControl>
-                <FormLabel>Bio</FormLabel>
-                <Textarea
-                  value={formData.bio}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  placeholder="Tell us about yourself"
-                  rows={4}
-                />
-              </FormControl>
+                <Button
+                  type="submit"
+                  colorScheme="blue"
+                  size="lg"
+                  width="full"
+                  isLoading={loading}
+                >
+                  Save Changes
+                </Button>
+              </VStack>
+            </form>
+          </VStack>
+        </Box>
 
-              <Button
-                type="submit"
-                colorScheme="blue"
-                size="lg"
-                width="full"
-                isLoading={loading}
-              >
-                Save Changes
-              </Button>
-            </VStack>
-          </form>
-        </VStack>
-      </Box>
+        {/* Debug Settings */}
+        <Box p={6} bg={bgColor} borderRadius="lg" borderWidth={1} borderColor={borderColor}>
+          <VStack spacing={4} align="stretch">
+            <Heading size="lg">Debug Settings</Heading>
+            <DebugSettings />
+          </VStack>
+        </Box>
+      </VStack>
     </Container>
   );
 } 

@@ -4,7 +4,6 @@ import { ArtworkService } from '../services/ArtworkService';
 import { VoteService } from '../services/VoteService';
 import { useTokens } from './token/useTokens';
 import { useAuth } from './useAuth';
-import { useDebugMode } from './useDebugMode';
 import type { Artwork, VotePack } from '../types/database.types';
 
 interface VotingPair {
@@ -25,7 +24,6 @@ export function useVotingArena() {
   const { votePacks, refreshBalance } = useTokens();
   const { user } = useAuth();
   const toast = useToast();
-  const { debugMode } = useDebugMode();
 
   // Load artworks
   useEffect(() => {
