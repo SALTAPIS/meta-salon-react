@@ -33,7 +33,7 @@ interface PreviewArtwork extends Artwork {
 export default function GamePage() {
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [previewArtworks, setPreviewArtworks] = React.useState<Artwork[]>([]);
-  const bg = useColorModeValue('#f5f5f5', '#171717');
+  const bg = useColorModeValue('white', '#171717');
   const { user } = useAuth();
   const { votePacks, isLoading } = useTokens();
   const previewRef = useRef<HTMLDivElement>(null);
@@ -47,7 +47,7 @@ export default function GamePage() {
     throwForce: 15,
     maxRotation: 3,
     pairInterval: 2000,
-    maxArtworks: 20,
+    maxArtworks: 12,
     collisionElasticity: 0.7,
     minSpeed: 0.1,
   };
