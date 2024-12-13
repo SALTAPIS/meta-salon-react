@@ -24,6 +24,8 @@ interface PreviewArtwork extends Artwork {
   element: HTMLDivElement;
   x: number;
   y: number;
+  width: number;
+  height: number;
   rotation: number;
   velocity: { x: number; y: number };
   angularVelocity: number;
@@ -83,27 +85,21 @@ export default function GamePage() {
 
   // Check collision between two artworks
   const checkCollision = (art1: PreviewArtwork, art2: PreviewArtwork) => {
-    const dim1 = getArtworkDimensions(art1);
-    const dim2 = getArtworkDimensions(art2);
-
-    return !(dim1.x + dim1.width < dim2.x || 
-            dim1.x > dim2.x + dim2.width || 
-            dim1.y + dim1.height < dim2.y || 
-            dim1.y > dim2.y + dim2.height);
+    return !(art1.x + art1.width < art2.x || 
+            art1.x > art2.x + art2.width || 
+            art1.y + art1.height < art2.y || 
+            art1.y > art2.y + art2.height);
   };
 
   // Resolve collision between two artworks
   const resolveCollision = (art1: PreviewArtwork, art2: PreviewArtwork) => {
-    const dim1 = getArtworkDimensions(art1);
-    const dim2 = getArtworkDimensions(art2);
-
     const center1 = { 
-      x: dim1.x + dim1.width / 2, 
-      y: dim1.y + dim1.height / 2 
+      x: art1.x + art1.width / 2, 
+      y: art1.y + art1.height / 2 
     };
     const center2 = { 
-      x: dim2.x + dim2.width / 2, 
-      y: dim2.y + dim2.height / 2 
+      x: art2.x + art2.width / 2, 
+      y: art2.y + art2.height / 2 
     };
 
     const dx = center2.x - center1.x;
@@ -125,8 +121,8 @@ export default function GamePage() {
     art1.angularVelocity += (Math.random() - 0.5) * impactSpeed * 0.1;
     art2.angularVelocity += (Math.random() - 0.5) * impactSpeed * 0.1;
 
-    // Separate overlapping artworks based on their actual dimensions
-    const minSeparation = Math.min(dim1.width, dim1.height, dim2.width, dim2.height) * 0.1;
+    // Separate overlapping artworks
+    const minSeparation = Math.min(art1.width, art1.height, art2.width, art2.height) * 0.1;
     art1.x -= nx * minSeparation;
     art1.y -= ny * minSeparation;
     art2.x += nx * minSeparation;
@@ -171,57 +167,84 @@ export default function GamePage() {
         getUnusedIndex(previewArtworks.length)
       ];
 
-      const pair = indices.map((index, i) => {
-        const element = document.createElement('div');
-        element.className = 'preview-artwork';
-        element.style.backgroundImage = `url(${previewArtworks[index].image_url})`;
-        element.style.backgroundSize = 'contain';
-        element.style.backgroundRepeat = 'no-repeat';
-        element.style.backgroundPosition = 'center';
-        element.style.width = '300px';
-        element.style.height = '200px';
-        element.style.position = 'absolute';
-        element.style.cursor = 'pointer';
-        element.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-        previewRef.current?.appendChild(element);
+      // Preload both images and wait for their dimensions
+      const loadImages = indices.map((index, i) => {
+        return new Promise<PreviewArtwork>((resolve) => {
+          const img = new Image();
+          
+          img.onload = () => {
+            // Calculate dimensions maintaining aspect ratio
+            const baseSize = 300; // Base size for scaling
+            const ratio = img.naturalWidth / img.naturalHeight;
+            let width, height;
 
-        element.addEventListener('mouseenter', () => {
-          gsap.to(element, {
-            scale: 1.1,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-            duration: 0.3,
-            ease: 'power2.out'
-          });
+            if (ratio > 1) {
+              width = baseSize;
+              height = baseSize / ratio;
+            } else {
+              height = baseSize;
+              width = baseSize * ratio;
+            }
+
+            const element = document.createElement('div');
+            element.className = 'preview-artwork';
+            element.style.backgroundImage = `url(${img.src})`;
+            element.style.backgroundSize = 'contain';
+            element.style.backgroundRepeat = 'no-repeat';
+            element.style.backgroundPosition = 'center';
+            element.style.width = `${width}px`;
+            element.style.height = `${height}px`;
+            element.style.position = 'absolute';
+            element.style.cursor = 'pointer';
+            element.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+            previewRef.current?.appendChild(element);
+
+            element.addEventListener('mouseenter', () => {
+              gsap.to(element, {
+                scale: 1.1,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                duration: 0.3,
+                ease: 'power2.out'
+              });
+            });
+
+            element.addEventListener('mouseleave', () => {
+              gsap.to(element, {
+                scale: 1,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                duration: 0.3,
+                ease: 'power2.out'
+              });
+            });
+
+            // Calculate starting position (left or right edge)
+            const startX = i === 0 ? -width : window.innerWidth;
+            const startY = window.innerHeight / 2 - height / 2 + (Math.random() - 0.5) * 300;
+
+            resolve({
+              ...previewArtworks[index],
+              element,
+              x: startX,
+              y: startY,
+              width,
+              height,
+              rotation: (Math.random() - 0.5) * config.maxRotation,
+              velocity: {
+                x: (i === 0 ? 1 : -1) * config.throwForce * (0.8 + Math.random() * 0.4),
+                y: (Math.random() - 0.5) * 2
+              },
+              angularVelocity: (Math.random() - 0.5) * 2
+            });
+          };
+
+          img.src = previewArtworks[index].image_url;
         });
-
-        element.addEventListener('mouseleave', () => {
-          gsap.to(element, {
-            scale: 1,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            duration: 0.3,
-            ease: 'power2.out'
-          });
-        });
-
-        // Calculate starting position (left or right edge)
-        const startX = i === 0 ? -350 : window.innerWidth + 50;
-        const startY = window.innerHeight / 2 - 100 + (Math.random() - 0.5) * 300;
-
-        return {
-          ...previewArtworks[index],
-          element,
-          x: startX,
-          y: startY,
-          rotation: (Math.random() - 0.5) * config.maxRotation,
-          velocity: {
-            x: (i === 0 ? 1 : -1) * config.throwForce * (0.8 + Math.random() * 0.4),
-            y: (Math.random() - 0.5) * 2
-          },
-          angularVelocity: (Math.random() - 0.5) * 2
-        };
       });
 
-      artworksRef.current.push(...pair);
+      // Add artworks to animation only after both images are loaded
+      Promise.all(loadImages).then((newArtworks) => {
+        artworksRef.current.push(...newArtworks);
+      });
     };
 
     // Animation loop
@@ -261,8 +284,8 @@ export default function GamePage() {
           artwork.y = margin;
           artwork.velocity.y *= -0.5;
         }
-        if (artwork.y > window.innerHeight - 200 - margin) {
-          artwork.y = window.innerHeight - 200 - margin;
+        if (artwork.y > window.innerHeight - artwork.height - margin) {
+          artwork.y = window.innerHeight - artwork.height - margin;
           artwork.velocity.y *= -0.5;
         }
 
@@ -274,7 +297,7 @@ export default function GamePage() {
         });
 
         // Remove if out of bounds horizontally
-        if (Math.abs(artwork.x) > window.innerWidth + 400) {
+        if (artwork.x > window.innerWidth + artwork.width || artwork.x < -artwork.width - 400) {
           artwork.element.remove();
           artworksRef.current.splice(index, 1);
         }
@@ -353,7 +376,7 @@ export default function GamePage() {
 
   // Main game page content
   return (
-    <Container maxW="container.md" py={20} position="relative">
+    <Container maxW="100%" p={0} h="100vh" position="relative">
       <Box
         ref={previewRef}
         position="fixed"
@@ -363,9 +386,21 @@ export default function GamePage() {
         bottom={0}
         pointerEvents="none"
         zIndex={0}
+        overflow="hidden"
+        m={0}
+        p={0}
       />
       <Fade in>
-        <VStack spacing={8} align="stretch" position="relative" zIndex={1}>
+        <VStack 
+          spacing={8} 
+          align="stretch" 
+          position="relative" 
+          zIndex={1}
+          px={4}
+          py={20}
+          maxW="container.md"
+          mx="auto"
+        >
           <VStack spacing={4}>
             <Heading size="2xl" textAlign="center">
               The Salon Game
