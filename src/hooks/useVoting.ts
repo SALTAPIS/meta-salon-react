@@ -21,9 +21,16 @@ export function useVoting(artworkId: string) {
           VoteService.getArtworkVotes(artworkId),
           VoteService.getVaultState(artworkId)
         ]);
+        
+        // Ensure we have all required vote data
+        if (votesData.some(vote => vote.value === undefined)) {
+          console.error('Some votes are missing value field:', votesData);
+        }
+        
         setVotes(votesData);
         setVaultState(vaultData);
       } catch (err) {
+        console.error('Error loading voting data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load voting data');
       } finally {
         setIsLoading(false);
@@ -69,8 +76,7 @@ export function useVoting(artworkId: string) {
 
   // Get user's votes for this artwork
   const userVotes = votes.filter(vote => vote.user_id === user?.id);
-  const totalVotes = votes.reduce((sum, vote) => sum + vote.value, 0);
-  const userTotalVotes = userVotes.reduce((sum, vote) => sum + vote.value, 0);
+  const userTotalVotes = userVotes.reduce((sum, vote) => sum + (vote.value || 0), 0);
 
   return {
     votes,
@@ -79,7 +85,6 @@ export function useVoting(artworkId: string) {
     error,
     castVote,
     userVotes,
-    totalVotes,
     userTotalVotes
   };
 } 

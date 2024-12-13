@@ -76,7 +76,20 @@ export class VoteService {
     try {
       const { data, error } = await supabase
         .from('votes')
-        .select('*')
+        .select(`
+          id,
+          user_id,
+          artwork_id,
+          pack_id,
+          value,
+          vote_power,
+          total_value,
+          sln_value,
+          consumed,
+          consumed_at,
+          created_at,
+          updated_at
+        `)
         .eq('artwork_id', artworkId)
         .order('created_at', { ascending: false });
 
@@ -126,19 +139,17 @@ export class VoteService {
   }
 
   /**
-   * Get vote consumption stats for an artwork
+   * Get vote stats for an artwork
    */
   static async getVoteConsumptionStats(artworkId: string): Promise<{
     totalVotes: number;
-    consumedVotes: number;
-    unconsumedVotes: number;
     vaultValue: number;
   }> {
     try {
       // Get all votes
       const { data: votes, error: votesError } = await supabase
         .from('votes')
-        .select('value, consumed')
+        .select('value')
         .eq('artwork_id', artworkId);
 
       if (votesError) throw votesError;
@@ -153,17 +164,13 @@ export class VoteService {
       if (artworkError) throw artworkError;
 
       const totalVotes = votes?.reduce((sum, vote) => sum + vote.value, 0) || 0;
-      const consumedVotes = votes?.filter(v => v.consumed).reduce((sum, vote) => sum + vote.value, 0) || 0;
-      const unconsumedVotes = totalVotes - consumedVotes;
 
       return {
         totalVotes,
-        consumedVotes,
-        unconsumedVotes,
         vaultValue: artwork.vault_value
       };
     } catch (error) {
-      throw handleError(error, 'Failed to get vote consumption stats');
+      throw handleError(error, 'Failed to get vote stats');
     }
   }
 } 

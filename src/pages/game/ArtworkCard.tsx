@@ -90,7 +90,7 @@ export function ArtworkCard({
               <VStack align="start" spacing={1}>
                 <HStack spacing={4}>
                   <Text fontSize="sm" color="gray.600">
-                    {artwork.vote_count ?? 0} votes
+                    {artwork.vote_count ?? 0} votes ({artwork.vault_value ?? 0} SLN)
                   </Text>
                   {(artwork.total_matches ?? 0) > 0 && (
                     <Text fontSize="sm" color="gray.600">
@@ -99,10 +99,6 @@ export function ArtworkCard({
                   )}
                 </HStack>
               </VStack>
-
-              <Text fontSize="lg" fontWeight="bold" color="green.500">
-                {Math.floor(artwork.vault_value ?? 0)} SLN
-              </Text>
             </HStack>
           )}
         </Box>
