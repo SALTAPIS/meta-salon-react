@@ -4,6 +4,7 @@ import { ArtworkService } from '../services/ArtworkService';
 import { VoteService } from '../services/VoteService';
 import { useTokens } from './token/useTokens';
 import { useAuth } from './useAuth';
+import { useDebugMode } from './useDebugMode';
 import type { Artwork, VotePack } from '../types/database.types';
 
 interface VotingPair {
@@ -24,6 +25,7 @@ export function useVotingArena() {
   const { votePacks, refreshBalance } = useTokens();
   const { user } = useAuth();
   const toast = useToast();
+  const { debugMode } = useDebugMode();
 
   // Load artworks
   useEffect(() => {
@@ -115,14 +117,6 @@ export function useVotingArena() {
 
       // Refresh token balance
       await refreshBalance();
-
-      toast({
-        title: 'Vote recorded',
-        description: 'Your vote has been cast successfully',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to cast vote';
       console.error('Vote casting error:', {

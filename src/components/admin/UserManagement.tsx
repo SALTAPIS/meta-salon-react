@@ -263,24 +263,27 @@ export function UserManagement() {
     if (!selectedUser) return;
 
     try {
+      const balanceDiff = data.balance - selectedUser.balance;
+
+      // Record the transaction first
+      const { error: txError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: selectedUser.id,
+          type: 'grant',
+          amount: balanceDiff,
+          description: `Admin balance adjustment (${balanceDiff >= 0 ? 'grant' : 'deduction'})`,
+        });
+
+      if (txError) throw txError;
+
+      // Then update the profile balance
       const { error } = await supabase
         .from('profiles')
         .update({ balance: data.balance })
         .eq('id', selectedUser.id);
 
       if (error) throw error;
-
-      // Record the transaction
-      const { error: txError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: selectedUser.id,
-          type: 'admin_adjustment',
-          amount: data.balance - selectedUser.balance,
-          description: `Admin balance adjustment`,
-        });
-
-      if (txError) throw txError;
 
       toast({
         title: 'Balance updated',
