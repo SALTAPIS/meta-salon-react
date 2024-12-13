@@ -434,14 +434,35 @@ export default function GamePage() {
               Vote for your favorite artworks and help curate the collection
             </Text>
           </Box>
-          <Button
-            as={RouterLink}
-            to="/auth/signin"
-            size="lg"
-            colorScheme="blue"
-          >
-            Sign In to Play
-          </Button>
+          {user ? (
+            hasAvailableVotes ? (
+              <Button
+                size="lg"
+                colorScheme="blue"
+                onClick={handleStartPlaying}
+              >
+                Start Playing
+              </Button>
+            ) : (
+              <Button
+                as={RouterLink}
+                to="/tokens"
+                size="lg"
+                colorScheme="blue"
+              >
+                Get Vote Packs
+              </Button>
+            )
+          ) : (
+            <Button
+              as={RouterLink}
+              to="/auth/signin"
+              size="lg"
+              colorScheme="blue"
+            >
+              Sign In to Play
+            </Button>
+          )}
         </VStack>
       </Fade>
     </Box>
