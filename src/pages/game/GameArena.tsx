@@ -273,36 +273,31 @@ export function GameArena({ onExit }: GameArenaProps) {
       <Box 
         position="fixed"
         bottom={4}
-        left="50%"
-        transform="translateX(-50%)"
-        borderTop="1px" 
+        left={0}
+        right={0}
+        borderTop="1px"
         borderColor={borderColor}
         bg={bg} 
         h="64px"
         display="flex"
         alignItems="center"
+        justifyContent="center"
         px={8}
-        borderRadius="md"
-        boxShadow="sm"
-        width="calc(100% - 48px)"
-        maxWidth="container.xl"
       >
-        <Container maxW="container.xl" centerContent>
-          <HStack spacing={16} justify="center">
-            <VStack spacing={1} align="center">
-              <Text fontSize="xl" fontWeight="bold">{availableVotes}</Text>
-              <Text fontSize="sm" whiteSpace="nowrap">Votes Available</Text>
-            </VStack>
-            <VStack spacing={1} align="center">
-              <Text fontSize="xl" fontWeight="bold">{activePacks[0]?.vote_power || 1}x SLN</Text>
-              <Text fontSize="sm">Weight</Text>
-            </VStack>
-            <VStack spacing={1} align="center">
-              <Text fontSize="xl" fontWeight="bold">{remainingArtworks?.length || 0}/{artworks?.length || 0}</Text>
-              <Text fontSize="sm">Remaining Pairs</Text>
-            </VStack>
-          </HStack>
-        </Container>
+        <HStack spacing={48} width="100%" maxW="1200px" justify="center">
+          <VStack spacing={1} align="center">
+            <Text fontSize="lg">{availableVotes}</Text>
+            <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">Votes Available</Text>
+          </VStack>
+          <VStack spacing={1} align="center">
+            <Text fontSize="lg">{activePacks[0]?.vote_power || 1}x SLN</Text>
+            <Text fontSize="xs" color="gray.500">Weight</Text>
+          </VStack>
+          <VStack spacing={1} align="center">
+            <Text fontSize="lg">{remainingArtworks?.length || 0}/{artworks?.length || 0}</Text>
+            <Text fontSize="xs" color="gray.500">Remaining Pairs</Text>
+          </VStack>
+        </HStack>
       </Box>
     </Box>
   );
