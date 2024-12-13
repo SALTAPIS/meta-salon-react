@@ -20,6 +20,29 @@ export interface Challenge {
   updated_at: string;
 }
 
+export interface Artwork {
+  id: string;
+  user_id: string;
+  album_id: string;
+  title: string;
+  description: string | null;
+  image_url: string;
+  status: 'draft' | 'submitted' | 'approved' | 'rejected';
+  submission_fee: number | null;
+  challenge_id: string | null;
+  metadata: ArtworkMetadata;
+  created_at: string;
+  updated_at: string;
+  vault_value: number;
+  vote_count: number;
+  vault_status: 'active' | 'locked' | 'closed';
+  profiles?: {
+    id: string;
+    username: string;
+    display_name: string | null;
+  };
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -54,25 +77,7 @@ export type Database = {
       };
 
       artworks: {
-        Row: {
-          id: string;
-          user_id: string;
-          album_id: string;
-          title: string;
-          description: string | null;
-          image_url: string;
-          status: 'draft' | 'submitted' | 'approved' | 'rejected';
-          submission_fee: number | null;
-          challenge_id: string | null;
-          metadata: ArtworkMetadata;
-          created_at: string;
-          updated_at: string;
-          user?: {
-            id: string;
-            username: string;
-            display_name: string | null;
-          };
-        };
+        Row: Artwork;
         Insert: {
           id?: string;
           user_id: string;
@@ -193,9 +198,11 @@ export interface Vote {
   artwork_id: string;
   pack_id: string;
   value: number;
-  consumed: boolean;
+  vote_power: number;
+  total_value: number;
+  sln_value: number;
   created_at: string;
-  consumed_at: string | null;
+  updated_at: string;
 }
 
 export interface VaultState {
@@ -204,23 +211,6 @@ export interface VaultState {
   total_votes: number;
   last_vote_at: string | null;
   updated_at: string;
-}
-
-export interface Artwork {
-  id: string;
-  user_id: string;
-  album_id: string;
-  title: string;
-  description: string | null;
-  image_url: string;
-  metadata: ArtworkMetadata;
-  status: 'draft' | 'submitted' | 'approved' | 'rejected';
-  challenge_id: string | null;
-  created_at: string;
-  updated_at: string;
-  vault_status: 'active' | 'locked' | 'distributed';
-  vote_count: number;
-  vault_value: number;
 }
 
 export interface Profile {
