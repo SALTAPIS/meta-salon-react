@@ -150,22 +150,24 @@ export function GameArena({ onExit }: GameArenaProps) {
         <Box 
           flex={1}
           maxW="45vw"
+          maxH="80vh"
           position="relative"
           cursor="pointer"
           onMouseEnter={() => setHoveredArtwork(currentPair.left.id)}
           onMouseLeave={() => setHoveredArtwork(null)}
           onClick={() => handleVote(currentPair.left.id)}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
         >
           <ChakraImage
             src={currentPair.left.image_url}
             alt={currentPair.left.title || ""}
             objectFit="contain"
-            w="100%"
-            h="100%"
+            maxH="80vh"
             transition="all 0.8s cubic-bezier(0.4, 0, 0.2, 1)"
             transform={hoveredArtwork === currentPair.left.id ? 'scale(1.05)' : 'scale(1)'}
             loading="eager"
-            style={{ maxWidth: '100%', maxHeight: '100%' }}
           />
         </Box>
 
@@ -173,22 +175,24 @@ export function GameArena({ onExit }: GameArenaProps) {
         <Box 
           flex={1}
           maxW="45vw"
+          maxH="80vh"
           position="relative"
           cursor="pointer"
           onMouseEnter={() => setHoveredArtwork(currentPair.right.id)}
           onMouseLeave={() => setHoveredArtwork(null)}
           onClick={() => handleVote(currentPair.right.id)}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
         >
           <ChakraImage
             src={currentPair.right.image_url}
             alt={currentPair.right.title || ""}
             objectFit="contain"
-            w="100%"
-            h="100%"
+            maxH="80vh"
             transition="all 0.8s cubic-bezier(0.4, 0, 0.2, 1)"
             transform={hoveredArtwork === currentPair.right.id ? 'scale(1.05)' : 'scale(1)'}
             loading="eager"
-            style={{ maxWidth: '100%', maxHeight: '100%' }}
           />
         </Box>
       </Box>
