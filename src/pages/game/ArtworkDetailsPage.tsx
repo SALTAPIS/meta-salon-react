@@ -89,14 +89,14 @@ export function ArtworkDetailsPage() {
               <HStack justify="space-between" align="center">
                 <Box>
                   <Heading size="xl" mb={2}>{artwork.title}</Heading>
-                  {artwork.user?.username && (
+                  {artwork.profiles?.username && (
                     <Link
                       as={RouterLink}
-                      to={`/user/${artwork.user.username}`}
+                      to={`/user/${artwork.profiles.username}`}
                       color="blue.500"
                       fontSize="lg"
                     >
-                      by {artwork.user.display_name || artwork.user.username}
+                      by {artwork.profiles.display_name || artwork.profiles.username}
                     </Link>
                   )}
                 </Box>

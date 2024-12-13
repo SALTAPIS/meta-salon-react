@@ -8,13 +8,34 @@ export class ArtworkService {
    */
   static async getAllArtworks(): Promise<Artwork[]> {
     try {
-      const { data, error } = await supabase
+      // Get all artworks first
+      const { data: artworks, error: artworksError } = await supabase
         .from('artworks')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data || [];
+      if (artworksError) throw artworksError;
+      if (!artworks || artworks.length === 0) return [];
+
+      // Get all unique user IDs
+      const userIds = [...new Set(artworks.map(a => a.user_id))];
+
+      // Get all profiles for these users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of user_id to profile
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      // Combine artwork data with profile data
+      return artworks.map(artwork => ({
+        ...artwork,
+        profiles: profileMap.get(artwork.user_id)
+      }));
     } catch (error) {
       throw handleError(error, 'Failed to get artworks');
     }
@@ -25,21 +46,30 @@ export class ArtworkService {
    */
   static async getArtwork(id: string): Promise<Artwork | null> {
     try {
-      const { data, error } = await supabase
+      // First get the artwork
+      const { data: artwork, error: artworkError } = await supabase
         .from('artworks')
-        .select(`
-          *,
-          user:user_id (
-            id,
-            username,
-            display_name
-          )
-        `)
+        .select('*')
         .eq('id', id)
         .single();
 
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
+      if (artworkError) throw artworkError;
+      if (!artwork) return null;
+
+      // Then get the profile data
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name')
+        .eq('id', artwork.user_id)
+        .single();
+
+      if (profileError && profileError.code !== 'PGRST116') throw profileError;
+
+      // Combine the data
+      return {
+        ...artwork,
+        profiles: profile || undefined
+      };
     } catch (error) {
       throw handleError(error, 'Failed to get artwork');
     }

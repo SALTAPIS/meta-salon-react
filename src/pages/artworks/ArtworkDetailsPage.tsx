@@ -16,6 +16,7 @@ import {
   HStack,
   Divider,
   Button,
+  Link,
 } from '@chakra-ui/react';
 import { ArtworkService } from '../../services/ArtworkService';
 import { VotePanel } from '../../components/artwork/VotePanel';
@@ -42,8 +43,8 @@ export function ArtworkDetailsPage() {
 
       try {
         setIsLoading(true);
-        const data = await ArtworkService.getArtwork(id);
-        setArtwork(data);
+        const artworkData = await ArtworkService.getArtwork(id);
+        setArtwork(artworkData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load artwork');
       } finally {
@@ -93,7 +94,19 @@ export function ArtworkDetailsPage() {
           <Box p={6}>
             <VStack align="stretch" spacing={4}>
               <HStack justify="space-between" align="center">
-                <Heading size="xl">{artwork.title}</Heading>
+                <Box>
+                  <Heading size="xl" mb={2}>{artwork.title}</Heading>
+                  {artwork.profiles?.username && (
+                    <Link
+                      as={RouterLink}
+                      to={`/${artwork.profiles.username}`}
+                      color="blue.500"
+                      fontSize="lg"
+                    >
+                      by {artwork.profiles.display_name || artwork.profiles.username}
+                    </Link>
+                  )}
+                </Box>
                 {(isOwner || isAdmin) && (
                   <Button
                     as={RouterLink}
@@ -118,16 +131,11 @@ export function ArtworkDetailsPage() {
                     Challenge Entry
                   </Badge>
                 )}
-                {artwork.vault_value > 0 && (
-                  <Badge colorScheme="green">
-                    {artwork.vault_value.toFixed(2)} SLN
-                  </Badge>
-                )}
               </HStack>
 
               <Divider />
 
-              <VotePanel artworkId={artwork.id} />
+              <VotePanel artworkId={artwork.id} artwork={artwork} />
             </VStack>
           </Box>
         </Box>
