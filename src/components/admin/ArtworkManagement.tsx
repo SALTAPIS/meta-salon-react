@@ -42,7 +42,6 @@ export function ArtworkManagement() {
   const [submittedArtworks, setSubmittedArtworks] = useState<Artwork[]>([]);
   const [unsubmittedArtworks, setUnsubmittedArtworks] = useState<Artwork[]>([]);
   const [loading, setLoading] = useState(true);
-  const [resetting, setResetting] = useState(false);
   const bgColor = useColorModeValue('white', 'gray.800');
   const toast = useToast();
 
@@ -81,49 +80,6 @@ export function ArtworkManagement() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleResetVotes = async () => {
-    try {
-      setResetting(true);
-      const { data, error } = await supabase.rpc('admin_reset_all_votes');
-
-      if (error) {
-        console.error('Error resetting votes:', error);
-        toast({
-          title: 'Error Resetting Votes',
-          description: error.message === 'Only admins can reset votes' 
-            ? error.message 
-            : 'Failed to reset votes. Please try again.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
-
-      toast({
-        title: 'Votes Reset Successfully',
-        description: `Deleted ${data.deleted_votes} votes and reset ${data.updated_artworks} artworks`,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-
-      // Refresh artwork data
-      await fetchArtworks();
-    } catch (error) {
-      console.error('Error resetting votes:', error);
-      toast({
-        title: 'Error Resetting Votes',
-        description: error instanceof Error ? error.message : 'An error occurred',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setResetting(false);
     }
   };
 
@@ -193,17 +149,7 @@ export function ArtworkManagement() {
     <Stack spacing={8}>
       <Card>
         <CardHeader>
-          <HStack justify="space-between" align="center">
-            <Heading size="md">Artwork Management</Heading>
-            <Button
-              colorScheme="red"
-              onClick={handleResetVotes}
-              isLoading={resetting}
-              loadingText="Resetting..."
-            >
-              Reset All Votes
-            </Button>
-          </HStack>
+          <Heading size="md">Artwork Management</Heading>
         </CardHeader>
       </Card>
 
