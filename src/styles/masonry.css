@@ -1,0 +1,62 @@
+/* Masonry grid container */
+.masonry-grid {
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Masonry grid item */
+.masonry-item {
+  margin-bottom: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Masonry transitions */
+.masonry-item {
+  transition: transform 0.2s ease-in-out;
+}
+
+/* Hover effects */
+.masonry-item:hover {
+  z-index: 1;
+}
+
+/* Image loading */
+.masonry-item img {
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.masonry-item img.is-loaded {
+  opacity: 1;
+}
+
+/* Masonry grid sizer */
+.masonry-grid-sizer {
+  width: 100%;
+}
+
+/* Responsive breakpoints */
+@media screen and (min-width: 768px) {
+  .masonry-grid-sizer,
+  .masonry-item {
+    width: 50%;
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .masonry-grid-sizer,
+  .masonry-item {
+    width: 33.333%;
+  }
+}
+
+@media screen and (min-width: 1440px) {
+  .masonry-grid-sizer,
+  .masonry-item {
+    width: 25%;
+  }
+} 

@@ -11,7 +11,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { RoleGuard } from './components/auth/RoleGuard';
 import { Layout } from './components/layout/Layout';
 import GamePage from './pages/game/GamePage';
-import ClassementPage from './pages/classement/ClassementPage';
+import { ClassementPage } from './pages/classement/ClassementPage';
 import { ArtworkDetailsPage } from './pages/artworks/ArtworkDetailsPage';
 import { DashboardPage as ArtistDashboardPage } from './pages/artist/DashboardPage';
 import { UserProfilePage } from './pages/user/UserProfilePage';
