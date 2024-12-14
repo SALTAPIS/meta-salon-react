@@ -1,4 +1,4 @@
-import { Box, Image, VStack, Text, HStack, Link } from '@chakra-ui/react';
+import { Box, Image, VStack, Text, HStack, Link, useColorModeValue } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
 
 interface Artwork {
@@ -31,6 +31,9 @@ export function ArtworkCard({
   showStats = true,
   hideMetadata = false
 }: ArtworkCardProps) {
+  const bgColor = useColorModeValue('white', 'gray.700');
+  const textColor = useColorModeValue('gray.600', 'gray.300');
+
   const hasStats = showStats && (
     (artwork.vault_value ?? 0) > 0 || 
     (artwork.vote_count ?? 0) > 0
@@ -45,7 +48,7 @@ export function ArtworkCard({
       spacing={0}
       align="stretch"
       data-artwork-id={dataArtworkId}
-      bg="white"
+      bg={bgColor}
       w="100%"
     >
       <Box
@@ -86,19 +89,18 @@ export function ArtworkCard({
           )}
 
           {hasStats && (
-            <HStack spacing={3} justify="space-between" align="flex-end">
-              <VStack align="start" spacing={1}>
-                <HStack spacing={4}>
-                  <Text fontSize="sm" color="gray.600">
-                    {artwork.vote_count ?? 0} votes ({artwork.vault_value ?? 0} SLN)
-                  </Text>
-                  {(artwork.total_matches ?? 0) > 0 && (
-                    <Text fontSize="sm" color="gray.600">
-                      {winRate}% win rate
-                    </Text>
-                  )}
-                </HStack>
-              </VStack>
+            <HStack spacing={3} justify="space-between" align="flex-end" width="100%">
+              <Text fontSize="sm" color={textColor}>
+                {artwork.vote_count ?? 0} votes
+              </Text>
+              <Text fontSize="sm" color={textColor} fontWeight="bold">
+                {artwork.vault_value ?? 0} SLN
+              </Text>
+              {(artwork.total_matches ?? 0) > 0 && (
+                <Text fontSize="sm" color={textColor}>
+                  {winRate}% win rate
+                </Text>
+              )}
             </HStack>
           )}
         </Box>

@@ -21,6 +21,9 @@ export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const indicatorColor = useColorModeValue('black', 'white');
+  const tabTextColor = useColorModeValue('gray.600', 'gray.400');
+  const selectedTabColor = useColorModeValue('gray.900', 'white');
 
   const paths = [
     { path: '/game', label: 'The Salon Game' },
@@ -99,13 +102,13 @@ export function Header() {
                   fontSize: 'sm',
                   px: 4,
                   py: 6,
-                  color: 'gray.600',
+                  color: tabTextColor,
                   position: 'relative',
                   _hover: {
-                    color: 'gray.900'
+                    color: selectedTabColor
                   },
                   _selected: {
-                    color: 'gray.900',
+                    color: selectedTabColor,
                     fontWeight: 'bold',
                     '&::after': {
                       content: '""',
@@ -114,7 +117,7 @@ export function Header() {
                       left: 0,
                       right: 0,
                       height: '2px',
-                      background: 'black',
+                      background: indicatorColor,
                       zIndex: 1
                     }
                   }

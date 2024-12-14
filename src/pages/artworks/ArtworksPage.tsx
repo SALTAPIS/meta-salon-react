@@ -62,7 +62,7 @@ export function ArtworksPage() {
         columnCount: [1, 2, 3, 4, 5, 6],
         columnGap: "1.5rem",
         "& > div": {
-          marginBottom: "1.5rem",
+          marginBottom: "3rem",
           breakInside: "avoid",
         }
       }}
