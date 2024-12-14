@@ -7,7 +7,8 @@ export function Layout() {
   const location = useLocation();
   const isArtworksPage = location.pathname === '/artworks' || location.pathname === '/';
   const isAdminPage = location.pathname.startsWith('/admin');
-  const useWideContainer = isArtworksPage || isAdminPage;
+  const isClassementPage = location.pathname === '/classement';
+  const useWideContainer = isArtworksPage || isAdminPage || isClassementPage;
   
   return (
     <Box minH="100vh">
