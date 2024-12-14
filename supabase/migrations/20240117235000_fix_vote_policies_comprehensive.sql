@@ -18,11 +18,7 @@ create policy "Enable read access for all users"
     exists ( -- Profile has admin role
       select 1 from profiles
       where profiles.id = auth.uid()
-      and (
-        profiles.role = 'admin'
-        or
-        profiles.user_metadata->>'role' = 'admin'
-      )
+      and profiles.role = 'admin'
     )
   );
 

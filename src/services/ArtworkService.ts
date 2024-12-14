@@ -173,4 +173,33 @@ export class ArtworkService {
       throw handleError(error, 'Failed to get challenge artworks');
     }
   }
+
+  /**
+   * Record a view for an artwork
+   */
+  static async recordView(artworkId: string): Promise<void> {
+    try {
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) {
+        // Don't record views for non-authenticated users
+        return;
+      }
+
+      const { error } = await supabase
+        .from('artwork_views')
+        .insert({
+          artwork_id: artworkId,
+          user_id: session.data.session.user.id
+        })
+        .select()
+        .single();
+
+      // Ignore unique constraint violations (user has already viewed this artwork)
+      if (error && error.code !== '23505') {
+        throw error;
+      }
+    } catch (error) {
+      throw handleError(error, 'Failed to record artwork view');
+    }
+  }
 } 

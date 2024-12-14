@@ -1,7 +1,7 @@
 -- Drop existing function
 DROP FUNCTION IF EXISTS public.cast_vote;
 
--- Create updated cast_vote function with correct vote count calculation
+-- Create updated cast_vote function that records artwork views
 CREATE OR REPLACE FUNCTION public.cast_vote(
     p_artwork_id uuid,
     p_pack_id uuid,
@@ -55,7 +55,7 @@ BEGIN
             v_pack_votes, p_value;
     END IF;
 
-    -- Calculate SLN value (vote power affects SLN value only)
+    -- Calculate SLN value (vote value * vote power)
     v_sln_value := p_value * v_vote_power;
 
     -- Create vote record
@@ -63,11 +63,10 @@ BEGIN
         user_id,
         artwork_id,
         pack_id,
-        value,          -- Raw vote count
-        vote_power,     -- Power of the vote pack used
-        total_value,    -- Same as raw vote count
-        sln_value,      -- Vote count * vote power
-        consumed,       -- Track if vote has been consumed
+        value,
+        vote_power,
+        total_value,
+        sln_value,
         created_at,
         updated_at
     )
@@ -75,11 +74,10 @@ BEGIN
         v_user_id,
         p_artwork_id,
         p_pack_id,
-        p_value,        -- Raw vote count
-        v_vote_power,   -- Power of the vote pack used
-        p_value,        -- Same as raw vote count
-        v_sln_value,    -- Vote count * vote power
-        false,          -- Not consumed initially
+        p_value,
+        v_vote_power,
+        v_sln_value,
+        v_sln_value,
         now(),
         now()
     )
@@ -102,30 +100,10 @@ BEGIN
         updated_at = now()
     WHERE id = p_artwork_id;
 
-    -- Update vault state
-    INSERT INTO public.vault_states (
-        artwork_id,
-        vote_count,
-        total_votes,
-        sln_value,
-        last_vote_at,
-        updated_at
-    )
-    VALUES (
-        p_artwork_id,
-        1,              -- Each vote action counts as 1
-        p_value,        -- Total raw votes
-        v_sln_value,    -- SLN value
-        now(),
-        now()
-    )
-    ON CONFLICT (artwork_id) DO UPDATE
-    SET
-        vote_count = vault_states.vote_count + 1,
-        total_votes = vault_states.total_votes + p_value,
-        sln_value = vault_states.sln_value + v_sln_value,
-        last_vote_at = now(),
-        updated_at = now();
+    -- Record artwork view
+    INSERT INTO public.artwork_views (user_id, artwork_id)
+    VALUES (v_user_id, p_artwork_id)
+    ON CONFLICT (user_id, artwork_id) DO NOTHING;
 
     RETURN jsonb_build_object(
         'success', true,
@@ -138,4 +116,4 @@ END;
 $$;
 
 -- Grant execute permissions
-GRANT EXECUTE ON FUNCTION public.cast_vote TO authenticated;
+GRANT EXECUTE ON FUNCTION public.cast_vote TO authenticated; 

@@ -60,6 +60,9 @@ create policy "Everyone can view vault states"
     on public.vault_states for select
     using (true);
 
+-- Drop existing function
+DROP FUNCTION IF EXISTS public.cast_vote CASCADE;
+
 -- Function to cast a vote
 create or replace function public.cast_vote(
     p_artwork_id uuid,

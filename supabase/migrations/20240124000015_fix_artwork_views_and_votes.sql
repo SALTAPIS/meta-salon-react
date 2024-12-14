@@ -1,7 +1,40 @@
--- Drop existing function
-DROP FUNCTION IF EXISTS public.cast_vote;
+-- Drop and recreate artwork_views table with proper schema
+DROP TABLE IF EXISTS public.artwork_views CASCADE;
+CREATE TABLE public.artwork_views (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) NOT NULL,
+    artwork_id UUID REFERENCES public.artworks(id) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CONSTRAINT unique_user_artwork_view UNIQUE (user_id, artwork_id)
+);
 
--- Create updated cast_vote function with correct vote count calculation
+-- Enable RLS on artwork_views
+ALTER TABLE public.artwork_views ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for artwork_views
+CREATE POLICY "Users can view their own artwork views"
+    ON public.artwork_views FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create their own artwork views"
+    ON public.artwork_views FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Admins can view all artwork views"
+    ON public.artwork_views FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid()
+            AND role = 'admin'
+        )
+    );
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_artwork_views_user_id ON public.artwork_views(user_id);
+CREATE INDEX IF NOT EXISTS idx_artwork_views_artwork_id ON public.artwork_views(artwork_id);
+
+-- Drop and recreate cast_vote function to properly handle artwork views
 CREATE OR REPLACE FUNCTION public.cast_vote(
     p_artwork_id uuid,
     p_pack_id uuid,
@@ -11,7 +44,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $function$
 DECLARE
     v_user_id uuid;
     v_pack_votes integer;
@@ -55,7 +88,7 @@ BEGIN
             v_pack_votes, p_value;
     END IF;
 
-    -- Calculate SLN value (vote power affects SLN value only)
+    -- Calculate SLN value (vote value * vote power)
     v_sln_value := p_value * v_vote_power;
 
     -- Create vote record
@@ -63,11 +96,11 @@ BEGIN
         user_id,
         artwork_id,
         pack_id,
-        value,          -- Raw vote count
-        vote_power,     -- Power of the vote pack used
-        total_value,    -- Same as raw vote count
-        sln_value,      -- Vote count * vote power
-        consumed,       -- Track if vote has been consumed
+        value,
+        vote_power,
+        total_value,
+        sln_value,
+        consumed,
         created_at,
         updated_at
     )
@@ -75,11 +108,11 @@ BEGIN
         v_user_id,
         p_artwork_id,
         p_pack_id,
-        p_value,        -- Raw vote count
-        v_vote_power,   -- Power of the vote pack used
-        p_value,        -- Same as raw vote count
-        v_sln_value,    -- Vote count * vote power
-        false,          -- Not consumed initially
+        p_value,
+        v_vote_power,
+        v_sln_value,
+        v_sln_value,
+        false,
         now(),
         now()
     )
@@ -93,8 +126,6 @@ BEGIN
     WHERE id = p_pack_id;
 
     -- Update artwork vote count and vault value
-    -- vote_count gets incremented by 1 for each vote action
-    -- vault_value gets the SLN value (vote value * vote power)
     UPDATE public.artworks
     SET 
         vote_count = COALESCE(vote_count, 0) + 1,
@@ -102,30 +133,10 @@ BEGIN
         updated_at = now()
     WHERE id = p_artwork_id;
 
-    -- Update vault state
-    INSERT INTO public.vault_states (
-        artwork_id,
-        vote_count,
-        total_votes,
-        sln_value,
-        last_vote_at,
-        updated_at
-    )
-    VALUES (
-        p_artwork_id,
-        1,              -- Each vote action counts as 1
-        p_value,        -- Total raw votes
-        v_sln_value,    -- SLN value
-        now(),
-        now()
-    )
-    ON CONFLICT (artwork_id) DO UPDATE
-    SET
-        vote_count = vault_states.vote_count + 1,
-        total_votes = vault_states.total_votes + p_value,
-        sln_value = vault_states.sln_value + v_sln_value,
-        last_vote_at = now(),
-        updated_at = now();
+    -- Record artwork view
+    INSERT INTO public.artwork_views (user_id, artwork_id)
+    VALUES (v_user_id, p_artwork_id)
+    ON CONFLICT (user_id, artwork_id) DO NOTHING;
 
     RETURN jsonb_build_object(
         'success', true,
@@ -135,7 +146,11 @@ BEGIN
         'votes_remaining', v_pack_votes - p_value
     );
 END;
-$$;
+$function$;
 
--- Grant execute permissions
+-- Grant permissions
+GRANT ALL ON public.artwork_views TO authenticated;
 GRANT EXECUTE ON FUNCTION public.cast_vote TO authenticated;
+
+-- Notify PostgREST to reload schema cache
+NOTIFY pgrst, 'reload schema';

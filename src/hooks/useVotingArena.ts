@@ -4,6 +4,7 @@ import { ArtworkService } from '../services/ArtworkService';
 import { VoteService } from '../services/VoteService';
 import { useTokens } from './token/useTokens';
 import { useAuth } from './useAuth';
+import { supabase } from '../lib/supabaseClient';
 import type { Artwork, VotePack } from '../types/database.types';
 
 interface VotingPair {
@@ -25,21 +26,85 @@ export function useVotingArena() {
   const { user } = useAuth();
   const toast = useToast();
 
-  // Load artworks
+  // Load artworks and filter out already viewed ones
   useEffect(() => {
     const loadArtworks = async () => {
       try {
         setIsLoading(true);
         const data = await ArtworkService.getAllArtworks();
-        setArtworks(data);
-        setRemainingArtworks(data);
-        if (data.length >= 2) {
-          // Initialize with random pair
-          const randomIndices = getRandomPairIndices(data.length);
-          setCurrentPair({
-            left: data[randomIndices[0]],
-            right: data[randomIndices[1]]
-          });
+
+        if (user) {
+          try {
+            // Get artworks already viewed by the user
+            const { data: viewedArtworks, error: viewError } = await supabase
+              .from('artwork_views')
+              .select('artwork_id')
+              .eq('user_id', user.id);
+
+            if (viewError) {
+              // If table doesn't exist yet, just show all artworks
+              if (viewError.code === '42P01') {
+                setArtworks(data);
+                setRemainingArtworks(data);
+                if (data.length >= 2) {
+                  const randomIndices = getRandomPairIndices(data.length);
+                  await updateArtworkPair(data[randomIndices[0]], data[randomIndices[1]]);
+                }
+                return;
+              }
+              console.error('Error loading viewed artworks:', viewError);
+              throw viewError;
+            }
+
+            // Filter out already viewed artworks
+            const viewedIds = new Set(viewedArtworks?.map(v => v.artwork_id) || []);
+            const unviewedArtworks = data.filter(artwork => !viewedIds.has(artwork.id));
+
+            // If all artworks have been viewed, show message and don't set current pair
+            if (unviewedArtworks.length === 0) {
+              toast({
+                title: 'All artworks viewed',
+                description: 'You have already voted on all available artworks',
+                status: 'info',
+                duration: 5000,
+                isClosable: true,
+              });
+              setArtworks([]);
+              setRemainingArtworks([]);
+              setCurrentPair(null);
+              setIsLoading(false);
+              return;
+            }
+
+            setArtworks(unviewedArtworks);
+            setRemainingArtworks(unviewedArtworks);
+
+            if (unviewedArtworks.length >= 2) {
+              const randomIndices = getRandomPairIndices(unviewedArtworks.length);
+              await updateArtworkPair(unviewedArtworks[randomIndices[0]], unviewedArtworks[randomIndices[1]]);
+            } else if (unviewedArtworks.length === 1) {
+              // Only one artwork left
+              toast({
+                title: 'Almost done',
+                description: 'Only one artwork remaining - need at least two for voting',
+                status: 'info',
+                duration: 5000,
+                isClosable: true,
+              });
+              setCurrentPair(null);
+            }
+          } catch (err) {
+            console.error('Error loading viewed artworks:', err);
+            throw err;
+          }
+        } else {
+          // For non-logged in users, show all artworks
+          setArtworks(data);
+          setRemainingArtworks(data);
+          if (data.length >= 2) {
+            const randomIndices = getRandomPairIndices(data.length);
+            await updateArtworkPair(data[randomIndices[0]], data[randomIndices[1]]);
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load artworks';
@@ -54,10 +119,38 @@ export function useVotingArena() {
       } finally {
         setIsLoading(false);
       }
-    };
+    }
 
     loadArtworks();
-  }, [toast]);
+  }, [user, toast]);
+
+  // Helper function to update artwork pair and set current_pair_id
+  const updateArtworkPair = async (leftArtwork: Artwork, rightArtwork: Artwork) => {
+    try {
+      // Update current_pair_id for both artworks
+      await supabase
+        .from('artworks')
+        .update({ current_pair_id: rightArtwork.id })
+        .eq('id', leftArtwork.id);
+
+      await supabase
+        .from('artworks')
+        .update({ current_pair_id: leftArtwork.id })
+        .eq('id', rightArtwork.id);
+
+      setCurrentPair({
+        left: leftArtwork,
+        right: rightArtwork
+      });
+    } catch (err) {
+      console.error('Error updating artwork pair:', err);
+      // Still set the current pair even if the update fails
+      setCurrentPair({
+        left: leftArtwork,
+        right: rightArtwork
+      });
+    }
+  };
 
   // Cast vote and get next pair
   const castVote = async (winningArtworkId: string) => {
@@ -110,7 +203,7 @@ export function useVotingArena() {
     setError(null);
 
     try {
-      // Cast vote
+      // Cast vote directly - artwork views are recorded in the cast_vote function
       await VoteService.castVote(winningArtworkId, activePack.id, 1);
 
       // Refresh token balance
@@ -147,18 +240,10 @@ export function useVotingArena() {
       if (newRemainingArtworks.length >= 2) {
         // Get random pair from remaining artworks
         const randomIndices = getRandomPairIndices(newRemainingArtworks.length);
-        setCurrentPair({
-          left: newRemainingArtworks[randomIndices[0]],
-          right: newRemainingArtworks[randomIndices[1]]
-        });
-      } else if (artworks.length >= 2) {
-        // If we've gone through all pairs, reset with full artwork list
-        setRemainingArtworks(artworks);
-        const randomIndices = getRandomPairIndices(artworks.length);
-        setCurrentPair({
-          left: artworks[randomIndices[0]],
-          right: artworks[randomIndices[1]]
-        });
+        await updateArtworkPair(
+          newRemainingArtworks[randomIndices[0]],
+          newRemainingArtworks[randomIndices[1]]
+        );
       } else {
         // No more pairs available
         setCurrentPair(null);
