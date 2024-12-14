@@ -1,5 +1,6 @@
-import { Box, Image, VStack, Text, HStack, Link, useColorModeValue } from '@chakra-ui/react';
+import { Box, Image, VStack, Text, HStack, Link, useColorModeValue, Grid } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Artwork {
   id: string;
@@ -14,97 +15,104 @@ interface Artwork {
   };
   win_count?: number;
   total_matches?: number;
+  artist_id?: string;
+  artist_name?: string;
+  total_votes?: number;
+  win_rate?: number;
 }
 
 interface ArtworkCardProps {
   artwork: Artwork;
-  'data-artwork-id'?: string;
-  isHovered?: boolean;
   showStats?: boolean;
   hideMetadata?: boolean;
+  layout?: 'masonry-fixed' | 'masonry-variable' | 'float' | 'list';
 }
 
-export function ArtworkCard({ 
-  artwork, 
-  'data-artwork-id': dataArtworkId, 
-  isHovered,
-  showStats = true,
-  hideMetadata = false
-}: ArtworkCardProps) {
-  const bgColor = useColorModeValue('white', 'gray.700');
-  const textColor = useColorModeValue('gray.600', 'gray.300');
+export function ArtworkCard({ artwork, showStats = false, hideMetadata = false, layout = 'masonry-fixed' }: ArtworkCardProps) {
+  const { user } = useAuth();
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const textColor = useColorModeValue('gray.800', 'white');
+  const mutedColor = useColorModeValue('gray.600', 'gray.400');
+  const vaultValueColor = useColorModeValue('green.500', 'green.300');
 
   const hasStats = showStats && (
     (artwork.vault_value ?? 0) > 0 || 
     (artwork.vote_count ?? 0) > 0
   );
 
-  const winRate = (artwork.total_matches ?? 0) > 0 ? 
-    ((artwork.win_count ?? 0) / (artwork.total_matches ?? 1) * 100).toFixed(1) : 
-    '0.0';
+  const renderImage = () => (
+    <Image
+      src={artwork.image_url}
+      alt={artwork.title}
+      objectFit="cover"
+      w="100%"
+      h={layout === 'list' ? "100px" : "auto"}
+    />
+  );
+
+  const renderStats = () => (
+    <HStack spacing={4} justify="space-between" align="flex-end" width="100%">
+      <Text fontSize="sm" color={mutedColor}>
+        {artwork.vote_count ?? 0} votes
+      </Text>
+      <Text fontSize="sm" color={vaultValueColor} fontWeight="bold">
+        {artwork.vault_value ?? 0} SLN
+      </Text>
+      {artwork.win_rate !== undefined && (
+        <Text fontSize="sm" color={mutedColor}>
+          {(artwork.win_rate * 100).toFixed(1)}% win rate
+        </Text>
+      )}
+    </HStack>
+  );
+
+  const renderArtistLink = () => (
+    artwork.artist_name && artwork.artist_id ? (
+      <Link
+        as={RouterLink}
+        to={`/artist/${artwork.artist_id}`}
+        color={mutedColor}
+        fontSize="sm"
+        _hover={{ color: textColor }}
+      >
+        {artwork.artist_name}
+      </Link>
+    ) : artwork.user?.username ? (
+      <Link
+        as={RouterLink}
+        to={`/user/${artwork.user.username}`}
+        color={mutedColor}
+        fontSize="sm"
+        _hover={{ color: textColor }}
+      >
+        {artwork.user.display_name || artwork.user.username}
+      </Link>
+    ) : null
+  );
+
+  if (layout === 'list') {
+    return (
+      <Grid templateColumns="100px 1fr auto" gap={4} alignItems="center" w="100%">
+        {renderImage()}
+        <Box>
+          <Text fontWeight="bold" color={textColor} mb={1}>{artwork.title}</Text>
+          {renderArtistLink()}
+        </Box>
+        {hasStats && renderStats()}
+      </Grid>
+    );
+  }
 
   return (
-    <VStack
-      spacing={0}
-      align="stretch"
-      data-artwork-id={dataArtworkId}
-      bg={bgColor}
-      w="100%"
-    >
-      <Box
-        position="relative"
-        w="100%"
-        overflow="hidden"
-      >
-        <Image
-          src={artwork.image_url}
-          alt={artwork.title || ""}
-          objectFit="contain"
-          w="100%"
-          transition="all 1.2s cubic-bezier(0.4, 0, 0.2, 1)"
-          transform={isHovered ? 'scale(1.05)' : 'scale(1)'}
-        />
-      </Box>
-      
+    <Box position="relative" w="100%">
+      {renderImage()}
       {!hideMetadata && (
         <Box p={4}>
-          {artwork.title && (
-            <Text fontWeight="bold" fontSize="md" mb={1}>
-              {artwork.title}
-            </Text>
-          )}
-          
-          {artwork.user?.username && (
-            <Link
-              as={RouterLink}
-              to={`/user/${artwork.user.username}`}
-              color="blue.500"
-              _hover={{ color: "blue.600" }}
-              fontSize="sm"
-              mb={3}
-              display="block"
-            >
-              {artwork.user.display_name || artwork.user.username}
-            </Link>
-          )}
-
-          {hasStats && (
-            <HStack spacing={3} justify="space-between" align="flex-end" width="100%">
-              <Text fontSize="sm" color={textColor}>
-                {artwork.vote_count ?? 0} votes
-              </Text>
-              <Text fontSize="sm" color={textColor} fontWeight="bold">
-                {artwork.vault_value ?? 0} SLN
-              </Text>
-              {(artwork.total_matches ?? 0) > 0 && (
-                <Text fontSize="sm" color={textColor}>
-                  {winRate}% win rate
-                </Text>
-              )}
-            </HStack>
-          )}
+          <Text fontWeight="bold" color={textColor} mb={1}>{artwork.title}</Text>
+          {renderArtistLink()}
+          {hasStats && <Box mt={2}>{renderStats()}</Box>}
         </Box>
       )}
-    </VStack>
+    </Box>
   );
 } 
