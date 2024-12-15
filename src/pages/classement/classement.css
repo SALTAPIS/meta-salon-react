@@ -15,20 +15,29 @@
   margin-bottom: 20px;
   background: var(--chakra-colors-white);
   transition: transform 0.2s ease;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
 [data-theme="dark"] .artwork-card {
   background: var(--chakra-colors-gray-800);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .artwork-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
 }
 
 /* Fixed Height Layout */
+.fixed-height-layout {
+  margin: 0 -10px;
+  display: flex;
+  flex-wrap: wrap;
+}
+
 .artwork-card.fixed-height {
-  padding: 0 10px;
+  padding: 0;
+  margin: 0 10px 20px;
   display: inline-block;
   vertical-align: top;
   float: left;
