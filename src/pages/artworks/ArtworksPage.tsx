@@ -14,6 +14,7 @@ import {
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
 import { ArtworkService } from '../../services/ArtworkService';
+import { VoteService } from '../../services/VoteService';
 import type { Artwork } from '../../types/database.types';
 import { ArtworkCard } from '../game/ArtworkCard';
 import { useAuth } from '../../hooks/useAuth';
@@ -21,6 +22,7 @@ import { useAuth } from '../../hooks/useAuth';
 export function ArtworksPage() {
   const [topArtworks, setTopArtworks] = React.useState<Artwork[]>([]);
   const [userArtworks, setUserArtworks] = React.useState<Artwork[]>([]);
+  const [hasVoted, setHasVoted] = React.useState<boolean>(false);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const { user } = useAuth();
@@ -41,13 +43,24 @@ export function ArtworksPage() {
         });
         setTopArtworks(topData);
 
-        // Load user's winning artworks if logged in
+        // Load user's winning artworks and check voting history if logged in
         if (user) {
-          const userData = await ArtworkService.getAllArtworks({
-            timeFilter: 'month',
-            sortBy: 'vault_value'
+          const [userData, hasVoted] = await Promise.all([
+            ArtworkService.getAllArtworks({
+              timeFilter: 'month',
+              sortBy: 'vault_value'
+            }),
+            VoteService.hasUserVoted(user.id)
+          ]);
+          
+          console.log('[ArtworksPage] Vote check:', {
+            userId: user.id,
+            hasVoted,
+            userArtworksCount: userData.length
           });
+          
           setUserArtworks(userData);
+          setHasVoted(hasVoted);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load artworks');
@@ -122,7 +135,7 @@ export function ArtworksPage() {
   }
 
   // For logged-in users with no vote history
-  if (userArtworks.length === 0) {
+  if (!hasVoted) {
     return (
       <Box>
         <Center minH="50vh">
@@ -132,7 +145,7 @@ export function ArtworksPage() {
               fontFamily="'Allan', cursive"
               letterSpacing="wide"
             >
-              A New Beginning
+              You haven't told me what I'm looking for
             </Heading>
             <Button
               as={RouterLink}

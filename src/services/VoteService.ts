@@ -243,4 +243,25 @@ export class VoteService {
       throw handleError(error, 'Failed to get vote stats');
     }
   }
+
+  /**
+   * Check if a user has any votes
+   */
+  static async hasUserVoted(userId: string): Promise<boolean> {
+    try {
+      console.log('[VoteService] Checking votes for user:', userId);
+      
+      const { count, error } = await supabase
+        .from('artwork_matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      console.log('[VoteService] Vote check result:', { count, error });
+      
+      if (error) throw error;
+      return (count || 0) > 0;
+    } catch (error) {
+      throw handleError(error, 'Failed to check user votes');
+    }
+  }
 } 
