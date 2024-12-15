@@ -18,9 +18,19 @@ import {
   Badge,
   useColorModeValue,
   Heading,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  Input,
+  useDisclosure,
 } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import { Link as RouterLink } from 'react-router-dom';
 
 interface Artwork {
@@ -41,6 +51,9 @@ export function ArtworkManagement() {
   const [submittedArtworks, setSubmittedArtworks] = useState<Artwork[]>([]);
   const [unsubmittedArtworks, setUnsubmittedArtworks] = useState<Artwork[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const bgColor = useColorModeValue('white', 'gray.800');
   const toast = useToast();
 
@@ -86,6 +99,82 @@ export function ArtworkManagement() {
     fetchArtworks();
   }, []);
 
+  const handleEditClick = (artwork: Artwork) => {
+    setSelectedArtwork(artwork);
+    setEditTitle(artwork.title);
+    onOpen();
+  };
+
+  const handleUpdateTitle = async () => {
+    if (!selectedArtwork) return;
+
+    try {
+      console.log('Starting title update for artwork:', selectedArtwork.id);
+      
+      // First verify we can fetch the artwork with admin client
+      const { data: existingArtwork, error: fetchError } = await supabaseAdmin
+        .from('artworks')
+        .select('*')
+        .eq('id', selectedArtwork.id)
+        .single();
+
+      if (fetchError) {
+        console.error('Failed to verify artwork with admin client:', fetchError);
+        throw fetchError;
+      }
+
+      console.log('Found artwork:', existingArtwork);
+      console.log('Attempting update with new title:', editTitle);
+
+      // Perform the update
+      const { data: updatedData, error: updateError } = await supabaseAdmin
+        .from('artworks')
+        .update({ 
+          title: editTitle,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedArtwork.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Update failed:', updateError);
+        throw updateError;
+      }
+
+      console.log('Update successful:', updatedData);
+
+      // Update local state with the returned data
+      const updateLocalState = (artworks: Artwork[]) =>
+        artworks.map(art => art.id === selectedArtwork.id ? updatedData : art);
+
+      setSubmittedArtworks(updateLocalState);
+      setUnsubmittedArtworks(updateLocalState);
+
+      // Refresh the full list to ensure we're in sync
+      await fetchArtworks();
+
+      toast({
+        title: 'Success',
+        description: `Title updated to: ${editTitle}`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      onClose();
+    } catch (error) {
+      console.error('Full error details:', error);
+      toast({
+        title: 'Error updating title',
+        description: error instanceof Error ? error.message : 'Failed to update title',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
   const ArtworkTable = ({ artworks, title }: { artworks: Artwork[], title: string }) => (
     <Box overflowX="auto">
       <Heading size="md" mb={4}>{title}</Heading>
@@ -115,9 +204,19 @@ export function ArtworkManagement() {
                 />
               </Td>
               <Td>
-                <Link as={RouterLink} to={`/artwork/${artwork.id}`} color="blue.500">
-                  {artwork.title}
-                </Link>
+                <Stack spacing={1}>
+                  <Link as={RouterLink} to={`/artwork/${artwork.id}`} color="blue.500">
+                    {artwork.title || "Untitled"}
+                  </Link>
+                  <Button
+                    size="xs"
+                    colorScheme="blue"
+                    variant="ghost"
+                    onClick={() => handleEditClick(artwork)}
+                  >
+                    Edit Title
+                  </Button>
+                </Stack>
               </Td>
               <Td>
                 <Badge colorScheme={artwork.status === 'approved' ? 'green' : 'yellow'}>
@@ -145,30 +244,54 @@ export function ArtworkManagement() {
   );
 
   return (
-    <Stack spacing={8}>
-      <Card>
-        <CardHeader>
-          <Heading size="md">Artwork Management</Heading>
-        </CardHeader>
-      </Card>
+    <Box>
+      <Stack spacing={8}>
+        <Card>
+          <CardHeader>
+            <Heading size="md">Artwork Management</Heading>
+          </CardHeader>
+        </Card>
 
-      {loading ? (
-        <Alert status="info">
-          <AlertIcon />
-          Loading artworks...
-        </Alert>
-      ) : (
-        <>
-          <ArtworkTable 
-            artworks={submittedArtworks} 
-            title="Submitted & Approved Artworks" 
-          />
-          <ArtworkTable 
-            artworks={unsubmittedArtworks} 
-            title="Draft Artworks" 
-          />
-        </>
-      )}
-    </Stack>
+        {loading ? (
+          <Alert status="info">
+            <AlertIcon />
+            Loading artworks...
+          </Alert>
+        ) : (
+          <>
+            <ArtworkTable 
+              artworks={submittedArtworks} 
+              title="Submitted & Approved Artworks" 
+            />
+            <ArtworkTable 
+              artworks={unsubmittedArtworks} 
+              title="Draft Artworks" 
+            />
+          </>
+        )}
+      </Stack>
+
+      {/* Edit Title Modal */}
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Edit Artwork Title</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="Enter new title"
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" mr={3} onClick={handleUpdateTitle}>
+              Save
+            </Button>
+            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </Box>
   );
 } 
