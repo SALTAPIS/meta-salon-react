@@ -10,6 +10,7 @@ import {
   HStack,
   Box,
   useColorModeValue,
+  VStack,
 } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import { Link as RouterLink } from 'react-router-dom';
@@ -94,12 +95,12 @@ export function NavMenu() {
         <HStack spacing={2}>
           <Avatar 
             size="sm" 
-            name={displayName} 
+            name={username} 
             src={user.avatar_url || undefined} 
           />
           <Box display={{ base: 'none', md: 'block' }}>
             <Text fontSize="sm" fontWeight="medium">
-              {displayName}
+              {username}
             </Text>
           </Box>
         </HStack>
@@ -110,9 +111,6 @@ export function NavMenu() {
         </MenuItem>
         <MenuItem as={RouterLink} to={`/${username}`}>
           Profile
-        </MenuItem>
-        <MenuItem as={RouterLink} to={getPath('settings')}>
-          Settings
         </MenuItem>
         {(user.role === 'admin' || user.user_metadata?.role === 'admin') && (
           <>

@@ -22,6 +22,7 @@ import {
   Alert,
   AlertIcon,
 } from '@chakra-ui/react';
+import { SettingsIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabaseClient';
 import type { Artwork } from '../../types/database.types';
@@ -87,7 +88,8 @@ export function UserProfilePage() {
             src={user?.avatar_url || undefined}
           />
           <VStack align="flex-start" spacing={2}>
-            <Heading size="xl">{username}</Heading>
+            <Heading size="xl">{user?.display_name}</Heading>
+            <Text color="gray.500">@{user?.username}</Text>
             {user?.role && (
               <Badge colorScheme="purple" fontSize="md">
                 {user.role}
@@ -99,10 +101,11 @@ export function UserProfilePage() {
         {isOwnProfile ? (
           <Button
             as={RouterLink}
-            to={`/${username}/dashboard`}
-            colorScheme="blue"
+            to={`/${username}/settings`}
+            leftIcon={<SettingsIcon />}
+            variant="outline"
           >
-            Dashboard
+            Settings
           </Button>
         ) : null}
       </HStack>

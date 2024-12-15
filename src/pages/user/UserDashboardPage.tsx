@@ -37,6 +37,7 @@ import type { Database } from '../../types/database.types';
 import type { Album, Artwork } from '../../types/database.types';
 import { VotePacks } from '../../components/token/VotePacks';
 import { PayoutHistoryTable } from '../../components/artist/PayoutHistoryTable';
+import { UserSettingsPage } from './UserSettingsPage';
 
 type Profile = Database['public']['Tables']['profiles']['Row'] & {
   bio?: string | null;
@@ -281,39 +282,21 @@ export function UserDashboardPage() {
           </Box>
         </GridItem>
         <GridItem>
-          <HStack spacing={4}>
-            <Heading size="xl">{profile?.display_name || profile?.username}</Heading>
-            {profile?.role && (
+          <VStack align="flex-start" spacing={1}>
+            <Heading size="xl">{profile?.display_name}</Heading>
+            <Text color="gray.500">@{profile?.username}</Text>
+            {profile?.role === 'admin' && (
               <Badge colorScheme="purple" fontSize="md">
                 {profile.role}
               </Badge>
             )}
-          </HStack>
+          </VStack>
         </GridItem>
         <GridItem>
           <VStack align="flex-end" spacing={4}>
             <Text fontSize="3xl" fontWeight="bold">
               {profile?.balance?.toLocaleString()} SLN
             </Text>
-            {user?.id === profile?.id && (
-              <HStack>
-                <Button
-                  as={RouterLink}
-                  to={`/${username}/settings`}
-                  leftIcon={<SettingsIcon />}
-                  variant="outline"
-                >
-                  Settings
-                </Button>
-                <Button
-                  as={RouterLink}
-                  to={`/${username}/dashboard`}
-                  colorScheme="blue"
-                >
-                  Dashboard
-                </Button>
-              </HStack>
-            )}
           </VStack>
         </GridItem>
       </Grid>
@@ -326,6 +309,7 @@ export function UserDashboardPage() {
           <Tab>Albums</Tab>
           <Tab>Vote Packs</Tab>
           <Tab>Transactions</Tab>
+          {user?.id === profile?.id && <Tab>Settings</Tab>}
           {user && (user.role === 'artist' || user.user_metadata?.role === 'artist' || 
             user.role === 'admin' || user.user_metadata?.role === 'admin') && (
             <Tab>Payouts</Tab>
@@ -584,6 +568,21 @@ export function UserDashboardPage() {
           <TabPanel>
             <Text>Transaction history coming soon...</Text>
           </TabPanel>
+
+          {/* Settings Tab */}
+          {user?.id === profile?.id && (
+            <TabPanel>
+              <Box
+                p={6}
+                bg={bgColor}
+                borderRadius="lg"
+                borderWidth={1}
+                borderColor={borderColor}
+              >
+                <UserSettingsPage />
+              </Box>
+            </TabPanel>
+          )}
 
           {/* Payouts Tab */}
           {user && (user.role === 'artist' || user.user_metadata?.role === 'artist' || 
