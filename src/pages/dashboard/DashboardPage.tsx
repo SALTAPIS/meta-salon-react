@@ -38,7 +38,10 @@ const DashboardPage = () => {
     <Box bg={pageBgColor} minH="calc(100vh - 60px)">
       <Container maxW="container.xl" py={8}>
         <VStack spacing={8} align="stretch">
-          <Heading>Welcome back, {user.display_name || user.username || 'Artist'}</Heading>
+          <VStack align="flex-start" spacing={1}>
+            <Heading>Welcome back, {user.display_name}</Heading>
+            <Text color="gray.500">@{user.username}</Text>
+          </VStack>
           
           <Box>
             <TokenBalance />

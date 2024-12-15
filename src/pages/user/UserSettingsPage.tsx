@@ -8,18 +8,24 @@ import {
   FormControl,
   FormLabel,
   Input,
+  Textarea,
   Button,
   useToast,
-  Textarea,
+  useColorModeValue,
   Avatar,
   HStack,
   IconButton,
-  useColorModeValue,
+  FormErrorMessage,
 } from '@chakra-ui/react';
 import { FiUpload, FiTrash2 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabaseClient';
-import { DebugSettings } from '../../components/settings/DebugSettings';
+
+interface FormErrors {
+  username?: string;
+  display_name?: string;
+  bio?: string;
+}
 
 export function UserSettingsPage() {
   const { user } = useAuth();
@@ -32,13 +38,66 @@ export function UserSettingsPage() {
     display_name: user?.display_name || '',
     bio: user?.bio || '',
   });
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    // Username validation
+    if (!formData.username) {
+      newErrors.username = 'Username is required';
+    } else if (!/^[a-zA-Z0-9_]{3,30}$/.test(formData.username)) {
+      newErrors.username = 'Username must be 3-30 characters and can only contain letters, numbers, and underscores';
+    }
+
+    // Display name validation
+    if (!formData.display_name) {
+      newErrors.display_name = 'Display name is required';
+    } else if (formData.display_name.length < 1 || formData.display_name.length > 50) {
+      newErrors.display_name = 'Display name must be between 1 and 50 characters';
+    }
+
+    // Bio validation
+    if (formData.bio && formData.bio.length > 500) {
+      newErrors.bio = 'Bio must not exceed 500 characters';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setAvatarFile(e.target.files[0]);
+      const file = e.target.files[0];
+      
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: 'Error',
+          description: 'Image must be less than 2MB',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Error',
+          description: 'Please upload an image file',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      setAvatarFile(file);
     }
   };
 
@@ -49,6 +108,11 @@ export function UserSettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
 
     try {
       setLoading(true);
@@ -67,11 +131,7 @@ export function UserSettingsPage() {
             });
 
           if (uploadError) {
-            console.error('Upload error:', {
-              error: uploadError,
-              message: uploadError.message
-            });
-            throw new Error(`Failed to upload avatar: ${uploadError.message}`);
+            throw uploadError;
           }
 
           const { data: { publicUrl } } = supabase.storage
@@ -95,7 +155,13 @@ export function UserSettingsPage() {
         })
         .eq('id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('display_name_length')) {
+          setErrors({ ...errors, display_name: 'Display name must be between 1 and 50 characters' });
+          throw new Error('Display name must be between 1 and 50 characters');
+        }
+        throw error;
+      }
 
       toast({
         title: 'Profile updated',
@@ -122,7 +188,6 @@ export function UserSettingsPage() {
   return (
     <Container maxW="container.md" py={8}>
       <VStack spacing={8} align="stretch">
-        {/* Profile Settings */}
         <Box p={6} bg={bgColor} borderRadius="lg" borderWidth={1} borderColor={borderColor}>
           <VStack spacing={8} align="stretch">
             <Heading size="lg">Profile Settings</Heading>
@@ -167,32 +232,44 @@ export function UserSettingsPage() {
                   </HStack>
                 </FormControl>
 
-                <FormControl isRequired>
+                <FormControl isRequired isInvalid={!!errors.username}>
                   <FormLabel>Username</FormLabel>
                   <Input
                     value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, username: e.target.value });
+                      setErrors({ ...errors, username: undefined });
+                    }}
                     placeholder="username"
                   />
+                  <FormErrorMessage>{errors.username}</FormErrorMessage>
                 </FormControl>
 
-                <FormControl>
+                <FormControl isRequired isInvalid={!!errors.display_name}>
                   <FormLabel>Display Name</FormLabel>
                   <Input
                     value={formData.display_name}
-                    onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, display_name: e.target.value });
+                      setErrors({ ...errors, display_name: undefined });
+                    }}
                     placeholder="Display Name"
                   />
+                  <FormErrorMessage>{errors.display_name}</FormErrorMessage>
                 </FormControl>
 
-                <FormControl>
+                <FormControl isInvalid={!!errors.bio}>
                   <FormLabel>Bio</FormLabel>
                   <Textarea
                     value={formData.bio}
-                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, bio: e.target.value });
+                      setErrors({ ...errors, bio: undefined });
+                    }}
                     placeholder="Tell us about yourself"
                     rows={4}
                   />
+                  <FormErrorMessage>{errors.bio}</FormErrorMessage>
                 </FormControl>
 
                 <Button
@@ -206,14 +283,6 @@ export function UserSettingsPage() {
                 </Button>
               </VStack>
             </form>
-          </VStack>
-        </Box>
-
-        {/* Debug Settings */}
-        <Box p={6} bg={bgColor} borderRadius="lg" borderWidth={1} borderColor={borderColor}>
-          <VStack spacing={4} align="stretch">
-            <Heading size="lg">Debug Settings</Heading>
-            <DebugSettings />
           </VStack>
         </Box>
       </VStack>

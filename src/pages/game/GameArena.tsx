@@ -18,7 +18,7 @@ import { useVotingArena } from '../../hooks/useVotingArena';
 import { useState, useCallback } from 'react';
 import { useDebugMode } from '../../hooks/useDebugMode';
 import { useTokens } from '../../hooks/token/useTokens';
-import { FaHeart, FaUpload } from 'react-icons/fa';
+import { FaHeart } from 'react-icons/fa';
 
 interface GameArenaProps {
   onExit?: () => void;

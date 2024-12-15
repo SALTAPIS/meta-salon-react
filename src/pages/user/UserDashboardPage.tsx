@@ -29,15 +29,16 @@ import {
   Alert,
   AlertIcon,
 } from '@chakra-ui/react';
-import { SettingsIcon } from '@chakra-ui/icons';
 import { Link as RouterLink } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../hooks/useAuth';
+import { useTokens } from '../../hooks/token/useTokens';
 import type { Database } from '../../types/database.types';
 import type { Album, Artwork } from '../../types/database.types';
 import { VotePacks } from '../../components/token/VotePacks';
 import { PayoutHistoryTable } from '../../components/artist/PayoutHistoryTable';
 import { UserSettingsPage } from './UserSettingsPage';
+import { AnimatedBalance } from '../../components/token/AnimatedBalance';
 
 type Profile = Database['public']['Tables']['profiles']['Row'] & {
   bio?: string | null;
@@ -56,6 +57,7 @@ type Activity = {
 export function UserDashboardPage() {
   const { username } = useParams<{ username: string }>();
   const { user } = useAuth();
+  const { balance, refreshBalance } = useTokens();
   const toast = useToast();
   
   // Move all color mode hooks to the top
@@ -294,9 +296,11 @@ export function UserDashboardPage() {
         </GridItem>
         <GridItem>
           <VStack align="flex-end" spacing={4}>
-            <Text fontSize="3xl" fontWeight="bold">
-              {profile?.balance?.toLocaleString()} SLN
-            </Text>
+            <AnimatedBalance
+              balance={balance || 0}
+              fontSize="3xl"
+              fontWeight="bold"
+            />
           </VStack>
         </GridItem>
       </Grid>
@@ -560,7 +564,7 @@ export function UserDashboardPage() {
               borderWidth={1}
               borderColor={borderColor}
             >
-              <VotePacks />
+              <VotePacks onPurchaseComplete={refreshBalance} />
             </Box>
           </TabPanel>
 
