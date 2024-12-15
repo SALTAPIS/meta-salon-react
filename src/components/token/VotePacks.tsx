@@ -33,7 +33,11 @@ import { TokenService } from '../../services/token/tokenService';
 import type { VotePack } from '../../types/database.types';
 import { VOTE_PACK_DEFINITIONS, calculatePackPrice } from '../../config/votePackConfig';
 
-export function VotePacks() {
+interface VotePacksProps {
+  onPurchaseComplete?: () => void;
+}
+
+export function VotePacks({ onPurchaseComplete }: VotePacksProps) {
   const toast = useToast();
   const { votePacks, isLoading, error, refreshBalance } = useTokens();
   const [selectedPack, setSelectedPack] = useState<typeof VOTE_PACK_DEFINITIONS[0] | null>(null);
@@ -60,6 +64,8 @@ export function VotePacks() {
         isClosable: true,
       });
       onClose();
+      // Call onPurchaseComplete callback if provided
+      onPurchaseComplete?.();
     } catch (err) {
       toast({
         title: 'Failed to purchase vote pack',

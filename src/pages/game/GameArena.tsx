@@ -193,11 +193,36 @@ export function GameArena({ onExit }: GameArenaProps) {
   if (!hasVotePacks) {
     return (
       <Center h="100vh" bg={bg}>
-        <VStack spacing={4}>
-          <Text fontSize="xl">You need vote packs to participate</Text>
-          <Button as={RouterLink} to="/tokens" colorScheme="blue">
-            Get Vote Packs
-          </Button>
+        <VStack spacing={8} maxW="container.sm" textAlign="center" p={8}>
+          <Heading
+            size="2xl"
+            fontFamily="'Allan', cursive"
+            letterSpacing="wide"
+          >
+            Time to recharge!
+          </Heading>
+          <Text fontSize="xl" color="gray.600">
+            You've used all your votes - great job supporting the artists! 
+            Ready to continue shaping the future of digital art?
+          </Text>
+          <HStack spacing={4}>
+            <Button 
+              as={RouterLink} 
+              to="/tokens" 
+              colorScheme="blue" 
+              size="lg"
+            >
+              Get More Vote Packs
+            </Button>
+            <Button
+              as={RouterLink}
+              to="/artworks"
+              variant="outline"
+              size="lg"
+            >
+              See Your Winners
+            </Button>
+          </HStack>
         </VStack>
       </Center>
     );
