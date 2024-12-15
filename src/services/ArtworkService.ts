@@ -19,7 +19,8 @@ export class ArtworkService {
       // Get all artworks first with appropriate sorting
       let query = supabase
         .from('artworks')
-        .select('*');
+        .select('*')
+        .not('status', 'eq', 'rejected');
 
       // Apply sorting
       switch (options?.sortBy) {
