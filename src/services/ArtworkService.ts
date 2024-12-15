@@ -3,7 +3,7 @@ import { handleError } from '../utils/errorHandling';
 import type { Artwork } from '../types/database.types';
 
 export type TimeFilter = 'all' | '24h' | 'week' | 'month';
-export type SortBy = 'vault_value' | 'votes' | 'win_rate' | 'trending';
+export type SortBy = 'vault_value' | 'votes' | 'newest' | 'oldest';
 
 interface GetArtworksOptions {
   timeFilter?: TimeFilter;
@@ -16,11 +16,29 @@ export class ArtworkService {
    */
   static async getAllArtworks(options?: GetArtworksOptions): Promise<Artwork[]> {
     try {
-      // Get all artworks first
-      const { data: artworks, error: artworksError } = await supabase
+      // Get all artworks first with appropriate sorting
+      let query = supabase
         .from('artworks')
-        .select('*')
-        .order(options?.sortBy === 'votes' ? 'vote_count' : 'vault_value', { ascending: false });
+        .select('*');
+
+      // Apply sorting
+      switch (options?.sortBy) {
+        case 'votes':
+          query = query.order('vote_count', { ascending: false });
+          break;
+        case 'newest':
+          query = query.order('created_at', { ascending: false });
+          break;
+        case 'oldest':
+          query = query.order('created_at', { ascending: true });
+          break;
+        case 'vault_value':
+        default:
+          query = query.order('vault_value', { ascending: false });
+          break;
+      }
+
+      const { data: artworks, error: artworksError } = await query;
 
       if (artworksError) throw artworksError;
       if (!artworks || artworks.length === 0) return [];
@@ -48,6 +66,13 @@ export class ArtworkService {
         filteredArtworks = artworks.filter(artwork => 
           new Date(artwork.created_at) >= timeAgo
         );
+
+        // If no specific sort is selected, sort by date descending for time filters
+        if (!options.sortBy || (options.sortBy !== 'newest' && options.sortBy !== 'oldest')) {
+          filteredArtworks.sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+        }
       }
 
       // Get all unique user IDs
