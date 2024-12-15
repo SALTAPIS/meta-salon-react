@@ -127,7 +127,6 @@ export function GameArena({ onExit }: GameArenaProps) {
                 size="lg"
                 variant="outline"
                 colorScheme="blue"
-                leftIcon={<Icon as={FaUpload} />}
               >
                 Submit your Artworks
               </Button>
@@ -180,7 +179,6 @@ export function GameArena({ onExit }: GameArenaProps) {
               size="lg"
               variant="outline"
               colorScheme="blue"
-              leftIcon={<Icon as={FaUpload} />}
             >
               Submit your Artworks
             </Button>
