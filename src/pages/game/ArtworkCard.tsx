@@ -50,7 +50,7 @@ export function ArtworkCard({ artwork, showStats = false, hideMetadata = false, 
   const renderStats = () => (
     <HStack spacing={4} justify="space-between" align="flex-end" width="100%">
       <Text fontSize="sm" color={mutedColor}>
-        {artwork.vote_count ?? 0} votes
+        {artwork.vote_count ?? 0} wins
       </Text>
       <Text fontSize="sm" color={vaultValueColor} fontWeight="bold">
         {artwork.vault_value ?? 0} SLN

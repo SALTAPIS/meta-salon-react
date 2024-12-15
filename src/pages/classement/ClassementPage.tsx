@@ -18,7 +18,7 @@ import {
 } from '@chakra-ui/react';
 import { ChevronDownIcon, TimeIcon, ViewIcon } from '@chakra-ui/icons';
 import { Link as RouterLink } from 'react-router-dom';
-import { ArtworkService } from '../../services/ArtworkService';
+import { ArtworkService, TimeFilter, SortBy } from '../../services/ArtworkService';
 import type { Artwork } from '../../types/database.types';
 import './classement.css';
 
@@ -82,7 +82,7 @@ const ArtworkCard = ({
             </RouterLink>
           </Box>
           <HStack spacing={8} justify="flex-end">
-            <Text>{artwork.vote_count ?? 0} votes</Text>
+            <Text>{artwork.vote_count ?? 0} wins</Text>
             <Text color="green.500" fontWeight="bold">{artwork.vault_value ?? 0} SLN</Text>
           </HStack>
         </Box>
@@ -121,7 +121,7 @@ const ArtworkCard = ({
 
             {hasStats && (
               <div className="artwork-stats">
-                <span className="artwork-votes">{artwork.vote_count ?? 0} votes</span>
+                <span className="artwork-votes">{artwork.vote_count ?? 0} wins</span>
                 <span className="artwork-value">{artwork.vault_value ?? 0} SLN</span>
               </div>
             )}
@@ -154,9 +154,11 @@ export function ClassementPage() {
     const loadArtworks = async () => {
       try {
         setIsLoading(true);
-        const data = await ArtworkService.getAllArtworks();
-        const sorted = data.sort((a, b) => (b.vault_value || 0) - (a.vault_value || 0));
-        setArtworks(sorted);
+        const data = await ArtworkService.getAllArtworks({
+          timeFilter: timeFilter as TimeFilter,
+          sortBy: sortBy as SortBy
+        });
+        setArtworks(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load artworks');
       } finally {
@@ -165,7 +167,7 @@ export function ClassementPage() {
     };
 
     loadArtworks();
-  }, []);
+  }, [timeFilter, sortBy]);
 
   const getBreakpointCols = () => {
     if (layoutMode === 'fixed-height') {
@@ -289,13 +291,18 @@ export function ClassementPage() {
                 size="sm"
                 color={filterTextColor}
               >
-                Sort By: {sortBy === 'vault_value' ? 'Vault Value' : 'Votes'}
+                Sort By: {
+                  sortBy === 'vault_value' ? 'Vault Value' :
+                  sortBy === 'votes' ? 'Wins' :
+                  sortBy === 'newest' ? 'Newest First' :
+                  'Oldest First'
+                }
               </MenuButton>
               <MenuList bg={menuBgColor}>
                 <MenuItem onClick={() => setSortBy('vault_value')}>Vault Value</MenuItem>
-                <MenuItem onClick={() => setSortBy('votes')}>Vote Count</MenuItem>
-                <MenuItem onClick={() => setSortBy('win_rate')}>Win Rate</MenuItem>
-                <MenuItem onClick={() => setSortBy('trending')}>Trending</MenuItem>
+                <MenuItem onClick={() => setSortBy('votes')}>Wins</MenuItem>
+                <MenuItem onClick={() => setSortBy('newest')}>Newest First</MenuItem>
+                <MenuItem onClick={() => setSortBy('oldest')}>Oldest First</MenuItem>
               </MenuList>
             </Menu>
 
