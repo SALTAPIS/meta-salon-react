@@ -2,23 +2,56 @@ import { supabase } from '../lib/supabaseClient';
 import { handleError } from '../utils/errorHandling';
 import type { Artwork } from '../types/database.types';
 
+export type TimeFilter = 'all' | '24h' | 'week' | 'month';
+export type SortBy = 'vault_value' | 'votes' | 'win_rate' | 'trending';
+
+interface GetArtworksOptions {
+  timeFilter?: TimeFilter;
+  sortBy?: SortBy;
+}
+
 export class ArtworkService {
   /**
    * Get all artworks
    */
-  static async getAllArtworks(): Promise<Artwork[]> {
+  static async getAllArtworks(options?: GetArtworksOptions): Promise<Artwork[]> {
     try {
       // Get all artworks first
       const { data: artworks, error: artworksError } = await supabase
         .from('artworks')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order(options?.sortBy === 'votes' ? 'vote_count' : 'vault_value', { ascending: false });
 
       if (artworksError) throw artworksError;
       if (!artworks || artworks.length === 0) return [];
 
+      // Apply time filter if needed
+      let filteredArtworks = artworks;
+      if (options?.timeFilter && options.timeFilter !== 'all') {
+        const now = new Date();
+        let timeAgo: Date;
+
+        switch (options.timeFilter) {
+          case '24h':
+            timeAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            break;
+          case 'week':
+            timeAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case 'month':
+            timeAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          default:
+            timeAgo = new Date(0); // beginning of time
+        }
+
+        filteredArtworks = artworks.filter(artwork => 
+          new Date(artwork.created_at) >= timeAgo
+        );
+      }
+
       // Get all unique user IDs
-      const userIds = [...new Set(artworks.map(a => a.user_id))];
+      const userIds = [...new Set(filteredArtworks.map(a => a.user_id))];
 
       // Get all profiles for these users
       const { data: profiles, error: profilesError } = await supabase
@@ -32,7 +65,7 @@ export class ArtworkService {
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
       // Combine artwork data with profile data
-      return artworks.map(artwork => ({
+      return filteredArtworks.map(artwork => ({
         ...artwork,
         profiles: profileMap.get(artwork.user_id)
       }));
