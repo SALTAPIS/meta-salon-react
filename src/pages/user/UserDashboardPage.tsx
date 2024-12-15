@@ -299,7 +299,7 @@ export function UserDashboardPage() {
             <AnimatedBalance
               balance={balance || 0}
               fontSize="3xl"
-              fontWeight="bold"
+              fontWeight="normal"
             />
           </VStack>
         </GridItem>

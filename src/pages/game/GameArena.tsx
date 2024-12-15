@@ -12,6 +12,7 @@ import {
   HStack,
   Heading,
   Icon,
+  Stack,
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
 import { useVotingArena } from '../../hooks/useVotingArena';
@@ -99,25 +100,33 @@ export function GameArena({ onExit }: GameArenaProps) {
     if (typeof errorMessage === 'string' && errorMessage.includes('Only one artwork remaining')) {
       return (
         <Center h="100vh" bg={bg}>
-          <VStack spacing={8}>
+          <VStack spacing={8} maxW="container.sm" textAlign="center" p={4}>
             <Heading 
-              size="2xl" 
+              size={['xl', '2xl']} 
               fontFamily="'Allan', cursive"
               letterSpacing="wide"
               textAlign="center"
+              px={4}
             >
               Thank you for sharing your love for art
             </Heading>
-            <Text fontSize="lg" color="gray.500" maxW="600px" textAlign="center">
+            <Text fontSize={['md', 'lg']} color="gray.500" maxW="600px" textAlign="center" px={4}>
               You've voted on all available artworks. Why not check out your winning choices or submit your own masterpiece?
             </Text>
-            <HStack spacing={4}>
+            <Stack 
+              direction={['column', 'row']} 
+              spacing={4} 
+              w="100%" 
+              px={4}
+              justify="center"
+            >
               <Button
                 as={RouterLink}
                 to="/artworks"
                 size="lg"
                 colorScheme="blue"
                 leftIcon={<Icon as={FaHeart} />}
+                width={['100%', 'auto']}
               >
                 See Your Winners
               </Button>
@@ -127,10 +136,11 @@ export function GameArena({ onExit }: GameArenaProps) {
                 size="lg"
                 variant="outline"
                 colorScheme="blue"
+                width={['100%', 'auto']}
               >
                 Submit your Artworks
               </Button>
-            </HStack>
+            </Stack>
           </VStack>
         </Center>
       );
@@ -151,25 +161,33 @@ export function GameArena({ onExit }: GameArenaProps) {
   if (!currentPair) {
     return (
       <Center h="100vh" bg={bg}>
-        <VStack spacing={8}>
+        <VStack spacing={8} maxW="container.sm" textAlign="center" p={4}>
           <Heading 
-            size="2xl" 
+            size={['xl', '2xl']} 
             fontFamily="'Allan', cursive"
             letterSpacing="wide"
             textAlign="center"
+            px={4}
           >
             Thank you for sharing your love for art
           </Heading>
-          <Text fontSize="lg" color="gray.500" maxW="600px" textAlign="center">
+          <Text fontSize={['md', 'lg']} color="gray.500" maxW="600px" textAlign="center" px={4}>
             You've voted on all available artworks. Why not check out your winning choices or submit your own masterpiece?
           </Text>
-          <HStack spacing={4}>
+          <Stack 
+            direction={['column', 'row']} 
+            spacing={4} 
+            w="100%" 
+            px={4}
+            justify="center"
+          >
             <Button
               as={RouterLink}
               to="/artworks"
               size="lg"
               colorScheme="blue"
               leftIcon={<Icon as={FaHeart} />}
+              width={['100%', 'auto']}
             >
               See Your Winners
             </Button>
@@ -179,10 +197,11 @@ export function GameArena({ onExit }: GameArenaProps) {
               size="lg"
               variant="outline"
               colorScheme="blue"
+              width={['100%', 'auto']}
             >
               Submit your Artworks
             </Button>
-          </HStack>
+          </Stack>
         </VStack>
       </Center>
     );
@@ -191,24 +210,31 @@ export function GameArena({ onExit }: GameArenaProps) {
   if (!hasVotePacks) {
     return (
       <Center h="100vh" bg={bg}>
-        <VStack spacing={8} maxW="container.sm" textAlign="center" p={8}>
+        <VStack spacing={8} maxW="container.sm" textAlign="center" p={4}>
           <Heading
-            size="2xl"
+            size={['xl', '2xl']}
             fontFamily="'Allan', cursive"
             letterSpacing="wide"
           >
             Time to recharge!
           </Heading>
-          <Text fontSize="xl" color="gray.600">
+          <Text fontSize={['md', 'xl']} color="gray.600" px={4}>
             You've used all your votes - great job supporting the artists! 
             Ready to continue shaping the future of digital art?
           </Text>
-          <HStack spacing={4}>
+          <Stack 
+            direction={['column', 'row']} 
+            spacing={4}
+            w="100%"
+            px={4}
+            justify="center"
+          >
             <Button 
               as={RouterLink} 
               to="/tokens" 
               colorScheme="blue" 
               size="lg"
+              width={['100%', 'auto']}
             >
               Get More Vote Packs
             </Button>
@@ -217,10 +243,11 @@ export function GameArena({ onExit }: GameArenaProps) {
               to="/artworks"
               variant="outline"
               size="lg"
+              width={['100%', 'auto']}
             >
               See Your Winners
             </Button>
-          </HStack>
+          </Stack>
         </VStack>
       </Center>
     );

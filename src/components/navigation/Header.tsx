@@ -13,6 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { MoonIcon, SunIcon } from '@chakra-ui/icons';
 import { NavMenu } from './NavMenu';
+import { MobileNav } from './MobileNav';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
 
@@ -70,81 +71,92 @@ export function Header() {
   };
 
   return (
-    <Box as="header" borderBottomWidth="1px" borderColor={borderColor}>
-      <Container size="wide">
-        <Flex align="center" justify="space-between">
-          <HStack as={RouterLink} to="/game" spacing={2} cursor="pointer" py={4}>
-            <Logo />
-            <Text 
-              fontSize="xl" 
-              fontWeight="bold"
-              fontFamily="'Allan', cursive"
-              letterSpacing="wide"
-              textTransform="none"
-              style={{ fontWeight: 700 }}
-            >
-              Meta.Salon
-            </Text>
-          </HStack>
+    <>
+      {/* Mobile Navigation */}
+      <MobileNav />
 
-          <Box height="57px" position="relative">
-            <Tabs 
-              index={getCurrentTabIndex()} 
-              onChange={handleTabChange}
-              variant="unstyled"
-              sx={{
-                '.chakra-tabs__tab-list': {
-                  borderBottom: '1px solid',
-                  borderColor: 'gray.200',
-                  position: 'relative'
-                },
-                '.chakra-tabs__tab': {
-                  fontSize: 'sm',
-                  px: 4,
-                  py: 6,
-                  color: tabTextColor,
-                  position: 'relative',
-                  _hover: {
-                    color: selectedTabColor
+      {/* Desktop Navigation */}
+      <Box 
+        as="header" 
+        borderBottomWidth="1px" 
+        borderColor={borderColor}
+        display={{ base: 'none', md: 'block' }}
+      >
+        <Container size="wide">
+          <Flex align="center" justify="space-between">
+            <HStack as={RouterLink} to="/game" spacing={2} cursor="pointer" py={4}>
+              <Logo />
+              <Text 
+                fontSize="xl" 
+                fontWeight="bold"
+                fontFamily="'Allan', cursive"
+                letterSpacing="wide"
+                textTransform="none"
+                style={{ fontWeight: 700 }}
+              >
+                Meta.Salon
+              </Text>
+            </HStack>
+
+            <Box height="57px" position="relative">
+              <Tabs 
+                index={getCurrentTabIndex()} 
+                onChange={handleTabChange}
+                variant="unstyled"
+                sx={{
+                  '.chakra-tabs__tab-list': {
+                    borderBottom: '1px solid',
+                    borderColor: 'gray.200',
+                    position: 'relative'
                   },
-                  _selected: {
-                    color: selectedTabColor,
-                    fontWeight: 'bold',
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      bottom: '-1px',
-                      left: 0,
-                      right: 0,
-                      height: '2px',
-                      background: indicatorColor,
-                      zIndex: 1
+                  '.chakra-tabs__tab': {
+                    fontSize: 'sm',
+                    px: 4,
+                    py: 6,
+                    color: tabTextColor,
+                    position: 'relative',
+                    _hover: {
+                      color: selectedTabColor
+                    },
+                    _selected: {
+                      color: selectedTabColor,
+                      fontWeight: 'bold',
+                      '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        bottom: '-1px',
+                        left: 0,
+                        right: 0,
+                        height: '2px',
+                        background: indicatorColor,
+                        zIndex: 1
+                      }
                     }
                   }
-                }
-              }}
-            >
-              <TabList>
-                {paths.map(({ path, label }) => (
-                  <Tab key={path}>
-                    {label}
-                  </Tab>
-                ))}
-              </TabList>
-            </Tabs>
-          </Box>
+                }}
+              >
+                <TabList>
+                  {paths.map(({ path, label }) => (
+                    <Tab key={path}>
+                      {label}
+                    </Tab>
+                  ))}
+                </TabList>
+              </Tabs>
+            </Box>
 
-          <HStack spacing={4} py={4}>
-            <IconButton
-              aria-label="Toggle color mode"
-              icon={colorMode === 'light' ? <MoonIcon /> : <SunIcon />}
-              onClick={toggleColorMode}
-              variant="ghost"
-            />
-            <NavMenu />
-          </HStack>
-        </Flex>
-      </Container>
-    </Box>
+            <HStack spacing={4} py={4}>
+              <IconButton
+                aria-label="Toggle color mode"
+                icon={colorMode === 'light' ? <MoonIcon /> : <SunIcon />}
+                onClick={toggleColorMode}
+                variant="ghost"
+              />
+              <NavMenu />
+            </HStack>
+          </Flex>
+        </Container>
+      </Box>
+    </>
   );
 } 

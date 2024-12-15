@@ -371,22 +371,31 @@ export default function GamePage() {
           transform="translate(-50%, -50%)"
           textAlign="center"
           zIndex={1}
+          w="90%"
+          maxW="container.lg"
         >
           <Box>
             <Heading 
               mb={4}
               fontFamily="'Allan', cursive"
               fontWeight={700}
-              fontSize={['8vw', '10vw', '12vw']}
+              fontSize={['3.5rem', '5rem', '7rem']}
+              lineHeight={['1.1', '1.2']}
               sx={{
                 '@media (min-width: 1200px)': {
-                  fontSize: '144px',
+                  fontSize: '8rem',
                 },
               }}
             >
               A new Beginning
             </Heading>
-            <Text fontSize="xl" color="gray.600">
+            <Text 
+              fontSize={['lg', 'xl']} 
+              color="gray.600"
+              px={4}
+              maxW="container.md"
+              mx="auto"
+            >
               Vote for your favorite artworks and help curate the collection
             </Text>
           </Box>
@@ -396,6 +405,7 @@ export default function GamePage() {
                 size="lg"
                 colorScheme="blue"
                 onClick={handleStartPlaying}
+                width={['100%', 'auto']}
               >
                 Start Playing
               </Button>
@@ -405,6 +415,7 @@ export default function GamePage() {
                 to="/tokens"
                 size="lg"
                 colorScheme="blue"
+                width={['100%', 'auto']}
               >
                 Get Vote Packs
               </Button>
@@ -415,6 +426,7 @@ export default function GamePage() {
               to="/auth/signin"
               size="lg"
               colorScheme="blue"
+              width={['100%', 'auto']}
             >
               Sign In to Play
             </Button>
