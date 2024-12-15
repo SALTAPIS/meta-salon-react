@@ -46,10 +46,7 @@ export function ArtworksPage() {
         // Load user's winning artworks and check voting history if logged in
         if (user) {
           const [userData, hasVoted] = await Promise.all([
-            ArtworkService.getAllArtworks({
-              timeFilter: 'month',
-              sortBy: 'vault_value'
-            }),
+            ArtworkService.getUserWinningArtworks(user.id),
             VoteService.hasUserVoted(user.id)
           ]);
           
