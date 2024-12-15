@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
-import { TextProps, useColorModeValue } from '@chakra-ui/react';
+import { TextProps, useColorModeValue, Box, VStack, Text } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface AnimatedBalanceProps extends Omit<TextProps, 'transition' | 'animation'> {
   balance: number;
 }
 
-const MotionDiv = motion.div;
+const MotionBox = motion(Box);
 
-export function AnimatedBalance({ balance, fontSize, fontWeight }: AnimatedBalanceProps) {
+export function AnimatedBalance({ balance, fontSize = "3xl", fontWeight = "normal", ...props }: AnimatedBalanceProps) {
   const [displayBalance, setDisplayBalance] = useState(balance);
   const [isAnimating, setIsAnimating] = useState(false);
   const textColor = useColorModeValue('gray.800', 'white');
+  const labelColor = useColorModeValue('gray.500', 'gray.500');
   const highlightColor = useColorModeValue('green.500', 'green.300');
 
   useEffect(() => {
@@ -43,23 +44,25 @@ export function AnimatedBalance({ balance, fontSize, fontWeight }: AnimatedBalan
 
   return (
     <AnimatePresence>
-      <MotionDiv
-        style={{
-          fontSize: typeof fontSize === 'string' ? fontSize : undefined,
-          fontWeight: typeof fontWeight === 'string' ? fontWeight : undefined,
-          color: textColor,
-        }}
-        animate={{
-          scale: isAnimating ? [1, 1.1, 1] : 1,
-          color: isAnimating ? [textColor, highlightColor, textColor] : textColor,
-        }}
-        transition={{
-          duration: 0.5,
-          ease: "easeInOut",
-        }}
-      >
-        {Math.round(displayBalance).toLocaleString()} SLN
-      </MotionDiv>
+      <VStack spacing={1} align="flex-end">
+        <MotionBox
+          fontSize={fontSize}
+          fontWeight={fontWeight}
+          color={textColor}
+          animate={{
+            scale: isAnimating ? [1, 1.1, 1] : 1,
+            color: isAnimating ? [textColor, highlightColor, textColor] : textColor,
+          }}
+          transition={{
+            duration: 0.5,
+            ease: "easeInOut",
+          }}
+          {...props}
+        >
+          {Math.round(displayBalance).toLocaleString()} SLN
+        </MotionBox>
+        <Text color={labelColor}>Balance</Text>
+      </VStack>
     </AnimatePresence>
   );
 } 
