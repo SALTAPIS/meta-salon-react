@@ -1,4 +1,5 @@
 import React from 'react';
+import Masonry from 'react-masonry-css';
 import {
   Box,
   Spinner,
@@ -20,10 +21,10 @@ import { ArtworkService } from '../../services/ArtworkService';
 import type { Artwork } from '../../types/database.types';
 import './classement.css';
 
-type LayoutMode = 'masonry' | 'compact' | 'table' | 'list';
+type LayoutMode = 'fixed-height' | 'fixed-width' | 'variable-sized' | 'square' | 'table';
 type SizeMode = 'small' | 'medium' | 'large';
 
-const MasonryArtworkCard = ({ 
+const ArtworkCard = ({ 
   artwork, 
   hideMetadata = false,
   sizeMode = 'medium',
@@ -44,20 +45,21 @@ const MasonryArtworkCard = ({
     }
   };
 
-  // Calculate width class based on aspect ratio and size mode
-  const getWidthClass = () => {
-    if (layoutMode === 'table' || layoutMode === 'list') return "w-full";
+  const getSpanClass = (aspectRatio: number | null) => {
+    if (!aspectRatio || layoutMode !== 'variable-sized') return '';
     
-    const baseWidth = {
-      small: { wide: "w-1/2", normal: "w-1/3", tall: "w-1/4" },
-      medium: { wide: "w-3/4", normal: "w-1/2", tall: "w-1/3" },
-      large: { wide: "w-full", normal: "w-3/4", tall: "w-1/2" }
-    }[sizeMode];
-
-    if (!aspectRatio) return baseWidth.normal;
-    if (aspectRatio > 1.7) return baseWidth.wide;
-    if (aspectRatio < 0.8) return baseWidth.tall;
-    return baseWidth.normal;
+    // Vertical images (aspect ratio < 1): max 3 columns
+    if (aspectRatio < 1) {
+      if (aspectRatio < 0.5) return 'span-3';
+      if (aspectRatio < 0.8) return 'span-2';
+      return '';
+    }
+    
+    // Horizontal images (aspect ratio > 1): max 4 columns
+    if (aspectRatio > 2) return 'span-4';
+    if (aspectRatio > 1.5) return 'span-3';
+    if (aspectRatio > 1.2) return 'span-2';
+    return '';
   };
 
   if (layoutMode === 'table') {
@@ -88,11 +90,11 @@ const MasonryArtworkCard = ({
     );
   }
 
-  const hasStats = (artwork.vault_value ?? 0) > 0 || (artwork.vote_count ?? 0) > 0;
   const sizeClass = sizeMode === 'small' ? 'small' : sizeMode === 'medium' ? 'medium' : 'large';
+  const hasStats = (artwork.vault_value ?? 0) > 0 || (artwork.vote_count ?? 0) > 0;
 
   return (
-    <div className={`artwork-card ${getWidthClass()} ${sizeClass}`}>
+    <div className={`artwork-card ${layoutMode} ${sizeClass} ${getSpanClass(aspectRatio)}`}>
       <RouterLink to={`/artwork/${artwork.id}`} className="artwork-link">
         <div className="artwork-image-container">
           <img
@@ -138,8 +140,9 @@ export function ClassementPage() {
   const [timeFilter, setTimeFilter] = React.useState('all');
   const [sortBy, setSortBy] = React.useState('vault_value');
   const [viewMode, setViewMode] = React.useState('artworks');
-  const [layoutMode, setLayoutMode] = React.useState<LayoutMode>('masonry');
+  const [layoutMode, setLayoutMode] = React.useState<LayoutMode>('fixed-height');
   const [sizeMode, setSizeMode] = React.useState<SizeMode>('medium');
+  const [hideMetadata, setHideMetadata] = React.useState(false);
 
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const filterBgColor = useColorModeValue('gray.50', 'gray.800');
@@ -165,23 +168,47 @@ export function ClassementPage() {
     loadArtworks();
   }, []);
 
-  const getLayoutStyles = () => {
-    const baseStyles = {
-      width: '100%',
-      textAlign: 'left' as const,
-    };
-
-    if (layoutMode === 'table') {
+  const getBreakpointCols = () => {
+    if (layoutMode === 'fixed-height') {
       return {
-        ...baseStyles,
-        className: 'table-layout',
+        default: 1,
+        1400: 1,
+        1100: 1,
+        800: 1,
+        500: 1
       };
     }
 
-    return {
-      ...baseStyles,
-      className: 'masonry-layout',
-    };
+    if (layoutMode === 'fixed-width') {
+      switch(sizeMode) {
+        case 'small':
+          return { default: 4, 1400: 3, 1100: 2, 800: 1 };
+        case 'medium':
+          return { default: 3, 1400: 2, 1100: 1, 800: 1 };
+        case 'large':
+          return { default: 2, 1400: 2, 1100: 1, 800: 1 };
+        default:
+          return { default: 4, 1400: 3, 1100: 2, 800: 1 };
+      }
+    }
+
+    const baseColumns = {
+      small: { default: 5, 1400: 4, 1100: 3, 800: 2, 500: 1 },
+      medium: { default: 4, 1400: 3, 1100: 2, 800: 2, 500: 1 },
+      large: { default: 3, 1400: 2, 1100: 2, 800: 1, 500: 1 }
+    }[sizeMode];
+
+    if (layoutMode === 'square') {
+      return {
+        default: 5,
+        1400: 4,
+        1100: 3,
+        800: 2,
+        500: 1
+      };
+    }
+
+    return baseColumns;
   };
 
   if (isLoading) {
@@ -279,50 +306,106 @@ export function ClassementPage() {
                 size="sm"
                 color={filterTextColor}
               >
-                Layout: {layoutMode.charAt(0).toUpperCase() + layoutMode.slice(1)}
+                Layout: {
+                  layoutMode === 'fixed-height' ? 'Fixed Height' :
+                  layoutMode === 'fixed-width' ? 'Fixed Width' :
+                  layoutMode === 'variable-sized' ? 'Variable Sized' :
+                  layoutMode === 'square' ? 'Square Grid' :
+                  'Table View'
+                }
               </MenuButton>
               <MenuList bg={menuBgColor}>
-                <MenuItem onClick={() => setLayoutMode('masonry')}>Masonry Grid</MenuItem>
-                <MenuItem onClick={() => setLayoutMode('compact')}>Compact Grid</MenuItem>
+                <MenuItem onClick={() => setLayoutMode('fixed-height')}>Fixed Height</MenuItem>
+                <MenuItem onClick={() => setLayoutMode('fixed-width')}>Fixed Width</MenuItem>
+                <MenuItem onClick={() => setLayoutMode('variable-sized')}>Variable Sized</MenuItem>
+                <MenuItem onClick={() => setLayoutMode('square')}>Square Grid</MenuItem>
                 <MenuItem onClick={() => setLayoutMode('table')}>Table View</MenuItem>
-                <MenuItem onClick={() => setLayoutMode('list')}>List View</MenuItem>
               </MenuList>
             </Menu>
 
-            {layoutMode !== 'table' && (
-              <Menu>
-                <MenuButton 
-                  as={Button} 
-                  rightIcon={<ChevronDownIcon />} 
-                  variant="ghost" 
-                  size="sm"
-                  color={filterTextColor}
-                >
-                  Size: {sizeMode.charAt(0).toUpperCase() + sizeMode.slice(1)}
-                </MenuButton>
-                <MenuList bg={menuBgColor}>
-                  <MenuItem onClick={() => setSizeMode('small')}>Small</MenuItem>
-                  <MenuItem onClick={() => setSizeMode('medium')}>Medium</MenuItem>
-                  <MenuItem onClick={() => setSizeMode('large')}>Large</MenuItem>
-                </MenuList>
-              </Menu>
-            )}
+            <Menu>
+              <MenuButton 
+                as={Button} 
+                rightIcon={<ChevronDownIcon />} 
+                variant="ghost" 
+                size="sm"
+                color={filterTextColor}
+              >
+                Size: {sizeMode.charAt(0).toUpperCase() + sizeMode.slice(1)}
+              </MenuButton>
+              <MenuList bg={menuBgColor}>
+                <MenuItem onClick={() => setSizeMode('small')}>Small</MenuItem>
+                <MenuItem onClick={() => setSizeMode('medium')}>Medium</MenuItem>
+                <MenuItem onClick={() => setSizeMode('large')}>Large</MenuItem>
+              </MenuList>
+            </Menu>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setHideMetadata(!hideMetadata)}
+              color={filterTextColor}
+            >
+              {hideMetadata ? 'Show Metadata' : 'Hide Metadata'}
+            </Button>
           </HStack>
         </HStack>
       </Box>
 
       <Box px={6}>
-        <div className={getLayoutStyles().className}>
-          {artworks.map((artwork: Artwork) => (
-            <MasonryArtworkCard 
-              key={artwork.id}
-              artwork={artwork}
-              hideMetadata={layoutMode === 'compact'}
-              sizeMode={sizeMode}
-              layoutMode={layoutMode}
-            />
-          ))}
-        </div>
+        {layoutMode === 'table' ? (
+          <div className="table-layout">
+            {artworks.map((artwork) => (
+              <ArtworkCard
+                key={artwork.id}
+                artwork={artwork}
+                hideMetadata={hideMetadata}
+                sizeMode={sizeMode}
+                layoutMode={layoutMode}
+              />
+            ))}
+          </div>
+        ) : layoutMode === 'fixed-height' ? (
+          <div className="fixed-height-layout">
+            {artworks.map((artwork) => (
+              <ArtworkCard
+                key={artwork.id}
+                artwork={artwork}
+                hideMetadata={hideMetadata}
+                sizeMode={sizeMode}
+                layoutMode={layoutMode}
+              />
+            ))}
+          </div>
+        ) : layoutMode === 'fixed-width' ? (
+          <div className={`fixed-width-layout ${sizeMode}`}>
+            {artworks.map((artwork) => (
+              <ArtworkCard
+                key={artwork.id}
+                artwork={artwork}
+                hideMetadata={hideMetadata}
+                sizeMode={sizeMode}
+                layoutMode={layoutMode}
+              />
+            ))}
+          </div>
+        ) : (
+          <Masonry
+            breakpointCols={getBreakpointCols()}
+            className="masonry-grid"
+            columnClassName="masonry-grid_column"
+          >
+            {artworks.map((artwork) => (
+              <ArtworkCard
+                key={artwork.id}
+                artwork={artwork}
+                hideMetadata={hideMetadata}
+                sizeMode={sizeMode}
+                layoutMode={layoutMode}
+              />
+            ))}
+          </Masonry>
+        )}
       </Box>
     </Box>
   );
