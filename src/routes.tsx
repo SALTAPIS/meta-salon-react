@@ -84,11 +84,9 @@ const routes: RouteObject[] = [
           {
             path: '/submit',
             element: (
-              <ProtectedRoute>
-                <RoleGuard allowedRoles={['artist', 'admin']}>
-                  <SubmitArtPage />
-                </RoleGuard>
-              </ProtectedRoute>
+              <RoleGuard allowedRoles={['artist', 'admin']}>
+                <SubmitArtPage />
+              </RoleGuard>
             ),
           },
           {

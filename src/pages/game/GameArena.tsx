@@ -10,15 +10,18 @@ import {
   Image as ChakraImage,
   useToast,
   HStack,
+  Heading,
+  Icon,
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
 import { useVotingArena } from '../../hooks/useVotingArena';
 import { useState, useCallback } from 'react';
 import { useDebugMode } from '../../hooks/useDebugMode';
 import { useTokens } from '../../hooks/token/useTokens';
+import { FaHeart, FaUpload } from 'react-icons/fa';
 
 interface GameArenaProps {
-  onExit: () => void;
+  onExit?: () => void;
 }
 
 export function GameArena({ onExit }: GameArenaProps) {
@@ -92,12 +95,53 @@ export function GameArena({ onExit }: GameArenaProps) {
   }
 
   if (error) {
-    const errorMessage = typeof error === 'string' ? error : 'An error occurred';
+    const errorMessage = error instanceof Error ? error.message : error;
+    if (typeof errorMessage === 'string' && errorMessage.includes('Only one artwork remaining')) {
+      return (
+        <Center h="100vh" bg={bg}>
+          <VStack spacing={8}>
+            <Heading 
+              size="2xl" 
+              fontFamily="'Allan', cursive"
+              letterSpacing="wide"
+              textAlign="center"
+            >
+              Thank you for sharing your love for art
+            </Heading>
+            <Text fontSize="lg" color="gray.500" maxW="600px" textAlign="center">
+              You've voted on all available artworks. Why not check out your winning choices or submit your own masterpiece?
+            </Text>
+            <HStack spacing={4}>
+              <Button
+                as={RouterLink}
+                to="/artworks"
+                size="lg"
+                colorScheme="blue"
+                leftIcon={<Icon as={FaHeart} />}
+              >
+                See Your Winners
+              </Button>
+              <Button
+                as={RouterLink}
+                to="/submit"
+                size="lg"
+                variant="outline"
+                colorScheme="blue"
+                leftIcon={<Icon as={FaUpload} />}
+              >
+                Submit your Artworks
+              </Button>
+            </HStack>
+          </VStack>
+        </Center>
+      );
+    }
+
     return (
       <Center h="100vh" bg={bg}>
         <VStack spacing={4}>
           <Text color="red.500">{errorMessage}</Text>
-          <Button as={RouterLink} to="/" colorScheme="blue">
+          <Button as={RouterLink} to="/" colorScheme="blue" onClick={onExit}>
             Return Home
           </Button>
         </VStack>
@@ -108,11 +152,39 @@ export function GameArena({ onExit }: GameArenaProps) {
   if (!currentPair) {
     return (
       <Center h="100vh" bg={bg}>
-        <VStack spacing={4}>
-          <Text fontSize="xl">No more artworks to vote on!</Text>
-          <Button onClick={onExit} colorScheme="blue">
-            Return to Game Menu
-          </Button>
+        <VStack spacing={8}>
+          <Heading 
+            size="2xl" 
+            fontFamily="'Allan', cursive"
+            letterSpacing="wide"
+            textAlign="center"
+          >
+            Thank you for sharing your love for art
+          </Heading>
+          <Text fontSize="lg" color="gray.500" maxW="600px" textAlign="center">
+            You've voted on all available artworks. Why not check out your winning choices or submit your own masterpiece?
+          </Text>
+          <HStack spacing={4}>
+            <Button
+              as={RouterLink}
+              to="/artworks"
+              size="lg"
+              colorScheme="blue"
+              leftIcon={<Icon as={FaHeart} />}
+            >
+              See Your Winners
+            </Button>
+            <Button
+              as={RouterLink}
+              to="/submit"
+              size="lg"
+              variant="outline"
+              colorScheme="blue"
+              leftIcon={<Icon as={FaUpload} />}
+            >
+              Submit your Artworks
+            </Button>
+          </HStack>
         </VStack>
       </Center>
     );

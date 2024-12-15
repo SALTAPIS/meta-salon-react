@@ -45,10 +45,10 @@ export function useVotingArena() {
           console.log('[useVotingArena] No valid pair returned');
           setCurrentPair(null);
           setRemainingArtworks(allArtworks);
-          if (pair?.remaining_count === 0) {
-            setError('You have voted on all available artworks! Check back later for new submissions.');
-          } else if (pair?.remaining_count === 1) {
+          if (pair?.remaining_count === 1) {
             setError('Only one artwork remaining. We need at least two artworks for comparison.');
+          } else {
+            setError(null);
           }
           return;
         }
@@ -125,10 +125,10 @@ export function useVotingArena() {
 
       if (!pair?.artwork_id_1 || !pair?.artwork_id_2) {
         setCurrentPair(null);
-        if (pair?.remaining_count === 0) {
-          setError('You have voted on all available artworks! Check back later for new submissions.');
-        } else if (pair?.remaining_count === 1) {
+        if (pair?.remaining_count === 1) {
           setError('Only one artwork remaining. We need at least two artworks for comparison.');
+        } else {
+          setError(null);
         }
         return;
       }

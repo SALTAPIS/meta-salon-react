@@ -8,11 +8,11 @@ interface ProtectedRouteProps {
   requiredRoles?: UserRole[];
 }
 
-export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
-  if (isLoading && !user && !location.pathname.startsWith('/auth/')) {
+  if (isLoading && !location.pathname.startsWith('/auth/')) {
     return (
       <Center h="calc(100vh - 64px)" p={8}>
         <VStack spacing={4}>
@@ -25,10 +25,6 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
 
   if (!user && !location.pathname.startsWith('/auth/')) {
     return <Navigate to="/auth/signin" state={{ from: location }} replace />;
-  }
-
-  if (requiredRoles && (!user?.role || !requiredRoles.includes(user.role as UserRole))) {
-    return <Navigate to="/unauthorized" replace />;
   }
 
   return <>{children}</>;

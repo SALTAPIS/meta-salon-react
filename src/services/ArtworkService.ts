@@ -11,6 +11,20 @@ interface GetArtworksOptions {
   limit?: number;
 }
 
+interface ArtworkData {
+  id: string;
+  title: string;
+  description: string;
+  image_url: string;
+  user_id: string;
+  status: string;
+  vault_status: string;
+  vote_count: number;
+  vault_value: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export class ArtworkService {
   /**
    * Get all artworks
@@ -335,60 +349,66 @@ export class ArtworkService {
    */
   static async getUserWinningArtworks(userId: string): Promise<Artwork[]> {
     try {
-      // Get artworks that the user voted as winners
-      const { data: matches, error: matchesError } = await supabase
-        .from('artwork_matches')
-        .select(`
-          winner_id,
-          artworks!artwork_matches_winner_id_fkey (
-            id,
-            title,
-            description,
-            image_url,
-            user_id,
-            status,
-            vault_status,
-            vote_count,
-            vault_value,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+      const winningIds = await this.getUserWinningArtworkIds(userId);
+      if (winningIds.length === 0) return [];
 
-      if (matchesError) throw matchesError;
-      if (!matches || matches.length === 0) return [];
+      const { data: artworks, error } = await supabase
+        .from('artworks')
+        .select('*')
+        .in('id', winningIds);
 
-      // Extract unique winning artworks
+      if (error) throw error;
+      if (!artworks) return [];
+
+      // Convert to map to remove duplicates
       const uniqueArtworks = Array.from(
-        new Map(
-          matches
-            .map(match => match.artworks)
-            .filter(Boolean)
+        new Map<string, ArtworkData>(
+          (artworks as ArtworkData[])
             .map(artwork => [artwork.id, artwork])
         ).values()
       );
 
-      // Get profiles for artwork creators
+      // Get unique user IDs
       const userIds = [...new Set(uniqueArtworks.map(a => a.user_id))];
-      const { data: profiles, error: profilesError } = await supabase
+
+      // Get profiles for all users
+      const { data: profiles } = await supabase
         .from('profiles')
         .select('id, username, display_name')
         .in('id', userIds);
 
-      if (profilesError) throw profilesError;
-
       // Create a map of user_id to profile
-      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      const profileMap = new Map(
+        profiles?.map(profile => [profile.id, profile]) || []
+      );
 
-      // Combine artwork data with profile data
+      // Return artworks with profiles
       return uniqueArtworks.map(artwork => ({
         ...artwork,
         profiles: profileMap.get(artwork.user_id)
-      }));
+      })) as Artwork[];
+
     } catch (error) {
-      throw handleError(error, 'Failed to get user winning artworks');
+      console.error('Error fetching user winning artworks:', error);
+      throw error;
+    }
+  }
+
+  static async getUserWinningArtworkIds(userId: string): Promise<string[]> {
+    try {
+      const { data: matches, error } = await supabase
+        .from('artwork_matches')
+        .select('winner_id')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (!matches) return [];
+
+      return matches.map(match => match.winner_id);
+    } catch (error) {
+      console.error('Error fetching user winning artwork IDs:', error);
+      throw error;
     }
   }
 } 
