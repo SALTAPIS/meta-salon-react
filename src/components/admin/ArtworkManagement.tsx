@@ -50,6 +50,7 @@ interface Artwork {
 export function ArtworkManagement() {
   const [submittedArtworks, setSubmittedArtworks] = useState<Artwork[]>([]);
   const [unsubmittedArtworks, setUnsubmittedArtworks] = useState<Artwork[]>([]);
+  const [removedArtworks, setRemovedArtworks] = useState<Artwork[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -81,6 +82,16 @@ export function ArtworkManagement() {
       if (unsubmittedError) throw unsubmittedError;
       setUnsubmittedArtworks(unsubmitted || []);
 
+      // Fetch removed artworks
+      const { data: removed, error: removedError } = await supabase
+        .from('artworks')
+        .select('*')
+        .eq('status', 'rejected')
+        .order('created_at', { ascending: false });
+
+      if (removedError) throw removedError;
+      setRemovedArtworks(removed || []);
+
     } catch (error) {
       console.error('Error fetching artworks:', error);
       toast({
@@ -109,32 +120,14 @@ export function ArtworkManagement() {
     if (!selectedArtwork) return;
 
     try {
-      console.log('Starting title update for artwork:', selectedArtwork.id);
-      
-      // First verify we can fetch the artwork with admin client
-      const { data: existingArtwork, error: fetchError } = await supabaseAdmin
-        .from('artworks')
-        .select('*')
-        .eq('id', selectedArtwork.id)
-        .single();
-
-      if (fetchError) {
-        console.error('Failed to verify artwork with admin client:', fetchError);
-        throw fetchError;
-      }
-
-      console.log('Found artwork:', existingArtwork);
       console.log('Attempting update with new title:', editTitle);
 
       // Perform the update
       const { data: updatedData, error: updateError } = await supabaseAdmin
         .from('artworks')
-        .update({ 
-          title: editTitle,
-          updated_at: new Date().toISOString()
-        })
+        .update({ title: editTitle })
         .eq('id', selectedArtwork.id)
-        .select()
+        .select('id, title, status, vault_status, vote_count, vault_value, created_at')
         .single();
 
       if (updateError) {
@@ -146,13 +139,10 @@ export function ArtworkManagement() {
 
       // Update local state with the returned data
       const updateLocalState = (artworks: Artwork[]) =>
-        artworks.map(art => art.id === selectedArtwork.id ? updatedData : art);
+        artworks.map(art => art.id === selectedArtwork.id ? { ...art, ...updatedData } : art);
 
       setSubmittedArtworks(updateLocalState);
       setUnsubmittedArtworks(updateLocalState);
-
-      // Refresh the full list to ensure we're in sync
-      await fetchArtworks();
 
       toast({
         title: 'Success',
@@ -175,7 +165,87 @@ export function ArtworkManagement() {
     }
   };
 
-  const ArtworkTable = ({ artworks, title }: { artworks: Artwork[], title: string }) => (
+  const handleRemoveArtwork = async (artwork: Artwork) => {
+    try {
+      console.log('Removing artwork:', artwork.id);
+
+      const { data: updatedData, error: updateError } = await supabaseAdmin
+        .from('artworks')
+        .update({ 
+          status: 'rejected',
+          vault_status: 'closed'
+        })
+        .eq('id', artwork.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      console.log('Artwork removed:', updatedData);
+
+      // Refresh the artwork lists
+      await fetchArtworks();
+
+      toast({
+        title: 'Artwork Removed',
+        description: `"${artwork.title}" has been removed`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error removing artwork:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to remove artwork',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleRestoreArtwork = async (artwork: Artwork) => {
+    try {
+      console.log('Restoring artwork:', artwork.id);
+
+      const { data: updatedData, error: updateError } = await supabaseAdmin
+        .from('artworks')
+        .update({ 
+          status: 'submitted',
+          vault_status: 'active'
+        })
+        .eq('id', artwork.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      console.log('Artwork restored:', updatedData);
+
+      // Refresh the artwork lists
+      await fetchArtworks();
+
+      toast({
+        title: 'Artwork Restored',
+        description: `"${artwork.title}" has been restored`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error restoring artwork:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to restore artwork',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const ArtworkTable = ({ artworks, title, showRestore = false }: { artworks: Artwork[], title: string, showRestore?: boolean }) => (
     <Box overflowX="auto">
       <Heading size="md" mb={4}>{title}</Heading>
       <Table variant="simple" bg={bgColor} borderRadius="lg">
@@ -219,7 +289,11 @@ export function ArtworkManagement() {
                 </Stack>
               </Td>
               <Td>
-                <Badge colorScheme={artwork.status === 'approved' ? 'green' : 'yellow'}>
+                <Badge colorScheme={
+                  artwork.status === 'approved' ? 'green' :
+                  artwork.status === 'removed' ? 'red' :
+                  'yellow'
+                }>
                   {artwork.status}
                 </Badge>
               </Td>
@@ -232,9 +306,28 @@ export function ArtworkManagement() {
               <Td>{artwork.vault_value || 0} SLN</Td>
               <Td>{new Date(artwork.created_at).toLocaleDateString()}</Td>
               <Td>
-                <Link as={RouterLink} to={`/artwork/${artwork.id}`}>
-                  <Button size="sm" colorScheme="blue">View</Button>
-                </Link>
+                <Stack direction="row" spacing={2}>
+                  <Link as={RouterLink} to={`/artwork/${artwork.id}`}>
+                    <Button size="sm" colorScheme="blue">View</Button>
+                  </Link>
+                  {showRestore ? (
+                    <Button
+                      size="sm"
+                      colorScheme="green"
+                      onClick={() => handleRestoreArtwork(artwork)}
+                    >
+                      Restore
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      colorScheme="red"
+                      onClick={() => handleRemoveArtwork(artwork)}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </Stack>
               </Td>
             </Tr>
           ))}
@@ -267,6 +360,13 @@ export function ArtworkManagement() {
               artworks={unsubmittedArtworks} 
               title="Draft Artworks" 
             />
+            {removedArtworks.length > 0 && (
+              <ArtworkTable 
+                artworks={removedArtworks} 
+                title="Removed Artworks" 
+                showRestore={true}
+              />
+            )}
           </>
         )}
       </Stack>
