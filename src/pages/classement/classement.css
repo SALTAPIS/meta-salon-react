@@ -242,6 +242,7 @@
 /* Table Layout */
 .table-layout {
   border: 1px solid var(--chakra-colors-gray-200);
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -250,11 +251,19 @@
 }
 
 .table-row {
-  border-bottom: 1px solid var(--chakra-colors-gray-200);
+  border-bottom: 1px solid var(--chakra-colors-gray-100);
 }
 
 [data-theme="dark"] .table-row {
   border-color: var(--chakra-colors-gray-700);
+}
+
+.table-row:nth-child(even) {
+  background-color: var(--chakra-colors-gray-50);
+}
+
+[data-theme="dark"] .table-row:nth-child(even) {
+  background-color: var(--chakra-colors-gray-750);
 }
 
 .table-row:last-child {
@@ -268,7 +277,7 @@
 }
 
 .table-row-link:hover {
-  background-color: var(--chakra-colors-gray-50);
+  background-color: var(--chakra-colors-gray-100);
 }
 
 [data-theme="dark"] .table-row-link:hover {
@@ -276,59 +285,134 @@
 }
 
 .table-row-content {
-  display: flex;
+  display: grid;
+  gap: 1.5rem;
   align-items: center;
-  gap: 1rem;
+}
+
+.table-thumbnail-container {
+  position: relative;
+  width: 100%;
+  padding-bottom: 100%;
+  overflow: hidden;
 }
 
 .table-thumbnail {
-  width: 60px;
-  height: 60px;
-  object-fit: cover;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
 }
 
 .table-info {
-  flex: 1;
+  min-width: 0;
 }
 
 .table-title {
   font-weight: 600;
   color: var(--chakra-colors-gray-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 [data-theme="dark"] .table-title {
   color: var(--chakra-colors-gray-100);
 }
 
-.table-artist {
-  font-size: 0.875rem;
+.table-display-name {
+  font-weight: 500;
+  color: var(--chakra-colors-gray-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme="dark"] .table-display-name {
+  color: var(--chakra-colors-gray-300);
+}
+
+.table-username {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.username-link {
   color: var(--chakra-colors-blue-500);
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+.username-link:hover {
+  text-decoration: underline;
 }
 
 .table-stats {
   display: flex;
   gap: 2rem;
-  min-width: 200px;
-  text-align: right;
+  justify-content: flex-end;
   font-size: 0.875rem;
+  color: var(--chakra-colors-gray-600);
+  white-space: nowrap;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .table-stats {
-    min-width: 150px;
+[data-theme="dark"] .table-stats {
+  color: var(--chakra-colors-gray-400);
+}
+
+/* Responsive adjustments for list view */
+@media (max-width: 1100px) {
+  .table-row-content.small {
+    grid-template-columns: 40px 2fr 1.5fr 1.5fr;
   }
   
-  .artwork-card.variable-sized.span-2,
-  .artwork-card.variable-sized.span-3,
-  .artwork-card.variable-sized.span-4 {
-    width: 100%;
-    margin-left: 0;
+  .table-row-content.medium {
+    grid-template-columns: 80px 2fr 1.5fr 1.5fr;
+  }
+  
+  .table-row-content.large {
+    grid-template-columns: 320px 2fr 1.5fr 1.5fr;
+  }
+  
+  .table-stats {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .table-row-content.small {
+    grid-template-columns: 40px 2fr 1.5fr;
+  }
+  
+  .table-row-content.medium {
+    grid-template-columns: 80px 2fr 1.5fr;
+  }
+  
+  .table-row-content.large {
+    grid-template-columns: 320px 2fr 1.5fr;
+  }
+  
+  .table-username {
+    display: none;
   }
 }
 
 @media (max-width: 480px) {
-  .table-stats {
+  .table-row-content.small {
+    grid-template-columns: 40px 1fr;
+  }
+  
+  .table-row-content.medium {
+    grid-template-columns: 80px 1fr;
+  }
+  
+  .table-row-content.large {
+    grid-template-columns: 320px 1fr;
+  }
+  
+  .table-display-name {
     display: none;
   }
 }
@@ -372,4 +456,231 @@
 .artwork-card.variable-sized.size-2,
 .artwork-card.variable-sized.size-3 {
   /* Remove these styles */
-} 
+}
+
+/* List Layout */
+.list-layout {
+  width: 100%;
+}
+
+/* Table Row */
+.table-row {
+  border-bottom: 1px solid var(--chakra-colors-gray-200);
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+/* Table Row Link */
+.table-row-link {
+  display: block;
+  width: 100%;
+  padding: 1rem;
+  text-decoration: none !important;
+}
+
+/* Table Row Content */
+.table-row-content {
+  display: grid;
+  gap: 1.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+/* Size variations */
+.table-row-content.small {
+  grid-template-columns: 60px 2fr 2fr 1.5fr;
+}
+
+.table-row-content.medium {
+  grid-template-columns: 120px 2fr 2fr 1.5fr;
+}
+
+.table-row-content.large {
+  grid-template-columns: 480px 2fr 2fr 1.5fr;
+}
+
+/* Thumbnail */
+.table-thumbnail-container {
+  position: relative;
+  width: 100%;
+  padding-bottom: 100%;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.table-thumbnail {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+/* Text Content */
+.table-title {
+  font-weight: 600;
+  color: var(--chakra-colors-gray-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-user-info {
+  color: var(--chakra-colors-gray-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-stats {
+  display: flex;
+  gap: 2rem;
+  justify-content: flex-end;
+  font-size: 0.875rem;
+  color: var(--chakra-colors-gray-600);
+  white-space: nowrap;
+}
+
+/* Dark Mode */
+[data-theme="dark"] .table-row {
+  border-color: var(--chakra-colors-gray-700);
+}
+
+[data-theme="dark"] .table-title {
+  color: var(--chakra-colors-gray-100);
+}
+
+[data-theme="dark"] .table-user-info {
+  color: var(--chakra-colors-gray-300);
+}
+
+[data-theme="dark"] .table-stats {
+  color: var(--chakra-colors-gray-400);
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .table-row-content.small {
+    grid-template-columns: 40px 2fr 2fr;
+  }
+  
+  .table-row-content.medium {
+    grid-template-columns: 80px 2fr 2fr;
+  }
+  
+  .table-row-content.large {
+    grid-template-columns: 320px 2fr 2fr;
+  }
+  
+  .table-stats-cell {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .table-row-content.small {
+    grid-template-columns: 40px 2fr 2fr;
+  }
+  
+  .table-row-content.medium {
+    grid-template-columns: 80px 2fr 2fr;
+  }
+  
+  .table-row-content.large {
+    grid-template-columns: 320px 2fr 2fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .table-row-content.small {
+    grid-template-columns: 40px 1fr;
+  }
+  
+  .table-row-content.medium {
+    grid-template-columns: 80px 1fr;
+  }
+  
+  .table-row-content.large {
+    grid-template-columns: 320px 1fr;
+  }
+  
+  .table-user-cell {
+    display: none;
+  }
+}
+
+/* Keep other existing styles */
+.chakra-container div[class^="css-"] .table-row {
+  border-bottom: 1px solid var(--chakra-colors-gray-200);
+}
+
+.chakra-container div[class^="css-"] .table-row:last-child {
+  border-bottom: none;
+}
+
+.chakra-container div[class^="css-"] .table-row-link {
+  display: block;
+  width: 100%;
+  padding: 1rem;
+  text-decoration: none !important;
+}
+
+.chakra-container div[class^="css-"] .table-row-content {
+  display: grid;
+  gap: 1.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+/* Size variations */
+.chakra-container div[class^="css-"] .table-row-content.small {
+  grid-template-columns: 60px 2fr 2fr 1.5fr;
+}
+
+.chakra-container div[class^="css-"] .table-row-content.medium {
+  grid-template-columns: 120px 2fr 2fr 1.5fr;
+}
+
+.chakra-container div[class^="css-"] .table-row-content.large {
+  grid-template-columns: 480px 2fr 2fr 1.5fr;
+}
+
+/* Keep other styles the same */
+.css-1h13vb2 .table-row {
+  border-bottom: 1px solid var(--chakra-colors-gray-200);
+}
+
+.css-1h13vb2 .table-row:last-child {
+  border-bottom: none;
+}
+
+.css-1h13vb2 .table-row-link {
+  display: block;
+  width: 100%;
+  padding: 1rem;
+  text-decoration: none !important;
+}
+
+.css-1h13vb2 .table-row-content {
+  display: grid;
+  gap: 1.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+/* Size variations */
+.css-1h13vb2 .table-row-content.small {
+  grid-template-columns: 60px 2fr 2fr 1.5fr;
+}
+
+.css-1h13vb2 .table-row-content.medium {
+  grid-template-columns: 120px 2fr 2fr 1.5fr;
+}
+
+.css-1h13vb2 .table-row-content.large {
+  grid-template-columns: 480px 2fr 2fr 1.5fr;
+}
+
+/* Keep other styles the same */

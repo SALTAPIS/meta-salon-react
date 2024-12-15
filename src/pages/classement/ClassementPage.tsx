@@ -14,6 +14,7 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
+  Text,
 } from '@chakra-ui/react';
 import { ChevronDownIcon, TimeIcon, ViewIcon } from '@chakra-ui/icons';
 import { Link as RouterLink } from 'react-router-dom';
@@ -21,7 +22,7 @@ import { ArtworkService } from '../../services/ArtworkService';
 import type { Artwork } from '../../types/database.types';
 import './classement.css';
 
-type LayoutMode = 'fixed-height' | 'fixed-width' | 'square' | 'table';
+type LayoutMode = 'fixed-height' | 'fixed-width' | 'square' | 'list';
 type SizeMode = 'small' | 'medium' | 'large';
 
 const ArtworkCard = ({ 
@@ -35,84 +36,60 @@ const ArtworkCard = ({
   sizeMode?: SizeMode;
   layoutMode: LayoutMode;
 }) => {
-  const [aspectRatio, setAspectRatio] = React.useState<number | null>(null);
   const imageRef = React.useRef<HTMLImageElement>(null);
 
   const handleImageLoad = () => {
-    if (imageRef.current) {
-      const { naturalWidth, naturalHeight } = imageRef.current;
-      setAspectRatio(naturalWidth / naturalHeight);
-    }
+    // Empty handler for future use
   };
 
-  const getSpanClass = (aspectRatio: number | null) => {
-    if (!aspectRatio || layoutMode !== 'variable-sized') return '';
-    
-    if (sizeMode === 'randomized') {
-      // For vertical images (aspect ratio < 1)
-      if (aspectRatio < 1) {
-        const randomSpan = Math.floor(Math.random() * 3) + 1;
-        return randomSpan > 1 ? `span-${randomSpan}` : '';
-      }
-      
-      // For horizontal images (aspect ratio > 1)
-      const randomSpan = Math.floor(Math.random() * 4) + 1;
-      return randomSpan > 1 ? `span-${randomSpan}` : '';
-    }
-    
-    if (sizeMode === 'proportional' && totalVaultValue > 0) {
-      // Calculate relative area based on vault value
-      const relativeArea = (artwork.vault_value || 0) / totalVaultValue;
-      
-      // Scale factor to convert relative area to column spans
-      // We want larger values to take up more columns
-      const maxArea = 12; // maximum columns
-      const scaledArea = Math.ceil(relativeArea * maxArea);
-      
-      // Adjust span based on aspect ratio and scaled area
-      if (aspectRatio < 1) {
-        // Vertical images: limit to 3 columns max
-        return `span-${Math.min(3, Math.max(1, Math.ceil(scaledArea / 2)))}`;
-      } else {
-        // Horizontal images: limit to 4 columns max
-        return `span-${Math.min(4, Math.max(1, scaledArea))}`;
-      }
-    }
-    
-    return '';
-  };
-
-  if (layoutMode === 'table') {
+  if (layoutMode === 'list') {
     return (
-      <div className="table-row">
-        <RouterLink to={`/artwork/${artwork.id}`} className="table-row-link">
-          <div className="table-row-content">
-            <img
-              src={artwork.image_url}
-              alt={artwork.title || ""}
-              className="table-thumbnail"
-            />
-            <div className="table-info">
-              <div className="table-title">{artwork.title}</div>
-              {artwork.profiles?.username && (
-                <div className="table-artist">
-                  {artwork.profiles.display_name || artwork.profiles.username}
-                </div>
-              )}
-            </div>
-            <div className="table-stats">
-              <div className="table-votes">{artwork.vote_count ?? 0} votes</div>
-              <div className="table-value">{artwork.vault_value ?? 0} SLN</div>
-            </div>
-          </div>
-        </RouterLink>
-      </div>
+      <Box borderBottom="1px solid" borderColor="gray.200" _last={{ borderBottom: 'none' }}>
+        <Box p={4} display="grid" gap={6} alignItems="start" gridTemplateColumns={
+          sizeMode === 'small' ? '60px 2fr 2fr 1.5fr' :
+          sizeMode === 'medium' ? '120px 2fr 2fr 1.5fr' :
+          '480px 2fr 2fr 1.5fr'
+        }>
+          <RouterLink to={`/artwork/${artwork.id}`}>
+            <Box position="relative" paddingBottom="100%" overflow="hidden">
+              <Box
+                as="img"
+                src={artwork.image_url}
+                alt={artwork.title || ""}
+                position="absolute"
+                width="100%"
+                height="100%"
+                objectFit="contain"
+                objectPosition="top"
+              />
+            </Box>
+          </RouterLink>
+          <Box>
+            <Text fontWeight="bold" noOfLines={1}>
+              {artwork.title || "Untitled"}
+            </Text>
+          </Box>
+          <Box>
+            <RouterLink to={`/${artwork.profiles?.username}`} style={{ textDecoration: 'none' }}>
+              <Text noOfLines={1}>
+                <Box as="span" fontWeight="bold">
+                  {artwork.profiles?.display_name || artwork.profiles?.username || "—"}
+                </Box>{' '}
+                <Box as="span" color="gray.500">
+                  {artwork.profiles?.username}
+                </Box>
+              </Text>
+            </RouterLink>
+          </Box>
+          <HStack spacing={8} justify="flex-end">
+            <Text>{artwork.vote_count ?? 0} votes</Text>
+            <Text color="green.500" fontWeight="bold">{artwork.vault_value ?? 0} SLN</Text>
+          </HStack>
+        </Box>
+      </Box>
     );
   }
 
-  const sizeClass = layoutMode === 'variable-sized' 
-    ? (sizeMode === 'randomized' ? 'randomized' : 'proportional')
-    : sizeMode;
   const hasStats = (artwork.vault_value ?? 0) > 0 || (artwork.vote_count ?? 0) > 0;
 
   return (
@@ -165,7 +142,6 @@ export function ClassementPage() {
   const [layoutMode, setLayoutMode] = React.useState<LayoutMode>('fixed-height');
   const [sizeMode, setSizeMode] = React.useState<SizeMode>('medium');
   const [hideMetadata, setHideMetadata] = React.useState(false);
-  const [artworkSizes, setArtworkSizes] = React.useState<Map<string, number>>(new Map());
 
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const filterBgColor = useColorModeValue('gray.50', 'gray.800');
@@ -173,12 +149,6 @@ export function ClassementPage() {
   const menuBgColor = useColorModeValue('white', 'gray.700');
   const activeButtonBg = useColorModeValue('gray.200', 'blue.500');
   const inactiveButtonBg = useColorModeValue('white', 'gray.700');
-
-  // Calculate total vault value for proportional sizing
-  const totalVaultValue = React.useMemo(() => 
-    artworks.reduce((sum, artwork) => sum + (artwork.vault_value || 0), 0),
-    [artworks]
-  );
 
   React.useEffect(() => {
     const loadArtworks = async () => {
@@ -196,57 +166,6 @@ export function ClassementPage() {
 
     loadArtworks();
   }, []);
-
-  React.useEffect(() => {
-    if (layoutMode === 'variable-sized') {
-      const sizes = new Map<string, number>();
-      artworks.forEach(artwork => {
-        const img = new Image();
-        img.onload = () => {
-          const aspectRatio = img.naturalWidth / img.naturalHeight;
-          const size = getArtworkSize(artwork, aspectRatio, sizeMode, totalVaultValue);
-          sizes.set(artwork.id, size);
-          setArtworkSizes(new Map(sizes));
-        };
-        img.src = artwork.image_url;
-      });
-    }
-  }, [artworks, layoutMode, sizeMode, totalVaultValue]);
-
-  const sortedArtworks = React.useMemo(() => {
-    if (layoutMode !== 'variable-sized') return artworks;
-
-    return [...artworks].sort((a, b) => {
-      const sizeA = artworkSizes.get(a.id) || 1;
-      const sizeB = artworkSizes.get(b.id) || 1;
-      return sizeB - sizeA; // Sort larger items first
-    });
-  }, [artworks, artworkSizes, layoutMode]);
-
-  const getArtworkSize = (artwork: Artwork, aspectRatio: number | null, sizeMode: SizeMode, totalVaultValue: number) => {
-    if (!aspectRatio) return 1;
-    
-    if (sizeMode === 'randomized') {
-      // Simple random sizing: 1, 2, or 3 columns
-      return Math.floor(Math.random() * 3) + 1;
-    }
-    
-    if (sizeMode === 'proportional' && totalVaultValue > 0) {
-      const relativeValue = (artwork.vault_value || 0) / totalVaultValue;
-      // Scale based on value: 1, 2, or 3 columns
-      if (relativeValue > 0.2) return 3;
-      if (relativeValue > 0.1) return 2;
-      return 1;
-    }
-    
-    return 1;
-  };
-
-  const getSpanClass = (artworkId: string) => {
-    if (layoutMode !== 'variable-sized') return '';
-    const size = artworkSizes.get(artworkId);
-    return size && size > 1 ? `span-${size}` : '';
-  };
 
   const getBreakpointCols = () => {
     if (layoutMode === 'fixed-height') {
@@ -284,18 +203,13 @@ export function ClassementPage() {
       }
     }
 
+    // Default for list view
     return {
-      default: 4,
-      1400: 3,
-      1100: 2,
+      default: 1,
+      1400: 1,
+      1100: 1,
       800: 1
     };
-  };
-
-  const getSizeClass = (artworkId: string) => {
-    if (layoutMode !== 'variable-sized') return '';
-    const size = artworkSizes.get(artworkId);
-    return size ? `size-${size}` : '';
   };
 
   if (isLoading) {
@@ -396,16 +310,15 @@ export function ClassementPage() {
                 Layout: {
                   layoutMode === 'fixed-height' ? 'Fixed Height' :
                   layoutMode === 'fixed-width' ? 'Fixed Width' :
-                  layoutMode === 'variable-sized' ? 'Variable Sized' :
                   layoutMode === 'square' ? 'Square Grid' :
-                  'Table View'
+                  'List'
                 }
               </MenuButton>
               <MenuList bg={menuBgColor}>
                 <MenuItem onClick={() => setLayoutMode('fixed-height')}>Fixed Height</MenuItem>
                 <MenuItem onClick={() => setLayoutMode('fixed-width')}>Fixed Width</MenuItem>
                 <MenuItem onClick={() => setLayoutMode('square')}>Square Grid</MenuItem>
-                <MenuItem onClick={() => setLayoutMode('table')}>Table View</MenuItem>
+                <MenuItem onClick={() => setLayoutMode('list')}>List</MenuItem>
               </MenuList>
             </Menu>
 
@@ -417,25 +330,12 @@ export function ClassementPage() {
                 size="sm"
                 color={filterTextColor}
               >
-                Size: {
-                  layoutMode === 'variable-sized'
-                    ? (sizeMode === 'randomized' ? 'Randomized' : 'Proportional')
-                    : sizeMode.charAt(0).toUpperCase() + sizeMode.slice(1)
-                }
+                Size: {sizeMode.charAt(0).toUpperCase() + sizeMode.slice(1)}
               </MenuButton>
               <MenuList bg={menuBgColor}>
-                {layoutMode === 'variable-sized' ? (
-                  <>
-                    <MenuItem onClick={() => setSizeMode('randomized')}>Randomized</MenuItem>
-                    <MenuItem onClick={() => setSizeMode('proportional')}>Proportional to Value</MenuItem>
-                  </>
-                ) : (
-                  <>
-                    <MenuItem onClick={() => setSizeMode('small')}>Small</MenuItem>
-                    <MenuItem onClick={() => setSizeMode('medium')}>Medium</MenuItem>
-                    <MenuItem onClick={() => setSizeMode('large')}>Large</MenuItem>
-                  </>
-                )}
+                <MenuItem onClick={() => setSizeMode('small')}>Small</MenuItem>
+                <MenuItem onClick={() => setSizeMode('medium')}>Medium</MenuItem>
+                <MenuItem onClick={() => setSizeMode('large')}>Large</MenuItem>
               </MenuList>
             </Menu>
 
@@ -452,8 +352,8 @@ export function ClassementPage() {
       </Box>
 
       <Box px={6}>
-        {layoutMode === 'table' ? (
-          <div className="table-layout">
+        {layoutMode === 'list' ? (
+          <div className="list-layout">
             {artworks.map((artwork) => (
               <ArtworkCard
                 key={artwork.id}
@@ -461,7 +361,6 @@ export function ClassementPage() {
                 hideMetadata={hideMetadata}
                 sizeMode={sizeMode}
                 layoutMode={layoutMode}
-                totalVaultValue={totalVaultValue}
               />
             ))}
           </div>
@@ -474,7 +373,6 @@ export function ClassementPage() {
                 hideMetadata={hideMetadata}
                 sizeMode={sizeMode}
                 layoutMode={layoutMode}
-                totalVaultValue={totalVaultValue}
               />
             ))}
           </div>
@@ -487,7 +385,6 @@ export function ClassementPage() {
                 hideMetadata={hideMetadata}
                 sizeMode={sizeMode}
                 layoutMode={layoutMode}
-                totalVaultValue={totalVaultValue}
               />
             ))}
           </div>
@@ -497,16 +394,13 @@ export function ClassementPage() {
             className="masonry-grid"
             columnClassName="masonry-grid_column"
           >
-            {sortedArtworks.map((artwork) => (
+            {artworks.map((artwork) => (
               <ArtworkCard
                 key={artwork.id}
                 artwork={artwork}
                 hideMetadata={hideMetadata}
                 sizeMode={sizeMode}
                 layoutMode={layoutMode}
-                totalVaultValue={totalVaultValue}
-                spanClass={getSpanClass(artwork.id)}
-                getSizeClass={getSizeClass}
               />
             ))}
           </Masonry>
