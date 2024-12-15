@@ -47,5 +47,13 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2",
     "vite": "^5.0.12"
+  },
+  "resolutions": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "overrides": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   }
 }
