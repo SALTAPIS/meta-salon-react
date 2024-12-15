@@ -141,7 +141,6 @@ export function ClassementPage() {
   const [layoutMode, setLayoutMode] = React.useState<LayoutMode>('masonry');
   const [sizeMode, setSizeMode] = React.useState<SizeMode>('medium');
 
-  const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const filterBgColor = useColorModeValue('gray.50', 'gray.800');
   const filterTextColor = useColorModeValue('gray.800', 'white');

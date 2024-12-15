@@ -1,6 +1,5 @@
-import { Box, Image, VStack, Text, HStack, Link, useColorModeValue, Grid } from '@chakra-ui/react';
+import { Box, Image, Text, HStack, Link, useColorModeValue, Grid } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface Artwork {
   id: string;
@@ -29,8 +28,6 @@ interface ArtworkCardProps {
 }
 
 export function ArtworkCard({ artwork, showStats = false, hideMetadata = false, layout = 'masonry-fixed' }: ArtworkCardProps) {
-  const { user } = useAuth();
-  const bgColor = useColorModeValue('white', 'gray.800');
   const textColor = useColorModeValue('gray.800', 'white');
   const mutedColor = useColorModeValue('gray.600', 'gray.400');
   const vaultValueColor = useColorModeValue('green.500', 'green.300');
