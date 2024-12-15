@@ -261,4 +261,66 @@ export class ArtworkService {
       throw handleError(error, 'Failed to record artwork view');
     }
   }
+
+  /**
+   * Get artwork matches
+   */
+  static async getArtworkMatches(artworkId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('artwork_matches')
+        .select(`
+          id,
+          artwork_id_1,
+          artwork_id_2,
+          winner_id,
+          user_id,
+          created_at,
+          artworks!artwork_matches_artwork_id_1_fkey (
+            id,
+            title,
+            image_url
+          ),
+          artworks!artwork_matches_artwork_id_2_fkey (
+            id,
+            title,
+            image_url
+          )
+        `)
+        .or(`artwork_id_1.eq.${artworkId},artwork_id_2.eq.${artworkId}`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      throw handleError(error, 'Failed to get artwork matches');
+    }
+  }
+
+  /**
+   * Get artwork win rate
+   */
+  static async getArtworkWinRate(artworkId: string) {
+    try {
+      const { data: artwork, error } = await supabase
+        .from('artworks')
+        .select('wins, losses')
+        .eq('id', artworkId)
+        .single();
+
+      if (error) throw error;
+      
+      const totalMatches = artwork.wins + artwork.losses;
+      const winRate = totalMatches > 0 ? (artwork.wins / totalMatches) * 100 : 0;
+
+      return {
+        wins: artwork.wins,
+        losses: artwork.losses,
+        totalMatches,
+        winRate: Math.round(winRate * 100) / 100 // Round to 2 decimal places
+      };
+    } catch (error) {
+      throw handleError(error, 'Failed to get artwork win rate');
+    }
+  }
 } 

@@ -23,6 +23,7 @@ interface GameArenaProps {
 
 export function GameArena({ onExit }: GameArenaProps) {
   const bg = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
   const [hoveredArtwork, setHoveredArtwork] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const toast = useToast();
@@ -204,7 +205,7 @@ export function GameArena({ onExit }: GameArenaProps) {
         left={0}
         right={0}
         borderTop="1px"
-        borderColor={useColorModeValue('gray.200', 'gray.700')}
+        borderColor={borderColor}
         bg={bg}
         h="80px"
         display="flex"

@@ -3,7 +3,7 @@ import { useAuth } from './useAuth';
 import { VoteService } from '../services/VoteService';
 import type { Vote, VaultState } from '../types/database.types';
 
-export function useVoting(artworkId: string) {
+export function useVoting(artworkId: string, otherArtworkId?: string) {
   const { user } = useAuth();
   const [votes, setVotes] = useState<Vote[]>([]);
   const [vaultState, setVaultState] = useState<VaultState | null>(null);
@@ -47,6 +47,11 @@ export function useVoting(artworkId: string) {
       return;
     }
 
+    if (!otherArtworkId) {
+      setError('Missing other artwork ID for comparison');
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -58,7 +63,7 @@ export function useVoting(artworkId: string) {
       }
 
       // Cast vote
-      await VoteService.castVote(artworkId, packId, value);
+      await VoteService.castVote(artworkId, otherArtworkId, packId, value);
 
       // Refresh data
       const [votesData, vaultData] = await Promise.all([

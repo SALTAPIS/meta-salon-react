@@ -43,6 +43,15 @@ export interface Artwork {
   };
 }
 
+export interface ArtworkMatch {
+  id: string;
+  artwork_id_1: string;
+  artwork_id_2: string;
+  winner_id: string;
+  user_id: string;
+  created_at: string;
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -174,6 +183,23 @@ export type Database = {
           description?: string | null;
           reference_id?: string | null;
           created_at?: string;
+        };
+      };
+
+      artwork_matches: {
+        Row: ArtworkMatch;
+        Insert: Omit<ArtworkMatch, 'id' | 'created_at'>;
+        Update: Partial<Omit<ArtworkMatch, 'id' | 'created_at'>>;
+      };
+    };
+
+    Functions: {
+      get_next_artwork_pair: {
+        Args: Record<string, never>;
+        Returns: { 
+          artwork_id_1: string; 
+          artwork_id_2: string;
+          remaining_count: number;
         };
       };
     };

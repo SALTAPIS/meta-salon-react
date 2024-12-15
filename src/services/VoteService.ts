@@ -2,13 +2,24 @@ import { supabase } from '../lib/supabaseClient';
 import { handleError } from '../utils/errors';
 import { getSession } from '../utils/session';
 import { VotePackService } from './VotePackService';
-import type { Vote, VaultState } from '../types/database.types';
+import type { Vote, VaultState, ArtworkMatch } from '../types/database.types';
+
+interface NextArtworkPair {
+  artwork_id_1: string | null;
+  artwork_id_2: string | null;
+  remaining_count: number;
+}
 
 export class VoteService {
   /**
    * Cast a vote for an artwork using a vote pack
    */
-  static async castVote(artworkId: string, packId: string, value: number): Promise<void> {
+  static async castVote(
+    winningArtworkId: string,
+    otherArtworkId: string,
+    packId: string,
+    value: number
+  ): Promise<void> {
     try {
       // Get session for auth token
       const session = await getSession();
@@ -18,7 +29,8 @@ export class VoteService {
 
       // Log request
       console.log('[VoteService] Casting vote:', {
-        artwork_id: artworkId,
+        winning_artwork_id: winningArtworkId,
+        other_artwork_id: otherArtworkId,
         pack_id: packId,
         value: value,
         user_id: session.user.id
@@ -26,7 +38,8 @@ export class VoteService {
 
       // Call database function directly
       const { data, error } = await supabase.rpc('cast_vote', {
-        p_artwork_id: artworkId,
+        p_artwork_id: winningArtworkId,
+        p_other_artwork_id: otherArtworkId,
         p_pack_id: packId,
         p_value: value
       });
@@ -40,7 +53,8 @@ export class VoteService {
           details: error.details,
           hint: error.hint,
           request: {
-            artwork_id: artworkId,
+            winning_artwork_id: winningArtworkId,
+            other_artwork_id: otherArtworkId,
             pack_id: packId,
             value: value
           }
@@ -51,7 +65,8 @@ export class VoteService {
       // Log success
       console.log('[VoteService] Vote success:', {
         data,
-        artwork_id: artworkId,
+        winning_artwork_id: winningArtworkId,
+        other_artwork_id: otherArtworkId,
         pack_id: packId,
         value: value
       });
@@ -65,11 +80,64 @@ export class VoteService {
         message: error instanceof Error ? error.message : 'Unknown error',
         details: error instanceof Error ? (error as any).details : undefined,
         hint: error instanceof Error ? (error as any).hint : undefined,
-        artwork_id: artworkId,
+        winning_artwork_id: winningArtworkId,
+        other_artwork_id: otherArtworkId,
         pack_id: packId,
         value: value
       });
       throw handleError(error, 'Failed to cast vote');
+    }
+  }
+
+  /**
+   * Get next artwork pair for voting
+   */
+  static async getNextArtworkPair(): Promise<NextArtworkPair> {
+    try {
+      const session = await getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const { data, error } = await supabase.rpc('get_next_artwork_pair');
+
+      if (error) {
+        console.error('[VoteService] Error getting next pair:', {
+          error,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
+      
+      // Handle array response
+      const pair = Array.isArray(data) ? data[0] : data;
+      console.log('[VoteService] Raw pair data:', data);
+      console.log('[VoteService] Processed pair:', pair);
+      
+      return pair || { artwork_id_1: null, artwork_id_2: null, remaining_count: 0 };
+    } catch (error) {
+      throw handleError(error, 'Failed to get next artwork pair');
+    }
+  }
+
+  /**
+   * Get matches for a specific artwork
+   */
+  static async getArtworkMatches(artworkId: string): Promise<ArtworkMatch[]> {
+    try {
+      const { data, error } = await supabase
+        .from('artwork_matches')
+        .select('*')
+        .or(`artwork_id_1.eq.${artworkId},artwork_id_2.eq.${artworkId}`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      throw handleError(error, 'Failed to get artwork matches');
     }
   }
 
