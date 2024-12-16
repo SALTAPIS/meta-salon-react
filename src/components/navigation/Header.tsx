@@ -21,9 +21,10 @@ export function Header() {
   const { colorMode, toggleColorMode } = useColorMode();
   const location = useLocation();
   const navigate = useNavigate();
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const borderColor = useColorModeValue('gray.200', 'gray.600');
   const tabTextColor = useColorModeValue('gray.500', 'gray.400');
   const selectedTabColor = useColorModeValue('black', 'white');
+  const bg = useColorModeValue('white', '#1a1816');
 
   const paths = [
     { path: '/game', label: 'The Salon Game' },
@@ -80,6 +81,9 @@ export function Header() {
         borderBottomWidth="1px" 
         borderColor={borderColor}
         display={{ base: 'none', md: 'block' }}
+        bg={bg}
+        position="relative"
+        zIndex={1}
       >
         <Container size="wide">
           <Flex align="center" justify="space-between">
@@ -97,14 +101,15 @@ export function Header() {
               </Text>
             </HStack>
 
-            <Box height="57px" position="relative">
+            <Box height="57px" position="relative" mt="-11px">
               <Tabs 
                 index={getCurrentTabIndex()} 
                 onChange={handleTabChange}
                 variant="unstyled"
                 sx={{
                   '.chakra-tabs__tab-list': {
-                    position: 'relative'
+                    position: 'relative',
+                    backgroundColor: 'inherit'
                   },
                   '.chakra-tabs__tab': {
                     fontSize: 'sm',
@@ -113,6 +118,7 @@ export function Header() {
                     color: tabTextColor,
                     position: 'relative',
                     transition: 'color 0.2s',
+                    backgroundColor: 'inherit',
                     _hover: {
                       color: selectedTabColor
                     },
