@@ -9,8 +9,6 @@ import {
   Text,
   Tabs,
   TabList,
-  TabPanels,
-  TabPanel,
   Tab,
   Button,
   useToast,

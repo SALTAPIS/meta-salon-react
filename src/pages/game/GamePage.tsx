@@ -6,6 +6,8 @@ import {
   Button,
   useColorModeValue,
   Box,
+  IconButton,
+  useBreakpointValue,
 } from '@chakra-ui/react';
 import { Fade } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
@@ -15,6 +17,7 @@ import { useTokens } from '../../hooks/token/useTokens';
 import gsap from 'gsap';
 import { ArtworkService } from '../../services/ArtworkService';
 import type { Artwork } from '../../types/database.types';
+import { RepeatIcon } from '@chakra-ui/icons';
 
 // Key for storing session state in localStorage
 const ACTIVE_SESSION_KEY = 'meta_salon_active_session';
@@ -39,6 +42,7 @@ export default function GamePage() {
   const previewRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
   const artworksRef = useRef<PreviewArtwork[]>([]);
+  const isMobile = useBreakpointValue({ base: true, md: false });
 
   // Animation configuration
   const config = {
@@ -47,7 +51,7 @@ export default function GamePage() {
     throwForce: 15,
     maxRotation: 3,
     pairInterval: 2000,
-    maxArtworks: 12,
+    maxArtworks: isMobile ? 4 : 9,
     collisionElasticity: 0.7,
     minSpeed: 0.1,
   };
@@ -325,6 +329,16 @@ export default function GamePage() {
     setIsPlaying(false);
   };
 
+  const resetAnimation = () => {
+    // Clear existing artworks
+    artworksRef.current.forEach(artwork => artwork.element.remove());
+    artworksRef.current = [];
+    usedIndices.current.clear();
+
+    // Force a re-render to restart animation
+    setPreviewArtworks(prevArtworks => [...prevArtworks]);
+  };
+
   // Show game arena if playing
   if (isPlaying && user && hasAvailableVotes) {
     return <GameArena onExit={handleExitGame} />;
@@ -362,11 +376,24 @@ export default function GamePage() {
         width="100vw"
         height="calc(100vh - 57px)"
       />
+      <IconButton
+        aria-label="Refresh animation"
+        icon={<RepeatIcon />}
+        position="fixed"
+        bottom={4}
+        right={isMobile ? "50%" : 4}
+        transform={isMobile ? "translateX(50%)" : "none"}
+        onClick={resetAnimation}
+        colorScheme="blue"
+        variant="ghost"
+        size="lg"
+        zIndex={1}
+      />
       <Fade in={true}>
         <VStack 
           spacing={8}
           position="absolute"
-          top="30%"
+          top="50%"
           left="50%"
           transform="translate(-50%, -50%)"
           textAlign="center"
@@ -399,38 +426,40 @@ export default function GamePage() {
               Vote for your favorite artworks and help curate the collection
             </Text>
           </Box>
-          {user ? (
-            hasAvailableVotes ? (
-              <Button
-                size="lg"
-                colorScheme="blue"
-                onClick={handleStartPlaying}
-                width={['100%', 'auto']}
-              >
-                Start Playing
-              </Button>
+          <Box>
+            {user ? (
+              hasAvailableVotes ? (
+                <Button
+                  size="lg"
+                  colorScheme="blue"
+                  onClick={handleStartPlaying}
+                  width={['auto', 'auto']}
+                >
+                  Start Playing
+                </Button>
+              ) : (
+                <Button
+                  as={RouterLink}
+                  to="/tokens"
+                  size="lg"
+                  colorScheme="blue"
+                  width={['auto', 'auto']}
+                >
+                  Get Vote Packs
+                </Button>
+              )
             ) : (
               <Button
                 as={RouterLink}
-                to="/tokens"
+                to="/auth/signup"
                 size="lg"
                 colorScheme="blue"
-                width={['100%', 'auto']}
+                width={['auto', 'auto']}
               >
-                Get Vote Packs
+                Sign up to Play
               </Button>
-            )
-          ) : (
-            <Button
-              as={RouterLink}
-              to="/auth/signin"
-              size="lg"
-              colorScheme="blue"
-              width={['100%', 'auto']}
-            >
-              Sign In to Play
-            </Button>
-          )}
+            )}
+          </Box>
         </VStack>
       </Fade>
     </Box>
