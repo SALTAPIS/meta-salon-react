@@ -82,8 +82,9 @@ const HeartFountain = ({ isActive, position }: { isActive: boolean; position: { 
 };
 
 export function GameArena({ onExit }: GameArenaProps) {
-  const bg = useColorModeValue('white', 'gray.800');
+  const bg = useColorModeValue('white', '#0c0c0c');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const textColor = useColorModeValue('gray.600', 'gray.400');
   const [selectedArtwork, setSelectedArtwork] = useState<'left' | 'right' | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
@@ -301,7 +302,7 @@ export function GameArena({ onExit }: GameArenaProps) {
     const errorMessage = error instanceof Error ? error.message : error;
     if (typeof errorMessage === 'string' && errorMessage.includes('Only one artwork remaining')) {
       return (
-        <Center h="100vh" bg={bg}>
+        <Center h="100vh">
           <VStack spacing={8} maxW="container.sm" textAlign="center" p={4}>
             <Heading 
               size={['xl', '2xl']} 
@@ -312,7 +313,7 @@ export function GameArena({ onExit }: GameArenaProps) {
             >
               Thank you for sharing your love for art
             </Heading>
-            <Text fontSize={['md', 'lg']} color="gray.500" maxW="600px" textAlign="center" px={4}>
+            <Text fontSize={['md', 'lg']} color={textColor} maxW="600px" textAlign="center" px={4}>
               You've voted on all available artworks. Why not check out your winning choices or submit your own masterpiece?
             </Text>
             <Stack 
@@ -362,7 +363,7 @@ export function GameArena({ onExit }: GameArenaProps) {
 
   if (!currentPair) {
     return (
-      <Center h="100vh" bg={bg}>
+      <Center h="100vh">
         <VStack spacing={8} maxW="container.sm" textAlign="center" p={4}>
           <Heading 
             size={['xl', '2xl']} 
@@ -373,7 +374,7 @@ export function GameArena({ onExit }: GameArenaProps) {
           >
             Thank you for sharing your love for art
           </Heading>
-          <Text fontSize={['md', 'lg']} color="gray.500" maxW="600px" textAlign="center" px={4}>
+          <Text fontSize={['md', 'lg']} color={textColor} maxW="600px" textAlign="center" px={4}>
             You've voted on all available artworks. Why not check out your winning choices or submit your own masterpiece?
           </Text>
           <Stack 
@@ -411,7 +412,7 @@ export function GameArena({ onExit }: GameArenaProps) {
 
   if (!hasVotePacks) {
     return (
-      <Center h="100vh" bg={bg}>
+      <Center h="100vh">
         <VStack spacing={8} maxW="container.sm" textAlign="center" p={4}>
           <Heading
             size={['xl', '2xl']}
@@ -420,7 +421,7 @@ export function GameArena({ onExit }: GameArenaProps) {
           >
             Time to recharge!
           </Heading>
-          <Text fontSize={['md', 'xl']} color="gray.600" px={4}>
+          <Text fontSize={['md', 'xl']} color={textColor} px={4}>
             You've used all your votes - great job supporting the artists! 
             Ready to continue shaping the future of digital art?
           </Text>
@@ -609,24 +610,18 @@ export function GameArena({ onExit }: GameArenaProps) {
           right={0}
           borderTop="1px"
           borderColor={borderColor}
-          bg={bg}
           h="80px"
           display="flex"
           alignItems="center"
           justifyContent="center"
           px={4}
-          zIndex={3}
-          style={{
-            WebkitOverflowScrolling: 'touch',
-            overscrollBehavior: 'none'
-          }}
         >
           <HStack spacing={{ base: 4, md: 48 }} width="100%" maxW="1200px" justify="center">
             <VStack spacing={1} align="center" flex={1}>
               <Text fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
                 {votePacks?.reduce((sum, pack) => sum + (pack.votes_remaining || 0), 0) || 0}
               </Text>
-              <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">
+              <Text fontSize="xs" color={textColor} whiteSpace="nowrap">
                 Votes Left
               </Text>
             </VStack>
@@ -634,7 +629,7 @@ export function GameArena({ onExit }: GameArenaProps) {
               <Text fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
                 {votePacks?.[0]?.vote_power || 1}x
               </Text>
-              <Text fontSize="xs" color="gray.500">
+              <Text fontSize="xs" color={textColor}>
                 Vote Power
               </Text>
             </VStack>
@@ -642,7 +637,7 @@ export function GameArena({ onExit }: GameArenaProps) {
               <Text fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
                 {Math.floor((remainingCount || 0) / 2)}
               </Text>
-              <Text fontSize="xs" color="gray.500">
+              <Text fontSize="xs" color={textColor}>
                 Pairs Left
               </Text>
             </VStack>
@@ -673,7 +668,6 @@ export function GameArena({ onExit }: GameArenaProps) {
         justifyContent="center"
         gap={{ base: 4, md: 8 }}
         px={{ base: 4, md: 8 }}
-        bg={bg}
         overflow="auto"
       >
         {/* Left Artwork */}
@@ -739,7 +733,6 @@ export function GameArena({ onExit }: GameArenaProps) {
         right={0}
         borderTop="1px"
         borderColor={borderColor}
-        bg={bg}
         h="80px"
         display="flex"
         alignItems="center"
@@ -751,7 +744,7 @@ export function GameArena({ onExit }: GameArenaProps) {
             <Text fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
               {votePacks?.reduce((sum, pack) => sum + (pack.votes_remaining || 0), 0) || 0}
             </Text>
-            <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">
+            <Text fontSize="xs" color={textColor} whiteSpace="nowrap">
               Votes Left
             </Text>
           </VStack>
@@ -759,7 +752,7 @@ export function GameArena({ onExit }: GameArenaProps) {
             <Text fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
               {votePacks?.[0]?.vote_power || 1}x
             </Text>
-            <Text fontSize="xs" color="gray.500">
+            <Text fontSize="xs" color={textColor}>
               Vote Power
             </Text>
           </VStack>
@@ -767,7 +760,7 @@ export function GameArena({ onExit }: GameArenaProps) {
             <Text fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
               {Math.floor((remainingCount || 0) / 2)}
             </Text>
-            <Text fontSize="xs" color="gray.500">
+            <Text fontSize="xs" color={textColor}>
               Pairs Left
             </Text>
           </VStack>
