@@ -89,10 +89,12 @@ export default function SignInPage() {
     <Container maxW="container.xl" py={16}>
       <VStack spacing={8} align="center">
         <Heading 
-          fontSize={{ base: "4xl", md: "2xl" }}
+          fontSize={{ base: "5xl", md: "6xl", lg: "7xl" }}
           fontFamily="Allan"
           textAlign="center"
           lineHeight="1.2"
+          maxW="container.xl"
+          w="100%"
         >
           Make your fate and sign in?
         </Heading>

@@ -35,6 +35,8 @@ export default function SignUpPage() {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const textColor = useColorModeValue('gray.800', 'white');
   const secondaryTextColor = useColorModeValue('gray.600', 'gray.400');
+  const alertBg = useColorModeValue('green.50', 'rgba(72, 187, 120, 0.1)');
+  const alertBorder = useColorModeValue('green.200', 'green.600');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +68,7 @@ export default function SignUpPage() {
 
   if (isSuccess) {
     return (
-      <Container maxW="container.sm" py={8}>
+      <Container maxW="container.xl" py={8}>
         <VStack spacing={8} align="center" textAlign="center">
           <Alert
             status="success"
@@ -75,36 +77,40 @@ export default function SignUpPage() {
             alignItems="center"
             justifyContent="center"
             textAlign="center"
-            height="200px"
+            height="auto"
+            py={6}
+            px={4}
             borderRadius="lg"
-            bg="green.50"
+            bg={alertBg}
             border="1px solid"
-            borderColor="green.200"
+            borderColor={alertBorder}
           >
             <AlertIcon boxSize="40px" mr={0} />
-            <AlertTitle mt={4} mb={1} fontSize="lg">
+            <AlertTitle mt={4} mb={1} fontSize="lg" color={textColor}>
               Check your email!
             </AlertTitle>
-            <AlertDescription maxWidth="sm">
+            <AlertDescription maxWidth="sm" color={secondaryTextColor}>
               We've sent you a confirmation link. Please check your email to complete your registration.
             </AlertDescription>
           </Alert>
 
-          <Box mt={8}>
+          <Box mt={8} px={4}>
             <Text
-              fontSize="6xl"
+              fontSize={{ base: "4xl", md: "5xl", lg: "6xl" }}
               fontWeight="bold"
               fontFamily="Allan"
-              mb={8}
+              mb={{ base: 6, md: 8 }}
+              lineHeight="1.2"
             >
               In that wondrous moment, it all began...
             </Text>
             
-            <HStack spacing={4} justify="center">
+            <VStack spacing={4}>
               <Button
                 colorScheme="blue"
                 size="lg"
                 onClick={() => navigate('/artworks')}
+                width={{ base: "full", md: "auto" }}
               >
                 Explore Winners
               </Button>
@@ -113,10 +119,11 @@ export default function SignUpPage() {
                 colorScheme="blue"
                 size="lg"
                 onClick={() => navigate('/submit')}
+                width={{ base: "full", md: "auto" }}
               >
                 Request Artist Invitation
               </Button>
-            </HStack>
+            </VStack>
           </Box>
         </VStack>
       </Container>
@@ -127,10 +134,12 @@ export default function SignUpPage() {
     <Container maxW="container.xl" py={16}>
       <VStack spacing={8} align="center">
         <Heading 
-          fontSize={{ base: "4xl", md: "2xl" }}
+          fontSize={{ base: "5xl", md: "6xl", lg: "7xl" }}
           fontFamily="Allan"
           textAlign="center"
           lineHeight="1.2"
+          maxW="container.xl"
+          w="100%"
         >
           Take the chance, join the dance!
         </Heading>
