@@ -372,15 +372,25 @@ export function GameArena({ onExit }: GameArenaProps) {
           top="57px"
           left={0}
           right={0}
-          bottom="140px"
+          bottom="80px"
           bg={bg}
           overflow="hidden"
+          height="100dvh"
+          maxHeight="-webkit-fill-available"
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'none'
+          }}
         >
           <Box
             position="relative"
             width="100%"
-            height="100%"
-            style={{ perspective: '1000px' }}
+            height="calc(100dvh - 137px)"
+            style={{ 
+              perspective: '1000px',
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'none'
+            }}
           >
             <AnimatePresence mode="wait">
               {currentPair && (
@@ -400,7 +410,7 @@ export function GameArena({ onExit }: GameArenaProps) {
                     animate={{
                       ...(selectedArtwork === 'left' ? variants.selected : 
                           selectedArtwork === 'right' ? variants.unselected : 
-                          variants.initial(true)),
+                          { top: 0, height: '50%', scale: 1, zIndex: 1 }),
                       ...(exitDirection && {
                         y: exitDirection === 'up' ? '-100%' : '100%',
                         opacity: 0,
@@ -453,7 +463,7 @@ export function GameArena({ onExit }: GameArenaProps) {
                     animate={{
                       ...(selectedArtwork === 'right' ? variants.selected : 
                           selectedArtwork === 'left' ? variants.unselected : 
-                          variants.initial(false)),
+                          { top: '50%', height: '50%', scale: 1, zIndex: 1 }),
                       ...(exitDirection && {
                         y: exitDirection === 'up' ? '-100%' : '100%',
                         opacity: 0,
@@ -500,30 +510,6 @@ export function GameArena({ onExit }: GameArenaProps) {
           </Box>
         </Box>
 
-        {/* Gesture Hints */}
-        {selectedArtwork && !isVoting && (
-          <Box
-            position="fixed"
-            bottom="80px"
-            left={0}
-            right={0}
-            height="60px"
-            bg={bg}
-            borderTop="1px"
-            borderColor={borderColor}
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            zIndex={3}
-          >
-            <HStack spacing={8}>
-              <Text fontSize="sm" color="gray.600">↑ Swipe up to vote</Text>
-              <Text fontSize="sm" color="gray.600">↓ Swipe down to switch</Text>
-              <Text fontSize="sm" color="gray.600">Double tap to vote</Text>
-            </HStack>
-          </Box>
-        )}
-
         {/* Vote Info Footer */}
         <Box
           position="fixed"
@@ -539,6 +525,10 @@ export function GameArena({ onExit }: GameArenaProps) {
           justifyContent="center"
           px={4}
           zIndex={3}
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'none'
+          }}
         >
           <HStack spacing={{ base: 4, md: 48 }} width="100%" maxW="1200px" justify="center">
             <VStack spacing={1} align="center" flex={1}>
