@@ -22,9 +22,8 @@ export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const indicatorColor = useColorModeValue('black', 'white');
-  const tabTextColor = useColorModeValue('gray.600', 'gray.400');
-  const selectedTabColor = useColorModeValue('gray.900', 'white');
+  const tabTextColor = useColorModeValue('gray.500', 'gray.400');
+  const selectedTabColor = useColorModeValue('black', 'white');
 
   const paths = [
     { path: '/game', label: 'The Salon Game' },
@@ -105,8 +104,6 @@ export function Header() {
                 variant="unstyled"
                 sx={{
                   '.chakra-tabs__tab-list': {
-                    borderBottom: '1px solid',
-                    borderColor: 'gray.200',
                     position: 'relative'
                   },
                   '.chakra-tabs__tab': {
@@ -115,22 +112,13 @@ export function Header() {
                     py: 6,
                     color: tabTextColor,
                     position: 'relative',
+                    transition: 'color 0.2s',
                     _hover: {
                       color: selectedTabColor
                     },
                     _selected: {
                       color: selectedTabColor,
-                      fontWeight: 'bold',
-                      '&::after': {
-                        content: '""',
-                        position: 'absolute',
-                        bottom: '-1px',
-                        left: 0,
-                        right: 0,
-                        height: '2px',
-                        background: indicatorColor,
-                        zIndex: 1
-                      }
+                      fontWeight: 'semibold'
                     }
                   }
                 }}
