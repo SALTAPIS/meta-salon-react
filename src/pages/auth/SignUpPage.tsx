@@ -15,6 +15,10 @@ import {
   AlertTitle,
   AlertDescription,
   HStack,
+  Divider,
+  Heading,
+  useColorModeValue,
+  Badge,
 } from '@chakra-ui/react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -26,6 +30,11 @@ export default function SignUpPage() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
+
+  const bg = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const textColor = useColorModeValue('gray.800', 'white');
+  const secondaryTextColor = useColorModeValue('gray.600', 'gray.400');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,57 +124,77 @@ export default function SignUpPage() {
   }
 
   return (
-    <Container maxW="container.sm" py={8}>
-      <VStack spacing={8} align="stretch">
-        <Box>
-          <Text fontSize="2xl" fontWeight="bold" mb={4}>
-            Sign Up
-          </Text>
-          <Text color="gray.600">
-            Create your account to start collecting and voting on artworks.
-          </Text>
-        </Box>
+    <Container maxW="container.xl" py={16}>
+      <VStack spacing={8} align="center">
+        <Heading 
+          size="2xl" 
+          fontFamily="Allan"
+          textAlign="center"
+          lineHeight="1.2"
+        >
+          Take the chance, join the dance!
+        </Heading>
+        <Badge colorScheme="purple" fontSize="sm" px={2} py={0.5}>
+          Sign up
+        </Badge>
 
-        <form onSubmit={handleSubmit}>
-          <VStack spacing={4}>
-            <FormControl isRequired>
-              <FormLabel>Email</FormLabel>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-              />
-            </FormControl>
+        <Container maxW="md" p={0}>
+          <Box p={8} borderWidth="1px" borderRadius="lg" bg={bg} borderColor={borderColor}>
+            <VStack spacing={6}>
+              <Text color={secondaryTextColor}>Create your account to start your journey</Text>
 
-            <FormControl isRequired>
-              <FormLabel>Password</FormLabel>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Create a password"
-              />
-            </FormControl>
+              <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+                <VStack spacing={4}>
+                  <FormControl isRequired>
+                    <FormLabel color={textColor}>Email</FormLabel>
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
+                    />
+                  </FormControl>
 
-            <Button
-              type="submit"
-              colorScheme="blue"
-              width="full"
-              isLoading={loading}
-            >
-              Sign Up
-            </Button>
+                  <FormControl isRequired>
+                    <FormLabel color={textColor}>Password</FormLabel>
+                    <Input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Create a password"
+                    />
+                  </FormControl>
 
-            <Button
-              variant="ghost"
-              width="full"
-              onClick={() => navigate('/auth/signin')}
-            >
-              Already have an account? Sign In
-            </Button>
-          </VStack>
-        </form>
+                  <Button
+                    type="submit"
+                    colorScheme="blue"
+                    size="lg"
+                    width="full"
+                    isLoading={loading}
+                  >
+                    Sign Up
+                  </Button>
+                </VStack>
+              </form>
+
+              <HStack w="full">
+                <Divider />
+                <Text fontSize="sm" whiteSpace="nowrap" color={secondaryTextColor}>
+                  or
+                </Text>
+                <Divider />
+              </HStack>
+
+              <Button
+                variant="ghost"
+                width="full"
+                onClick={() => navigate('/auth/signin')}
+              >
+                Already have an account? Sign In
+              </Button>
+            </VStack>
+          </Box>
+        </Container>
       </VStack>
     </Container>
   );

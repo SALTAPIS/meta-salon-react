@@ -18,6 +18,7 @@ import {
   InputGroup,
   InputRightElement,
   IconButton,
+  Badge,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { AuthService } from '../../services/auth/authService';
@@ -85,84 +86,98 @@ export default function SignInPage() {
   };
 
   return (
-    <Container maxW="md" py={16}>
-      <Box p={8} borderWidth="1px" borderRadius="lg" bg={bg} borderColor={borderColor}>
-        <VStack spacing={6}>
-          <VStack spacing={2} align="center" w="full">
-            <Heading size="lg" color={textColor}>Welcome Back</Heading>
-            <Text color={secondaryTextColor}>Sign in to your account</Text>
-          </VStack>
+    <Container maxW="container.xl" py={16}>
+      <VStack spacing={8} align="center">
+        <Heading 
+          size="2xl" 
+          fontFamily="Allan"
+          textAlign="center"
+          lineHeight="1.2"
+        >
+          Make your fate and sign in?
+        </Heading>
+        <Badge colorScheme="green" fontSize="sm" px={2} py={0.5}>
+          Sign in
+        </Badge>
 
-          <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-            <VStack spacing={4}>
-              <FormControl isRequired>
-                <FormLabel color={textColor}>Email address</FormLabel>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                />
-              </FormControl>
+        <Container maxW="md" p={0}>
+          <Box p={8} borderWidth="1px" borderRadius="lg" bg={bg} borderColor={borderColor}>
+            <VStack spacing={6}>
+              <Text color={secondaryTextColor}>Sign in to your account</Text>
 
-              {isPasswordMode && (
-                <FormControl isRequired>
-                  <FormLabel color={textColor}>Password</FormLabel>
-                  <InputGroup>
+              <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+                <VStack spacing={4}>
+                  <FormControl isRequired>
+                    <FormLabel color={textColor}>Email address</FormLabel>
                     <Input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
                     />
-                    <InputRightElement>
-                      <IconButton
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
-                        variant="ghost"
-                        onClick={() => setShowPassword(!showPassword)}
-                      />
-                    </InputRightElement>
-                  </InputGroup>
-                </FormControl>
-              )}
+                  </FormControl>
+
+                  {isPasswordMode && (
+                    <FormControl isRequired>
+                      <FormLabel color={textColor}>Password</FormLabel>
+                      <InputGroup>
+                        <Input
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Enter your password"
+                        />
+                        <InputRightElement>
+                          <IconButton
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
+                            variant="ghost"
+                            onClick={() => setShowPassword(!showPassword)}
+                          />
+                        </InputRightElement>
+                      </InputGroup>
+                    </FormControl>
+                  )}
+
+                  <Button
+                    type="submit"
+                    colorScheme="green"
+                    size="lg"
+                    width="full"
+                    isLoading={isLoading}
+                  >
+                    {isPasswordMode ? 'Sign In' : 'Send Magic Link'}
+                  </Button>
+                </VStack>
+              </form>
+
+              <HStack w="full">
+                <Divider />
+                <Text fontSize="sm" whiteSpace="nowrap" color={secondaryTextColor}>
+                  or
+                </Text>
+                <Divider />
+              </HStack>
 
               <Button
-                type="submit"
-                colorScheme="blue"
-                size="lg"
+                variant="outline"
+                colorScheme="green"
                 width="full"
-                isLoading={isLoading}
+                onClick={toggleAuthMode}
               >
-                {isPasswordMode ? 'Sign In' : 'Send Magic Link'}
+                {isPasswordMode ? 'Sign in with Magic Link' : 'Sign in with Password'}
               </Button>
+
+              <Text color={secondaryTextColor}>
+                Don't have an account?{' '}
+                <Link as={RouterLink} to="/auth/signup" color="green.500">
+                  Sign up
+                </Link>
+              </Text>
             </VStack>
-          </form>
-
-          <HStack w="full">
-            <Divider />
-            <Text fontSize="sm" whiteSpace="nowrap" color={secondaryTextColor}>
-              or
-            </Text>
-            <Divider />
-          </HStack>
-
-          <Button
-            variant="outline"
-            width="full"
-            onClick={toggleAuthMode}
-          >
-            {isPasswordMode ? 'Sign in with Magic Link' : 'Sign in with Password'}
-          </Button>
-
-          <Text color={secondaryTextColor}>
-            Don't have an account?{' '}
-            <Link as={RouterLink} to="/auth/signup" color="blue.500">
-              Sign up
-            </Link>
-          </Text>
-        </VStack>
-      </Box>
+          </Box>
+        </Container>
+      </VStack>
     </Container>
   );
 } 
