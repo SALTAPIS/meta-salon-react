@@ -13,7 +13,6 @@ import {
   AlertIcon,
   Text,
   Heading,
-  SimpleGrid,
   Image,
   Badge,
   HStack,
