@@ -175,6 +175,10 @@ export default function GamePage() {
             element.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
             previewRef.current?.appendChild(element);
 
+            element.addEventListener('click', () => {
+              window.location.href = `/artwork/${previewArtworks[index].id}`;
+            });
+
             element.addEventListener('mouseenter', () => {
               gsap.to(element, {
                 scale: 1.1,
@@ -384,8 +388,10 @@ export default function GamePage() {
         right={isMobile ? "50%" : 4}
         transform={isMobile ? "translateX(50%)" : "none"}
         onClick={resetAnimation}
-        colorScheme="blue"
-        variant="ghost"
+        color="gray.500"
+        bg="transparent"
+        _hover={{ color: "gray.600" }}
+        _active={{ color: "gray.600", transform: isMobile ? "translateX(50%)" : "none" }}
         size="lg"
         zIndex={1}
       />
