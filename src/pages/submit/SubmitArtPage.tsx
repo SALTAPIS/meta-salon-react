@@ -104,7 +104,7 @@ export default function SubmitArtPage() {
       await ArtworkService.submitArtworkToChallenge(
         draftId,
         selectedChallenge,
-        10 // Fixed submission fee for now
+        99 // Updated submission fee
       );
 
       toast({
@@ -134,8 +134,14 @@ export default function SubmitArtPage() {
     <Container maxW="container.xl" py={8}>
       <VStack spacing={8} align="stretch">
         <Box>
-          <Heading size="xl" mb={2}>Submit Artwork</Heading>
-          <Text color="gray.600">Share your artwork with the community</Text>
+          <Heading 
+            size="xl" 
+            mb={2}
+            fontFamily="Allan"
+          >
+            Submit your Artwork to the Open Challenge
+          </Heading>
+          <Text color="gray.600">Share your creation and compete for rewards</Text>
         </Box>
 
         {error && (
@@ -179,16 +185,41 @@ export default function SubmitArtPage() {
 
                   <FormControl isRequired>
                     <FormLabel>Image</FormLabel>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      p={1}
-                    />
+                    <Button
+                      as="label"
+                      htmlFor="file-upload"
+                      colorScheme="blue"
+                      variant="outline"
+                      cursor="pointer"
+                      width="full"
+                      py={2}
+                    >
+                      {imageFile ? 'Change Image' : 'Upload Image'}
+                      <Input
+                        id="file-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        display="none"
+                      />
+                    </Button>
+                    {imageFile && (
+                      <Text fontSize="sm" color="green.500" mt={1}>
+                        Selected: {imageFile.name}
+                      </Text>
+                    )}
                     <Text fontSize="sm" color="gray.500" mt={1}>
                       Supported formats: JPG, PNG, GIF (max 10MB)
                     </Text>
                   </FormControl>
+
+                  <Alert status="info" mt={4}>
+                    <AlertIcon />
+                    <Box>
+                      <Text fontWeight="bold">Submission Fee: 99 SLN</Text>
+                      <Text fontSize="sm">This fee will be required when submitting to the challenge</Text>
+                    </Box>
+                  </Alert>
 
                   <Button
                     type="submit"
@@ -219,9 +250,13 @@ export default function SubmitArtPage() {
                     </Select>
                   </FormControl>
 
-                  <Text fontSize="sm" color="gray.600">
-                    Submission fee: 10 tokens
-                  </Text>
+                  <Alert status="info">
+                    <AlertIcon />
+                    <Box>
+                      <Text fontWeight="bold">Submission Fee: 99 SLN</Text>
+                      <Text fontSize="sm">This amount will be deducted from your balance upon submission</Text>
+                    </Box>
+                  </Alert>
 
                   <Button
                     colorScheme="blue"
@@ -232,7 +267,7 @@ export default function SubmitArtPage() {
                     onClick={handleSubmitToChallenge}
                     isDisabled={!selectedChallenge}
                   >
-                    Submit to Challenge
+                    Submit to Challenge (99 SLN)
                   </Button>
                 </>
               )}
