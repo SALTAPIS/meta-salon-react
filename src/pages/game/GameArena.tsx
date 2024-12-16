@@ -38,8 +38,7 @@ export function GameArena({ onExit }: GameArenaProps) {
     isLoading: arenaLoading,
     error: arenaError,
     castVote,
-    artworks,
-    remainingArtworks
+    remainingCount
   } = useVotingArena();
 
   const {
@@ -333,31 +332,31 @@ export function GameArena({ onExit }: GameArenaProps) {
         display="flex"
         alignItems="center"
         justifyContent="center"
-        px={8}
+        px={4}
       >
-        <HStack spacing={48} width="100%" maxW="1200px" justify="center">
-          <VStack spacing={1} align="center">
-            <Text fontSize="lg">
+        <HStack spacing={{ base: 4, md: 48 }} width="100%" maxW="1200px" justify="center">
+          <VStack spacing={1} align="center" flex={1}>
+            <Text fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
               {votePacks?.reduce((sum, pack) => sum + (pack.votes_remaining || 0), 0) || 0}
             </Text>
             <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">
-              Votes Available
+              Votes Left
             </Text>
           </VStack>
-          <VStack spacing={1} align="center">
-            <Text fontSize="lg">
-              {votePacks?.[0]?.vote_power || 1}x SLN
+          <VStack spacing={1} align="center" flex={1}>
+            <Text fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
+              {votePacks?.[0]?.vote_power || 1}x
             </Text>
             <Text fontSize="xs" color="gray.500">
               Vote Power
             </Text>
           </VStack>
-          <VStack spacing={1} align="center">
-            <Text fontSize="lg">
-              {remainingArtworks?.length || 0}/{artworks?.length || 0}
+          <VStack spacing={1} align="center" flex={1}>
+            <Text fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
+              {Math.floor((remainingCount || 0) / 2)}
             </Text>
             <Text fontSize="xs" color="gray.500">
-              Remaining Pairs
+              Pairs Left
             </Text>
           </VStack>
         </HStack>
