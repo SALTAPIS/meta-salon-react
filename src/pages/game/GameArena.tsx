@@ -13,25 +13,37 @@ import {
   Heading,
   Icon,
   Stack,
+  useBreakpointValue,
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
 import { useVotingArena } from '../../hooks/useVotingArena';
 import { useState, useCallback } from 'react';
 import { useDebugMode } from '../../hooks/useDebugMode';
-import { useTokens } from '../../hooks/token/useTokens';
 import { FaHeart } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTokens } from '../../hooks/token/useTokens';
+
+interface DragEvent {
+  clientY: number;
+}
 
 interface GameArenaProps {
-  onExit?: () => void;
+  onExit: () => void;
 }
+
+const MotionBox = motion(Box as any);
+const MotionImage = motion(ChakraImage as any);
 
 export function GameArena({ onExit }: GameArenaProps) {
   const bg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const [hoveredArtwork, setHoveredArtwork] = useState<string | null>(null);
+  const [selectedArtwork, setSelectedArtwork] = useState<'left' | 'right' | null>(null);
   const [isVoting, setIsVoting] = useState(false);
+  const [dragStartY, setDragStartY] = useState(0);
+  const [exitDirection, setExitDirection] = useState<'up' | 'down' | null>(null);
   const toast = useToast();
   const { debugMode } = useDebugMode();
+  const isMobile = useBreakpointValue({ base: true, md: false });
   
   const { 
     currentPair,
@@ -51,17 +63,71 @@ export function GameArena({ onExit }: GameArenaProps) {
   const isLoading = arenaLoading || tokenLoading;
   const error = arenaError || tokenError;
 
-  const hasVotePacks = votePacks?.some(pack => 
+  const hasVotePacks = votePacks?.some((pack) =>
     pack.votes_remaining > 0 && (!pack.expires_at || new Date(pack.expires_at) > new Date())
   );
+
+  const variants = {
+    initial: (isFirst: boolean) => ({
+      y: isFirst ? '5%' : '50%',
+      height: '45%',
+      width: '100%',
+      scale: 1,
+      rotateX: 0,
+      zIndex: 1
+    }),
+    selected: {
+      y: 0,
+      height: '100%',
+      width: '100%',
+      scale: 1,
+      rotateX: 0,
+      zIndex: 2,
+      transition: {
+        type: "spring",
+        stiffness: 300,
+        damping: 30
+      }
+    },
+    unselected: {
+      y: '85vh',
+      height: '45%',
+      width: '100%',
+      scale: 0.3,
+      rotateX: 30,
+      zIndex: 1,
+      transition: {
+        type: "spring",
+        stiffness: 400,
+        damping: 40
+      }
+    },
+    exit: (direction: 'up' | 'down') => ({
+      y: direction === 'up' ? '-100%' : '100%',
+      opacity: 0,
+      transition: {
+        duration: 0.5,
+        ease: "easeInOut"
+      }
+    })
+  };
 
   const handleVote = useCallback(async (artworkId: string) => {
     if (!currentPair || !hasVotePacks || isVoting) return;
 
     setIsVoting(true);
     try {
+      // Trigger exit animation
+      setExitDirection('up');
+      
+      // Wait for animation
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Cast vote
       await castVote(artworkId);
       await refreshBalance();
+      setSelectedArtwork(null);
+      setExitDirection(null);
       
       if (debugMode) {
         toast({
@@ -81,10 +147,34 @@ export function GameArena({ onExit }: GameArenaProps) {
         duration: 5000,
         isClosable: true,
       });
+      setExitDirection(null);
     } finally {
       setIsVoting(false);
     }
   }, [currentPair, hasVotePacks, isVoting, castVote, refreshBalance, debugMode, toast]);
+
+  const handleDragStart = (e: DragEvent) => {
+    setDragStartY(e.clientY);
+  };
+
+  const handleDragEnd = async (e: DragEvent, artwork: 'left' | 'right') => {
+    const dragDistance = dragStartY - e.clientY;
+    const threshold = 100; // minimum drag distance to trigger vote
+
+    if (dragDistance > threshold) {
+      // Dragged up - cast vote
+      const artworkId = artwork === 'left' ? currentPair?.left.id : currentPair?.right.id;
+      if (artworkId) {
+        await handleVote(artworkId);
+      }
+    } else if (dragDistance < -threshold) {
+      // Dragged down - switch to other artwork
+      setSelectedArtwork(artwork === 'left' ? 'right' : 'left');
+    } else {
+      // Reset position if drag wasn't far enough
+      setSelectedArtwork(artwork);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -252,6 +342,138 @@ export function GameArena({ onExit }: GameArenaProps) {
     );
   }
 
+  if (isMobile) {
+    return (
+      <>
+        <Box 
+          position="fixed"
+          top="57px"
+          left={0}
+          right={0}
+          bottom="80px"
+          bg={bg}
+          overflow="hidden"
+          style={{ perspective: '1000px' }}
+        >
+          <AnimatePresence mode="wait">
+            {currentPair && (
+              <>
+                {/* First Artwork */}
+                <MotionBox
+                  position="absolute"
+                  width="100%"
+                  initial="initial"
+                  animate={selectedArtwork === 'left' ? "selected" : 
+                          selectedArtwork === 'right' ? "unselected" : "initial"}
+                  exit={exitDirection ? `exit` : undefined}
+                  variants={variants}
+                  custom={true}
+                  drag={selectedArtwork === 'left' ? "y" : false}
+                  dragConstraints={{ top: 0, bottom: 0 }}
+                  onDragStart={handleDragStart}
+                  onDragEnd={(e: any) => handleDragEnd(e, 'left')}
+                  onClick={() => !selectedArtwork && setSelectedArtwork('left')}
+                  style={{ 
+                    transformOrigin: "center",
+                    transformStyle: "preserve-3d"
+                  }}
+                >
+                  <MotionImage
+                    src={currentPair.left.image_url}
+                    alt={currentPair.left.title || ""}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      objectPosition: 'center'
+                    }}
+                    loading="eager"
+                  />
+                </MotionBox>
+
+                {/* Second Artwork */}
+                <MotionBox
+                  position="absolute"
+                  width="100%"
+                  initial="initial"
+                  animate={selectedArtwork === 'right' ? "selected" : 
+                          selectedArtwork === 'left' ? "unselected" : "initial"}
+                  exit={exitDirection ? `exit` : undefined}
+                  variants={variants}
+                  custom={false}
+                  drag={selectedArtwork === 'right' ? "y" : false}
+                  dragConstraints={{ top: 0, bottom: 0 }}
+                  onDragStart={handleDragStart}
+                  onDragEnd={(e: any) => handleDragEnd(e, 'right')}
+                  onClick={() => !selectedArtwork && setSelectedArtwork('right')}
+                  style={{ 
+                    transformOrigin: "center",
+                    transformStyle: "preserve-3d"
+                  }}
+                >
+                  <MotionImage
+                    src={currentPair.right.image_url}
+                    alt={currentPair.right.title || ""}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      objectPosition: 'center'
+                    }}
+                    loading="eager"
+                  />
+                </MotionBox>
+              </>
+            )}
+          </AnimatePresence>
+        </Box>
+
+        {/* Vote Info Footer */}
+        <Box
+          position="fixed"
+          bottom={0}
+          left={0}
+          right={0}
+          borderTop="1px"
+          borderColor={borderColor}
+          bg={bg}
+          h="80px"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          px={4}
+        >
+          <HStack spacing={{ base: 4, md: 48 }} width="100%" maxW="1200px" justify="center">
+            <VStack spacing={1} align="center" flex={1}>
+              <Text fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
+                {votePacks?.reduce((sum, pack) => sum + (pack.votes_remaining || 0), 0) || 0}
+              </Text>
+              <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">
+                Votes Left
+              </Text>
+            </VStack>
+            <VStack spacing={1} align="center" flex={1}>
+              <Text fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
+                {votePacks?.[0]?.vote_power || 1}x
+              </Text>
+              <Text fontSize="xs" color="gray.500">
+                Vote Power
+              </Text>
+            </VStack>
+            <VStack spacing={1} align="center" flex={1}>
+              <Text fontSize={{ base: "md", md: "lg" }} fontWeight="medium">
+                {Math.floor((remainingCount || 0) / 2)}
+              </Text>
+              <Text fontSize="xs" color="gray.500">
+                Pairs Left
+              </Text>
+            </VStack>
+          </HStack>
+        </Box>
+      </>
+    );
+  }
+
   return (
     <>
       {/* Main voting area */}
@@ -275,20 +497,18 @@ export function GameArena({ onExit }: GameArenaProps) {
           maxH="80vh"
           position="relative"
           cursor="pointer"
-          onMouseEnter={() => setHoveredArtwork(currentPair.left.id)}
-          onMouseLeave={() => setHoveredArtwork(null)}
-          onClick={() => handleVote(currentPair.left.id)}
+          onClick={() => handleVote(currentPair!.left.id)}
           display="flex"
           alignItems="center"
           justifyContent="center"
         >
           <ChakraImage
-            src={currentPair.left.image_url}
-            alt={currentPair.left.title || ""}
+            src={currentPair!.left.image_url}
+            alt={currentPair!.left.title || ""}
             objectFit="contain"
             maxH="80vh"
-            transition="all 0.8s cubic-bezier(0.4, 0, 0.2, 1)"
-            transform={hoveredArtwork === currentPair.left.id ? 'scale(1.05)' : 'scale(1)'}
+            transition="all 0.3s ease"
+            _hover={{ transform: 'scale(1.05)' }}
             loading="eager"
           />
         </Box>
@@ -300,20 +520,18 @@ export function GameArena({ onExit }: GameArenaProps) {
           maxH="80vh"
           position="relative"
           cursor="pointer"
-          onMouseEnter={() => setHoveredArtwork(currentPair.right.id)}
-          onMouseLeave={() => setHoveredArtwork(null)}
-          onClick={() => handleVote(currentPair.right.id)}
+          onClick={() => handleVote(currentPair!.right.id)}
           display="flex"
           alignItems="center"
           justifyContent="center"
         >
           <ChakraImage
-            src={currentPair.right.image_url}
-            alt={currentPair.right.title || ""}
+            src={currentPair!.right.image_url}
+            alt={currentPair!.right.title || ""}
             objectFit="contain"
             maxH="80vh"
-            transition="all 0.8s cubic-bezier(0.4, 0, 0.2, 1)"
-            transform={hoveredArtwork === currentPair.right.id ? 'scale(1.05)' : 'scale(1)'}
+            transition="all 0.3s ease"
+            _hover={{ transform: 'scale(1.05)' }}
             loading="eager"
           />
         </Box>
