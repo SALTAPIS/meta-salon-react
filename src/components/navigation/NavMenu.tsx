@@ -19,6 +19,7 @@ export function NavMenu() {
   const menuBg = useColorModeValue('white', 'gray.800');
   const iconColor = useColorModeValue('gray.600', 'whiteAlpha.900');
   const username = user?.username || user?.email?.split('@')[0] || 'User';
+  const isAdmin = user?.role === 'admin' || user?.user_metadata?.role === 'admin';
 
   const handleSignOut = async () => {
     await signOut();
@@ -73,6 +74,11 @@ export function NavMenu() {
         <MenuItem as={RouterLink} to={`/${username}/dashboard`}>
           Dashboard
         </MenuItem>
+        {isAdmin && (
+          <MenuItem as={RouterLink} to="/admin">
+            Admin Dashboard
+          </MenuItem>
+        )}
         <MenuDivider />
         <MenuItem onClick={handleSignOut}>
           Sign Out
