@@ -14,6 +14,7 @@ import {
   AlertIcon,
   AlertTitle,
   AlertDescription,
+  HStack,
 } from '@chakra-ui/react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -57,24 +58,58 @@ export default function SignUpPage() {
   if (isSuccess) {
     return (
       <Container maxW="container.sm" py={8}>
-        <Alert
-          status="success"
-          variant="subtle"
-          flexDirection="column"
-          alignItems="center"
-          justifyContent="center"
-          textAlign="center"
-          height="200px"
-          borderRadius="lg"
-        >
-          <AlertIcon boxSize="40px" mr={0} />
-          <AlertTitle mt={4} mb={1} fontSize="lg">
-            Check your email!
-          </AlertTitle>
-          <AlertDescription maxWidth="sm">
-            We've sent you a confirmation link. Please check your email to complete your registration.
-          </AlertDescription>
-        </Alert>
+        <VStack spacing={8} align="center" textAlign="center">
+          <Alert
+            status="success"
+            variant="subtle"
+            flexDirection="column"
+            alignItems="center"
+            justifyContent="center"
+            textAlign="center"
+            height="200px"
+            borderRadius="lg"
+            bg="green.50"
+            border="1px solid"
+            borderColor="green.200"
+          >
+            <AlertIcon boxSize="40px" mr={0} />
+            <AlertTitle mt={4} mb={1} fontSize="lg">
+              Check your email!
+            </AlertTitle>
+            <AlertDescription maxWidth="sm">
+              We've sent you a confirmation link. Please check your email to complete your registration.
+            </AlertDescription>
+          </Alert>
+
+          <Box mt={8}>
+            <Text
+              fontSize="6xl"
+              fontWeight="bold"
+              fontFamily="Allan"
+              mb={8}
+            >
+              In that wondrous moment, it all began...
+            </Text>
+            
+            <HStack spacing={4} justify="center">
+              <Button
+                colorScheme="blue"
+                size="lg"
+                onClick={() => navigate('/artworks')}
+              >
+                Explore Winners
+              </Button>
+              <Button
+                variant="outline"
+                colorScheme="blue"
+                size="lg"
+                onClick={() => navigate('/submit')}
+              >
+                Request Artist Invitation
+              </Button>
+            </HStack>
+          </Box>
+        </VStack>
       </Container>
     );
   }
