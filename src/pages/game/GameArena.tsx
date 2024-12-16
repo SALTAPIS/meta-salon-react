@@ -484,17 +484,19 @@ export function GameArena({ onExit }: GameArenaProps) {
         right={0}
         bottom="80px"
         display="flex"
+        flexDirection={{ base: 'column', md: 'row' }}
         alignItems="center"
         justifyContent="center"
-        gap={8}
-        px={8}
+        gap={{ base: 4, md: 8 }}
+        px={{ base: 4, md: 8 }}
         bg={bg}
       >
         {/* Left Artwork */}
         <Box 
           flex={1}
-          maxW="45vw"
-          maxH="80vh"
+          w={{ base: '100%', md: '45vw' }}
+          h={{ base: '40vh', md: '80vh' }}
+          maxH={{ base: '40vh', md: '80vh' }}
           position="relative"
           cursor="pointer"
           onClick={() => handleVote(currentPair!.left.id)}
@@ -506,8 +508,9 @@ export function GameArena({ onExit }: GameArenaProps) {
             src={currentPair!.left.image_url}
             alt={currentPair!.left.title || ""}
             objectFit="contain"
-            maxH="80vh"
-            transition="all 0.3s ease"
+            maxH="100%"
+            maxW="100%"
+            transition="all 0.8s cubic-bezier(0.4, 0, 0.2, 1)"
             _hover={{ transform: 'scale(1.05)' }}
             loading="eager"
           />
@@ -516,8 +519,9 @@ export function GameArena({ onExit }: GameArenaProps) {
         {/* Right Artwork */}
         <Box 
           flex={1}
-          maxW="45vw"
-          maxH="80vh"
+          w={{ base: '100%', md: '45vw' }}
+          h={{ base: '40vh', md: '80vh' }}
+          maxH={{ base: '40vh', md: '80vh' }}
           position="relative"
           cursor="pointer"
           onClick={() => handleVote(currentPair!.right.id)}
@@ -529,8 +533,9 @@ export function GameArena({ onExit }: GameArenaProps) {
             src={currentPair!.right.image_url}
             alt={currentPair!.right.title || ""}
             objectFit="contain"
-            maxH="80vh"
-            transition="all 0.3s ease"
+            maxH="100%"
+            maxW="100%"
+            transition="all 0.8s cubic-bezier(0.4, 0, 0.2, 1)"
             _hover={{ transform: 'scale(1.05)' }}
             loading="eager"
           />
