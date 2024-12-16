@@ -101,15 +101,7 @@ export function GameArena({ onExit }: GameArenaProps) {
         stiffness: 400,
         damping: 40
       }
-    },
-    exit: (direction: 'up' | 'down') => ({
-      y: direction === 'up' ? '-100%' : '100%',
-      opacity: 0,
-      transition: {
-        duration: 0.3,
-        ease: "easeInOut"
-      }
-    })
+    }
   };
 
   const handleVote = useCallback(async (artworkId: string) => {
@@ -378,9 +370,16 @@ export function GameArena({ onExit }: GameArenaProps) {
                     right={0}
                     height="50%"
                     initial={false}
-                    animate={selectedArtwork === 'left' ? "selected" : 
-                            selectedArtwork === 'right' ? "unselected" : 
-                            { top: 0, height: '50%', scale: 1, zIndex: 1 }}
+                    animate={{
+                      ...(selectedArtwork === 'left' ? variants.selected : 
+                          selectedArtwork === 'right' ? variants.unselected : 
+                          variants.initial(true)),
+                      ...(exitDirection && {
+                        y: exitDirection === 'up' ? '-100%' : '100%',
+                        opacity: 0,
+                        transition: { duration: 0.3, ease: "easeInOut" }
+                      })
+                    }}
                     variants={variants}
                     custom={true}
                     drag="y"
@@ -422,9 +421,16 @@ export function GameArena({ onExit }: GameArenaProps) {
                     right={0}
                     height="50%"
                     initial={false}
-                    animate={selectedArtwork === 'right' ? "selected" : 
-                            selectedArtwork === 'left' ? "unselected" : 
-                            { top: '50%', height: '50%', scale: 1, zIndex: 1 }}
+                    animate={{
+                      ...(selectedArtwork === 'right' ? variants.selected : 
+                          selectedArtwork === 'left' ? variants.unselected : 
+                          variants.initial(false)),
+                      ...(exitDirection && {
+                        y: exitDirection === 'up' ? '-100%' : '100%',
+                        opacity: 0,
+                        transition: { duration: 0.3, ease: "easeInOut" }
+                      })
+                    }}
                     variants={variants}
                     custom={false}
                     drag="y"
