@@ -69,19 +69,19 @@ export function GameArena({ onExit }: GameArenaProps) {
 
   const variants = {
     initial: (isFirst: boolean) => ({
-      y: isFirst ? '0%' : '100%',
-      height: '100%',
+      y: isFirst ? '0%' : '50%',
+      top: isFirst ? 0 : '50%',
+      height: '50%',
       width: '100%',
       scale: 1,
-      rotateX: 0,
       zIndex: 1
     }),
     selected: {
       y: 0,
-      height: '100%',
+      top: 0,
+      height: '80%',
       width: '100%',
       scale: 1,
-      rotateX: 0,
       zIndex: 2,
       transition: {
         type: "spring",
@@ -90,11 +90,11 @@ export function GameArena({ onExit }: GameArenaProps) {
       }
     },
     unselected: {
-      y: '100%',
-      height: '100%',
+      y: 0,
+      top: '80%',
+      height: '20%',
       width: '100%',
       scale: 1,
-      rotateX: 0,
       zIndex: 1,
       transition: {
         type: "spring",
@@ -153,8 +153,11 @@ export function GameArena({ onExit }: GameArenaProps) {
     }
   }, [currentPair, hasVotePacks, isVoting, castVote, refreshBalance, debugMode, toast]);
 
-  const handleDragStart = (e: DragEvent) => {
+  const handleDragStart = (e: DragEvent, artwork: 'left' | 'right') => {
     setDragStartY(e.clientY);
+    if (!selectedArtwork) {
+      setSelectedArtwork(artwork);
+    }
   };
 
   const handleDragEnd = async (e: DragEvent, artwork: 'left' | 'right') => {
@@ -350,66 +353,48 @@ export function GameArena({ onExit }: GameArenaProps) {
           top="57px"
           left={0}
           right={0}
-          bottom="80px"
+          bottom="140px"
           bg={bg}
           overflow="hidden"
         >
           <Box
+            position="relative"
             width="100%"
             height="100%"
-            position="relative"
             style={{ perspective: '1000px' }}
           >
-            {/* Gesture Hints */}
-            {selectedArtwork && (
-              <Box
-                position="absolute"
-                top="50%"
-                left="50%"
-                transform="translate(-50%, -50%)"
-                zIndex={3}
-                textAlign="center"
-                color="white"
-                fontSize="sm"
-                opacity={0.8}
-                pointerEvents="none"
-                style={{
-                  textShadow: '0 1px 2px rgba(0,0,0,0.6)'
-                }}
-              >
-                <Text mb={2}>↑ Swipe up to vote</Text>
-                <Text>↓ Swipe down to switch</Text>
-              </Box>
-            )}
-
             <AnimatePresence mode="wait">
               {currentPair && (
-                <>
+                <Box
+                  position="absolute"
+                  inset={0}
+                  overflow="hidden"
+                >
                   {/* First Artwork */}
                   <MotionBox
                     position="absolute"
-                    width="100%"
+                    top={0}
+                    left={0}
+                    right={0}
                     height="50%"
-                    initial="initial"
+                    initial={false}
                     animate={selectedArtwork === 'left' ? "selected" : 
-                            selectedArtwork === 'right' ? "unselected" : "initial"}
-                    exit={exitDirection ? `exit` : undefined}
+                            selectedArtwork === 'right' ? "unselected" : 
+                            { top: 0, height: '50%', scale: 1, zIndex: 1 }}
                     variants={variants}
                     custom={true}
-                    drag={selectedArtwork === 'left' ? "y" : false}
+                    drag="y"
                     dragConstraints={{ top: 0, bottom: 0 }}
-                    onDragStart={handleDragStart}
+                    onDragStart={(e: any) => handleDragStart(e, 'left')}
                     onDragEnd={(e: any) => handleDragEnd(e, 'left')}
-                    onClick={() => !selectedArtwork && setSelectedArtwork('left')}
                     style={{ 
-                      transformOrigin: "center",
-                      transformStyle: "preserve-3d",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       padding: "10px",
                       touchAction: "pan-y",
-                      userSelect: "none"
+                      userSelect: "none",
+                      willChange: "transform"
                     }}
                   >
                     <MotionImage
@@ -432,28 +417,28 @@ export function GameArena({ onExit }: GameArenaProps) {
                   {/* Second Artwork */}
                   <MotionBox
                     position="absolute"
-                    width="100%"
+                    top="50%"
+                    left={0}
+                    right={0}
                     height="50%"
-                    initial="initial"
+                    initial={false}
                     animate={selectedArtwork === 'right' ? "selected" : 
-                            selectedArtwork === 'left' ? "unselected" : "initial"}
-                    exit={exitDirection ? `exit` : undefined}
+                            selectedArtwork === 'left' ? "unselected" : 
+                            { top: '50%', height: '50%', scale: 1, zIndex: 1 }}
                     variants={variants}
                     custom={false}
-                    drag={selectedArtwork === 'right' ? "y" : false}
+                    drag="y"
                     dragConstraints={{ top: 0, bottom: 0 }}
-                    onDragStart={handleDragStart}
+                    onDragStart={(e: any) => handleDragStart(e, 'right')}
                     onDragEnd={(e: any) => handleDragEnd(e, 'right')}
-                    onClick={() => !selectedArtwork && setSelectedArtwork('right')}
                     style={{ 
-                      transformOrigin: "center",
-                      transformStyle: "preserve-3d",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       padding: "10px",
                       touchAction: "pan-y",
-                      userSelect: "none"
+                      userSelect: "none",
+                      willChange: "transform"
                     }}
                   >
                     <MotionImage
@@ -472,11 +457,34 @@ export function GameArena({ onExit }: GameArenaProps) {
                       draggable={false}
                     />
                   </MotionBox>
-                </>
+                </Box>
               )}
             </AnimatePresence>
           </Box>
         </Box>
+
+        {/* Gesture Hints */}
+        {selectedArtwork && !isVoting && (
+          <Box
+            position="fixed"
+            bottom="80px"
+            left={0}
+            right={0}
+            height="60px"
+            bg={bg}
+            borderTop="1px"
+            borderColor={borderColor}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            zIndex={3}
+          >
+            <HStack spacing={8}>
+              <Text fontSize="sm" color="gray.600">↑ Swipe up to vote</Text>
+              <Text fontSize="sm" color="gray.600">↓ Swipe down to switch</Text>
+            </HStack>
+          </Box>
+        )}
 
         {/* Vote Info Footer */}
         <Box
@@ -492,6 +500,7 @@ export function GameArena({ onExit }: GameArenaProps) {
           alignItems="center"
           justifyContent="center"
           px={4}
+          zIndex={3}
         >
           <HStack spacing={{ base: 4, md: 48 }} width="100%" maxW="1200px" justify="center">
             <VStack spacing={1} align="center" flex={1}>
