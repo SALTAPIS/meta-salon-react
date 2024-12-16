@@ -122,8 +122,8 @@ export function ArtworksPage() {
   // For non-logged in users
   if (!user) {
     return (
-      <Box p={8}>
-        <Heading size="lg" mb={8} textAlign="left">
+      <Box px={6}>
+        <Heading size="lg" mb={6} textAlign="left">
           Top 10 Winning Artworks of the Week
         </Heading>
         <ArtworkGrid artworks={topArtworks} />
@@ -157,8 +157,8 @@ export function ArtworksPage() {
 
         <Divider my={8} />
 
-        <Box p={8}>
-          <Heading size="lg" mb={8} textAlign="left">
+        <Box px={6}>
+          <Heading size="lg" mb={6} textAlign="left">
             Top 10 Winning Artworks of the Week
           </Heading>
           <ArtworkGrid artworks={topArtworks} />
@@ -170,8 +170,8 @@ export function ArtworksPage() {
   // For logged-in users with vote history
   return (
     <Box>
-      <Box p={8}>
-        <Heading size="lg" mb={8} textAlign="left">
+      <Box px={6}>
+        <Heading size="lg" mb={6} textAlign="left">
           Your Winning Artworks
         </Heading>
         <ArtworkGrid artworks={userArtworks} dense={true} />
@@ -179,8 +179,8 @@ export function ArtworksPage() {
 
       <Divider my={8} />
 
-      <Box p={8}>
-        <Heading size="lg" mb={8} textAlign="left">
+      <Box px={6}>
+        <Heading size="lg" mb={6} textAlign="left">
           Top 10 Winning Artworks of the Week
         </Heading>
         <ArtworkGrid artworks={topArtworks} dense={true} />
