@@ -28,6 +28,8 @@ import {
   Center,
   Alert,
   AlertIcon,
+  Select,
+  useBreakpointValue,
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
@@ -73,6 +75,8 @@ export function UserDashboardPage() {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [isLoadingArtworks, setIsLoadingArtworks] = useState(true);
   const [artworksError, setArtworksError] = useState<string | null>(null);
+  const [tabIndex, setTabIndex] = useState(0);
+  const isMobile = useBreakpointValue({ base: true, md: false });
 
   useEffect(() => {
     loadProfile();
@@ -264,6 +268,21 @@ export function UserDashboardPage() {
     }
   };
 
+  const tabs = [
+    { label: 'Activity', isVisible: true },
+    { label: 'Submissions', isVisible: true },
+    { label: 'Albums', isVisible: true },
+    { label: 'Vote Packs', isVisible: true },
+    { label: 'Transactions', isVisible: true },
+    { label: 'Settings', isVisible: user?.id === profile?.id },
+    { label: 'Payouts', isVisible: user && (user.role === 'artist' || user.user_metadata?.role === 'artist' || 
+      user.role === 'admin' || user.user_metadata?.role === 'admin') }
+  ].filter(tab => tab.isVisible);
+
+  const handleTabChange = (index: number) => {
+    setTabIndex(index);
+  };
+
   return (
     <Container maxW="container.xl" py={8}>
       {/* Profile Header */}
@@ -305,309 +324,309 @@ export function UserDashboardPage() {
         </GridItem>
       </Grid>
 
-      {/* Main Content */}
-      <Tabs variant="line">
-        <TabList>
-          <Tab>Activity</Tab>
-          <Tab>Submissions</Tab>
-          <Tab>Albums</Tab>
-          <Tab>Vote Packs</Tab>
-          <Tab>Transactions</Tab>
-          {user?.id === profile?.id && <Tab>Settings</Tab>}
-          {user && (user.role === 'artist' || user.user_metadata?.role === 'artist' || 
-            user.role === 'admin' || user.user_metadata?.role === 'admin') && (
-            <Tab>Payouts</Tab>
-          )}
-        </TabList>
+      {/* Mobile Select / Desktop Tabs */}
+      {isMobile ? (
+        <Box mb={6}>
+          <Select
+            value={tabIndex}
+            onChange={(e) => handleTabChange(Number(e.target.value))}
+            size="lg"
+            variant="filled"
+          >
+            {tabs.map((tab, index) => (
+              <option key={tab.label} value={index}>
+                {tab.label}
+              </option>
+            ))}
+          </Select>
+        </Box>
+      ) : (
+        <Tabs index={tabIndex} onChange={handleTabChange} variant="line">
+          <TabList>
+            {tabs.map(tab => (
+              <Tab key={tab.label}>{tab.label}</Tab>
+            ))}
+          </TabList>
+        </Tabs>
+      )}
 
-        <TabPanels>
-          {/* Activity Tab */}
-          <TabPanel>
-            <VStack spacing={6} align="stretch">
-              <Heading size="md">Recent Activity</Heading>
-              <Box>
-                <SimpleGrid 
-                  columns={{ base: 1, md: 2, lg: 3 }} 
-                  spacing={6}
-                  minChildWidth="300px"
-                >
-                  {activities.map((activity) => (
-                    <Card 
-                      key={activity.id} 
-                      height="400px"
-                      overflow="hidden"
-                    >
-                      <CardBody>
-                        <VStack align="stretch" spacing={4} height="100%">
-                          <HStack justify="space-between">
-                            <HStack spacing={3}>
-                              <Badge
-                                colorScheme={
-                                  activity.type === 'submission' ? 'blue' :
-                                  activity.type === 'vote' ? 'green' :
-                                  activity.type === 'purchase' ? 'purple' :
-                                  'gray'
-                                }
-                                px={2}
-                                py={1}
-                                borderRadius="full"
-                              >
-                                {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
-                              </Badge>
-                              <Text fontWeight="bold">{activity.title}</Text>
-                            </HStack>
-                            <Text color="gray.500" fontSize="sm">{activity.timestamp}</Text>
-                          </HStack>
-
-                          {activity.details && (
-                            <Text color="gray.600">{activity.details}</Text>
-                          )}
-
-                          {activity.images && (
-                            <Box flex="1" position="relative" minHeight="200px">
-                              <Image
-                                src={activity.images[0]}
-                                alt={activity.title}
-                                position="absolute"
-                                top={0}
-                                left={0}
-                                width="100%"
-                                height="100%"
-                                objectFit="cover"
-                                borderRadius="md"
-                              />
-                            </Box>
-                          )}
-
-                          {activity.type === 'purchase' && (
-                            <Box
-                              p={4}
-                              bg={purchaseBgColor}
-                              borderRadius="lg"
-                              mt="auto"
-                            >
-                              <Text fontWeight="medium" color={purchaseTextColor}>
-                                {activity.details}
-                              </Text>
-                            </Box>
-                          )}
-                        </VStack>
-                      </CardBody>
-                    </Card>
-                  ))}
-                </SimpleGrid>
-              </Box>
-            </VStack>
-          </TabPanel>
-
-          {/* Submissions Tab */}
-          <TabPanel>
-            <VStack spacing={6} align="stretch">
-              <HStack justify="space-between">
-                <Heading size="md">Your Submissions</Heading>
-                <Button
-                  as={RouterLink}
-                  to="/submit"
-                  colorScheme="blue"
-                >
-                  Submit New Artwork
-                </Button>
-              </HStack>
-
-              {isLoadingArtworks ? (
-                <Center py={8}>
-                  <Spinner size="xl" />
-                </Center>
-              ) : artworksError ? (
-                <Alert status="error">
-                  <AlertIcon />
-                  {artworksError}
-                </Alert>
-              ) : artworks.length === 0 ? (
-                <Alert status="info">
-                  <AlertIcon />
-                  You haven't submitted any artworks yet
-                </Alert>
-              ) : (
-                artworks.map((artwork) => (
-                  <Box
-                    key={artwork.id}
-                    p={6}
-                    bg={bgColor}
-                    borderRadius="lg"
-                    borderWidth={1}
-                    borderColor={borderColor}
+      {/* Tab Panels - Same for both mobile and desktop */}
+      <Box mt={isMobile ? 0 : 6}>
+        {tabIndex === 0 && (
+          <VStack spacing={6} align="stretch">
+            <Heading size="md">Recent Activity</Heading>
+            <Box>
+              <SimpleGrid 
+                columns={{ base: 1, md: 2, lg: 3 }} 
+                spacing={6}
+                minChildWidth="300px"
+              >
+                {activities.map((activity) => (
+                  <Card 
+                    key={activity.id} 
+                    height="400px"
+                    overflow="hidden"
                   >
-                    <Grid templateColumns="200px 1fr" gap={6}>
-                      <Box>
-                        <Image
-                          src={artwork.image_url}
-                          alt={artwork.title}
-                          borderRadius="md"
-                          objectFit="cover"
-                          width="200px"
-                          height="200px"
-                        />
-                      </Box>
-                      <VStack align="stretch" spacing={4}>
-                        <HStack justify="space-between" align="flex-start">
-                          <Box>
-                            <Heading size="md" mb={2}>{artwork.title}</Heading>
-                            <Text color="gray.600" noOfLines={2}>
-                              {artwork.description}
-                            </Text>
-                          </Box>
-                          <Button
-                            as={RouterLink}
-                            to={`/artwork/${artwork.id}`}
-                            colorScheme="blue"
-                            variant="outline"
-                            size="sm"
-                          >
-                            View Details
-                          </Button>
+                    <CardBody>
+                      <VStack align="stretch" spacing={4} height="100%">
+                        <HStack justify="space-between">
+                          <HStack spacing={3}>
+                            <Badge
+                              colorScheme={
+                                activity.type === 'submission' ? 'blue' :
+                                activity.type === 'vote' ? 'green' :
+                                activity.type === 'purchase' ? 'purple' :
+                                'gray'
+                              }
+                              px={2}
+                              py={1}
+                              borderRadius="full"
+                            >
+                              {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
+                            </Badge>
+                            <Text fontWeight="bold">{activity.title}</Text>
+                          </HStack>
+                          <Text color="gray.500" fontSize="sm">{activity.timestamp}</Text>
                         </HStack>
 
-                        <SimpleGrid columns={4} spacing={4}>
-                          <Box>
-                            <Text fontWeight="bold" mb={1}>Status</Text>
-                            <Badge colorScheme={artwork.status === 'approved' ? 'green' : 'yellow'}>
-                              {artwork.status}
-                            </Badge>
-                          </Box>
-                          <Box>
-                            <Text fontWeight="bold" mb={1}>Total Votes</Text>
-                            <Text>{artwork.vote_count || 0}</Text>
-                          </Box>
-                          <Box>
-                            <Text fontWeight="bold" mb={1}>Vault Value</Text>
-                            <Text>{artwork.vault_value?.toFixed(2) || '0.00'} SLN</Text>
-                          </Box>
-                          <Box>
-                            <Text fontWeight="bold" mb={1}>Vault Status</Text>
-                            <Badge colorScheme={artwork.vault_status === 'active' ? 'green' : 'gray'}>
-                              {artwork.vault_status}
-                            </Badge>
-                          </Box>
-                        </SimpleGrid>
+                        {activity.details && (
+                          <Text color="gray.600">{activity.details}</Text>
+                        )}
 
-                        {artwork.challenge_id && (
-                          <Box>
-                            <Text fontWeight="bold" mb={1}>Challenge Entry</Text>
-                            <Badge colorScheme="purple">Active Challenge</Badge>
+                        {activity.images && (
+                          <Box flex="1" position="relative" minHeight="200px">
+                            <Image
+                              src={activity.images[0]}
+                              alt={activity.title}
+                              position="absolute"
+                              top={0}
+                              left={0}
+                              width="100%"
+                              height="100%"
+                              objectFit="cover"
+                              borderRadius="md"
+                            />
                           </Box>
                         )}
 
-                        <Divider />
-
-                        <HStack justify="space-between">
-                          <Text fontSize="sm" color="gray.500">
-                            Submitted on {new Date(artwork.created_at).toLocaleDateString()}
-                          </Text>
-                          {artwork.vault_value > 0 && (
-                            <Button
-                              size="sm"
-                              colorScheme="green"
-                              variant="outline"
-                              onClick={() => {}}
-                            >
-                              Request Payout
-                            </Button>
-                          )}
-                        </HStack>
+                        {activity.type === 'purchase' && (
+                          <Box
+                            p={4}
+                            bg={purchaseBgColor}
+                            borderRadius="lg"
+                            mt="auto"
+                          >
+                            <Text fontWeight="medium" color={purchaseTextColor}>
+                              {activity.details}
+                            </Text>
+                          </Box>
+                        )}
                       </VStack>
-                    </Grid>
-                  </Box>
-                ))
-              )}
-            </VStack>
-          </TabPanel>
-
-          {/* Albums Tab */}
-          <TabPanel>
-            <VStack spacing={6} align="stretch">
-              <HStack justify="space-between">
-                <Heading size="md">Your Albums</Heading>
-                <Button colorScheme="blue" onClick={() => {}}>
-                  Create Album
-                </Button>
-              </HStack>
-
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-                {albums.map((album) => (
-                  <Box
-                    key={album.id}
-                    p={5}
-                    bg={bgColor}
-                    borderRadius="lg"
-                    borderWidth={1}
-                    borderColor={borderColor}
-                  >
-                    <Heading size="md" mb={2}>
-                      {album.title}
-                    </Heading>
-                    {album.description && (
-                      <Text color="gray.600">{album.description}</Text>
-                    )}
-                  </Box>
+                    </CardBody>
+                  </Card>
                 ))}
               </SimpleGrid>
-            </VStack>
-          </TabPanel>
-
-          {/* Vote Packs Tab */}
-          <TabPanel>
-            <Box
-              p={6}
-              bg={bgColor}
-              borderRadius="lg"
-              borderWidth={1}
-              borderColor={borderColor}
-            >
-              <VotePacks onPurchaseComplete={refreshBalance} />
             </Box>
-          </TabPanel>
+          </VStack>
+        )}
 
-          {/* Transactions Tab */}
-          <TabPanel>
-            <Text>Transaction history coming soon...</Text>
-          </TabPanel>
-
-          {/* Settings Tab */}
-          {user?.id === profile?.id && (
-            <TabPanel>
-              <Box
-                p={6}
-                bg={bgColor}
-                borderRadius="lg"
-                borderWidth={1}
-                borderColor={borderColor}
+        {tabIndex === 1 && (
+          <VStack spacing={6} align="stretch">
+            <HStack justify="space-between">
+              <Heading size="md">Your Submissions</Heading>
+              <Button
+                as={RouterLink}
+                to="/submit"
+                colorScheme="blue"
               >
-                <UserSettingsPage />
-              </Box>
-            </TabPanel>
-          )}
+                Submit New Artwork
+              </Button>
+            </HStack>
 
-          {/* Payouts Tab */}
-          {user && (user.role === 'artist' || user.user_metadata?.role === 'artist' || 
-            user.role === 'admin' || user.user_metadata?.role === 'admin') && (
-            <TabPanel>
-              <Box
-                p={6}
-                bg={bgColor}
-                borderRadius="lg"
-                borderWidth={1}
-                borderColor={borderColor}
-              >
-                <VStack spacing={6} align="stretch">
-                  <Heading size="md">Payouts</Heading>
-                  <PayoutHistoryTable />
-                </VStack>
-              </Box>
-            </TabPanel>
-          )}
-        </TabPanels>
-      </Tabs>
+            {isLoadingArtworks ? (
+              <Center py={8}>
+                <Spinner size="xl" />
+              </Center>
+            ) : artworksError ? (
+              <Alert status="error">
+                <AlertIcon />
+                {artworksError}
+              </Alert>
+            ) : artworks.length === 0 ? (
+              <Alert status="info">
+                <AlertIcon />
+                You haven't submitted any artworks yet
+              </Alert>
+            ) : (
+              artworks.map((artwork) => (
+                <Box
+                  key={artwork.id}
+                  p={6}
+                  bg={bgColor}
+                  borderRadius="lg"
+                  borderWidth={1}
+                  borderColor={borderColor}
+                >
+                  <Grid templateColumns="200px 1fr" gap={6}>
+                    <Box>
+                      <Image
+                        src={artwork.image_url}
+                        alt={artwork.title}
+                        borderRadius="md"
+                        objectFit="cover"
+                        width="200px"
+                        height="200px"
+                      />
+                    </Box>
+                    <VStack align="stretch" spacing={4}>
+                      <HStack justify="space-between" align="flex-start">
+                        <Box>
+                          <Heading size="md" mb={2}>{artwork.title}</Heading>
+                          <Text color="gray.600" noOfLines={2}>
+                            {artwork.description}
+                          </Text>
+                        </Box>
+                        <Button
+                          as={RouterLink}
+                          to={`/artwork/${artwork.id}`}
+                          colorScheme="blue"
+                          variant="outline"
+                          size="sm"
+                        >
+                          View Details
+                        </Button>
+                      </HStack>
+
+                      <SimpleGrid columns={4} spacing={4}>
+                        <Box>
+                          <Text fontWeight="bold" mb={1}>Status</Text>
+                          <Badge colorScheme={artwork.status === 'approved' ? 'green' : 'yellow'}>
+                            {artwork.status}
+                          </Badge>
+                        </Box>
+                        <Box>
+                          <Text fontWeight="bold" mb={1}>Total Votes</Text>
+                          <Text>{artwork.vote_count || 0}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontWeight="bold" mb={1}>Vault Value</Text>
+                          <Text>{artwork.vault_value?.toFixed(2) || '0.00'} SLN</Text>
+                        </Box>
+                        <Box>
+                          <Text fontWeight="bold" mb={1}>Vault Status</Text>
+                          <Badge colorScheme={artwork.vault_status === 'active' ? 'green' : 'gray'}>
+                            {artwork.vault_status}
+                          </Badge>
+                        </Box>
+                      </SimpleGrid>
+
+                      {artwork.challenge_id && (
+                        <Box>
+                          <Text fontWeight="bold" mb={1}>Challenge Entry</Text>
+                          <Badge colorScheme="purple">Active Challenge</Badge>
+                        </Box>
+                      )}
+
+                      <Divider />
+
+                      <HStack justify="space-between">
+                        <Text fontSize="sm" color="gray.500">
+                          Submitted on {new Date(artwork.created_at).toLocaleDateString()}
+                        </Text>
+                        {artwork.vault_value > 0 && (
+                          <Button
+                            size="sm"
+                            colorScheme="green"
+                            variant="outline"
+                            onClick={() => {}}
+                          >
+                            Request Payout
+                          </Button>
+                        )}
+                      </HStack>
+                    </VStack>
+                  </Grid>
+                </Box>
+              ))
+            )}
+          </VStack>
+        )}
+
+        {tabIndex === 2 && (
+          <VStack spacing={6} align="stretch">
+            <HStack justify="space-between">
+              <Heading size="md">Your Albums</Heading>
+              <Button colorScheme="blue" onClick={() => {}}>
+                Create Album
+              </Button>
+            </HStack>
+
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+              {albums.map((album) => (
+                <Box
+                  key={album.id}
+                  p={5}
+                  bg={bgColor}
+                  borderRadius="lg"
+                  borderWidth={1}
+                  borderColor={borderColor}
+                >
+                  <Heading size="md" mb={2}>
+                    {album.title}
+                  </Heading>
+                  {album.description && (
+                    <Text color="gray.600">{album.description}</Text>
+                  )}
+                </Box>
+              ))}
+            </SimpleGrid>
+          </VStack>
+        )}
+
+        {tabIndex === 3 && (
+          <Box
+            p={6}
+            bg={bgColor}
+            borderRadius="lg"
+            borderWidth={1}
+            borderColor={borderColor}
+          >
+            <VotePacks onPurchaseComplete={refreshBalance} />
+          </Box>
+        )}
+
+        {tabIndex === 4 && (
+          <Text>Transaction history coming soon...</Text>
+        )}
+
+        {tabIndex === 5 && user?.id === profile?.id && (
+          <Box
+            p={6}
+            bg={bgColor}
+            borderRadius="lg"
+            borderWidth={1}
+            borderColor={borderColor}
+          >
+            <UserSettingsPage />
+          </Box>
+        )}
+
+        {tabIndex === 6 && user && (user.role === 'artist' || user.user_metadata?.role === 'artist' || 
+          user.role === 'admin' || user.user_metadata?.role === 'admin') && (
+          <Box
+            p={6}
+            bg={bgColor}
+            borderRadius="lg"
+            borderWidth={1}
+            borderColor={borderColor}
+          >
+            <VStack spacing={6} align="stretch">
+              <Heading size="md">Payouts</Heading>
+              <PayoutHistoryTable />
+            </VStack>
+          </Box>
+        )}
+      </Box>
     </Container>
   );
 } 
