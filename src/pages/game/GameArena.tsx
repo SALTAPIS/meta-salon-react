@@ -104,6 +104,33 @@ export function GameArena({ onExit }: GameArenaProps) {
     }
   };
 
+  const [lastTapTime, setLastTapTime] = useState<number>(0);
+  const doubleTapThreshold = 300; // ms between taps
+
+  const handleTap = async (artwork: 'left' | 'right') => {
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTapTime;
+    
+    if (timeSinceLastTap < doubleTapThreshold) {
+      // Double tap detected
+      setLastTapTime(0);
+      
+      // If double tap, cast vote
+      const artworkId = artwork === 'left' ? currentPair?.left.id : currentPair?.right.id;
+      if (artworkId) {
+        await handleVote(artworkId);
+      }
+    } else {
+      // Single tap
+      setLastTapTime(now);
+
+      // If single tap on small artwork, make it big
+      if (!selectedArtwork || (selectedArtwork !== artwork)) {
+        setSelectedArtwork(artwork);
+      }
+    }
+  };
+
   const handleVote = useCallback(async (artworkId: string) => {
     if (!currentPair || !hasVotePacks || isVoting) return;
 
@@ -386,6 +413,7 @@ export function GameArena({ onExit }: GameArenaProps) {
                     dragConstraints={{ top: 0, bottom: 0 }}
                     onDragStart={(e: any) => handleDragStart(e, 'left')}
                     onDragEnd={(e: any) => handleDragEnd(e, 'left')}
+                    onTap={() => handleTap('left')}
                     style={{ 
                       display: "flex",
                       alignItems: "center",
@@ -393,7 +421,8 @@ export function GameArena({ onExit }: GameArenaProps) {
                       padding: "10px",
                       touchAction: "pan-y",
                       userSelect: "none",
-                      willChange: "transform"
+                      willChange: "transform",
+                      cursor: "pointer"
                     }}
                   >
                     <MotionImage
@@ -437,6 +466,7 @@ export function GameArena({ onExit }: GameArenaProps) {
                     dragConstraints={{ top: 0, bottom: 0 }}
                     onDragStart={(e: any) => handleDragStart(e, 'right')}
                     onDragEnd={(e: any) => handleDragEnd(e, 'right')}
+                    onTap={() => handleTap('right')}
                     style={{ 
                       display: "flex",
                       alignItems: "center",
@@ -444,7 +474,8 @@ export function GameArena({ onExit }: GameArenaProps) {
                       padding: "10px",
                       touchAction: "pan-y",
                       userSelect: "none",
-                      willChange: "transform"
+                      willChange: "transform",
+                      cursor: "pointer"
                     }}
                   >
                     <MotionImage
@@ -488,6 +519,7 @@ export function GameArena({ onExit }: GameArenaProps) {
             <HStack spacing={8}>
               <Text fontSize="sm" color="gray.600">↑ Swipe up to vote</Text>
               <Text fontSize="sm" color="gray.600">↓ Swipe down to switch</Text>
+              <Text fontSize="sm" color="gray.600">Double tap to vote</Text>
             </HStack>
           </Box>
         )}
