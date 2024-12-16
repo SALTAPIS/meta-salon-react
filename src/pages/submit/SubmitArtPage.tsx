@@ -131,9 +131,9 @@ export default function SubmitArtPage() {
   };
 
   return (
-    <Container maxW="container.xl" py={8}>
+    <Container maxW="container.md" py={8}>
       <VStack spacing={8} align="stretch">
-        <Box>
+        <Box textAlign="center">
           <Heading 
             size="xl" 
             mb={2}
@@ -151,158 +151,160 @@ export default function SubmitArtPage() {
           </Alert>
         )}
 
-        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8}>
+        <Box
+          as="form"
+          onSubmit={handleCreateDraft}
+          p={6}
+          borderWidth={1}
+          borderRadius="lg"
+          bg={bgColor}
+          borderColor={borderColor}
+          w="100%"
+          maxW="600px"
+          mx="auto"
+        >
+          <VStack spacing={4}>
+            {step === 'draft' ? (
+              <>
+                <FormControl isRequired>
+                  <FormLabel>Title</FormLabel>
+                  <Input
+                    value={title}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
+                    placeholder="Enter artwork title"
+                  />
+                </FormControl>
+
+                <FormControl isRequired>
+                  <FormLabel>Description</FormLabel>
+                  <Textarea
+                    value={description}
+                    onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+                    placeholder="Describe your artwork"
+                    rows={4}
+                  />
+                </FormControl>
+
+                <FormControl isRequired>
+                  <FormLabel>Image</FormLabel>
+                  <Button
+                    as="label"
+                    htmlFor="file-upload"
+                    colorScheme="blue"
+                    variant="outline"
+                    cursor="pointer"
+                    width="full"
+                    py={2}
+                  >
+                    {imageFile ? 'Change Image' : 'Upload Image'}
+                    <Input
+                      id="file-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      display="none"
+                    />
+                  </Button>
+                  {imageFile && (
+                    <Text fontSize="sm" color="green.500" mt={1}>
+                      Selected: {imageFile.name}
+                    </Text>
+                  )}
+                  <Text fontSize="sm" color="gray.500" mt={1}>
+                    Supported formats: JPG, PNG, GIF (max 10MB)
+                  </Text>
+                </FormControl>
+
+                <Alert status="info" mt={4}>
+                  <AlertIcon />
+                  <Box>
+                    <Text fontWeight="bold">Submission Fee: 99 SLN</Text>
+                    <Text fontSize="sm">This fee will be required when submitting to the challenge</Text>
+                  </Box>
+                </Alert>
+
+                <Button
+                  type="submit"
+                  colorScheme="blue"
+                  isLoading={isLoading}
+                  loadingText="Creating draft..."
+                  width="full"
+                  mt={4}
+                  isDisabled={!title || !description || !imageFile}
+                >
+                  Create Draft
+                </Button>
+              </>
+            ) : (
+              <>
+                <FormControl isRequired>
+                  <FormLabel>Select Challenge</FormLabel>
+                  <Select
+                    placeholder="Choose a challenge"
+                    value={selectedChallenge}
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedChallenge(e.target.value)}
+                  >
+                    {challenges?.map((challenge) => (
+                      <option key={challenge.id} value={challenge.id}>
+                        {challenge.title}
+                      </option>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <Alert status="info">
+                  <AlertIcon />
+                  <Box>
+                    <Text fontWeight="bold">Submission Fee: 99 SLN</Text>
+                    <Text fontSize="sm">This amount will be deducted from your balance upon submission</Text>
+                  </Box>
+                </Alert>
+
+                <Button
+                  colorScheme="blue"
+                  isLoading={isLoading}
+                  loadingText="Submitting..."
+                  width="full"
+                  mt={4}
+                  onClick={handleSubmitToChallenge}
+                  isDisabled={!selectedChallenge}
+                >
+                  Submit to Challenge (99 SLN)
+                </Button>
+              </>
+            )}
+          </VStack>
+        </Box>
+
+        {preview && (
           <Box
-            as="form"
-            onSubmit={handleCreateDraft}
-            p={6}
             borderWidth={1}
             borderRadius="lg"
+            overflow="hidden"
             bg={bgColor}
             borderColor={borderColor}
+            mt={8}
           >
-            <VStack spacing={4}>
-              {step === 'draft' ? (
-                <>
-                  <FormControl isRequired>
-                    <FormLabel>Title</FormLabel>
-                    <Input
-                      value={title}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
-                      placeholder="Enter artwork title"
-                    />
-                  </FormControl>
-
-                  <FormControl isRequired>
-                    <FormLabel>Description</FormLabel>
-                    <Textarea
-                      value={description}
-                      onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
-                      placeholder="Describe your artwork"
-                      rows={4}
-                    />
-                  </FormControl>
-
-                  <FormControl isRequired>
-                    <FormLabel>Image</FormLabel>
-                    <Button
-                      as="label"
-                      htmlFor="file-upload"
-                      colorScheme="blue"
-                      variant="outline"
-                      cursor="pointer"
-                      width="full"
-                      py={2}
-                    >
-                      {imageFile ? 'Change Image' : 'Upload Image'}
-                      <Input
-                        id="file-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        display="none"
-                      />
-                    </Button>
-                    {imageFile && (
-                      <Text fontSize="sm" color="green.500" mt={1}>
-                        Selected: {imageFile.name}
-                      </Text>
-                    )}
-                    <Text fontSize="sm" color="gray.500" mt={1}>
-                      Supported formats: JPG, PNG, GIF (max 10MB)
-                    </Text>
-                  </FormControl>
-
-                  <Alert status="info" mt={4}>
-                    <AlertIcon />
-                    <Box>
-                      <Text fontWeight="bold">Submission Fee: 99 SLN</Text>
-                      <Text fontSize="sm">This fee will be required when submitting to the challenge</Text>
-                    </Box>
-                  </Alert>
-
-                  <Button
-                    type="submit"
-                    colorScheme="blue"
-                    isLoading={isLoading}
-                    loadingText="Creating draft..."
-                    width="full"
-                    mt={4}
-                    isDisabled={!title || !description || !imageFile}
-                  >
-                    Create Draft
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <FormControl isRequired>
-                    <FormLabel>Select Challenge</FormLabel>
-                    <Select
-                      placeholder="Choose a challenge"
-                      value={selectedChallenge}
-                      onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedChallenge(e.target.value)}
-                    >
-                      {challenges?.map((challenge) => (
-                        <option key={challenge.id} value={challenge.id}>
-                          {challenge.title}
-                        </option>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  <Alert status="info">
-                    <AlertIcon />
-                    <Box>
-                      <Text fontWeight="bold">Submission Fee: 99 SLN</Text>
-                      <Text fontSize="sm">This amount will be deducted from your balance upon submission</Text>
-                    </Box>
-                  </Alert>
-
-                  <Button
-                    colorScheme="blue"
-                    isLoading={isLoading}
-                    loadingText="Submitting..."
-                    width="full"
-                    mt={4}
-                    onClick={handleSubmitToChallenge}
-                    isDisabled={!selectedChallenge}
-                  >
-                    Submit to Challenge (99 SLN)
-                  </Button>
-                </>
-              )}
-            </VStack>
-          </Box>
-
-          {preview && (
-            <Box
-              borderWidth={1}
-              borderRadius="lg"
-              overflow="hidden"
-              bg={bgColor}
-              borderColor={borderColor}
-            >
-              <Image
-                src={preview}
-                alt="Preview"
-                objectFit="cover"
-                width="100%"
-                height="400px"
-              />
-              <Box p={4}>
-                <Heading size="md" mb={2}>{title || 'Untitled'}</Heading>
-                <Text color="gray.600" noOfLines={3}>
-                  {description || 'No description'}
-                </Text>
-                <HStack mt={4}>
-                  <Badge colorScheme="blue">
-                    {step === 'draft' ? 'Draft' : 'Ready to Submit'}
-                  </Badge>
-                </HStack>
-              </Box>
+            <Image
+              src={preview}
+              alt="Preview"
+              objectFit="cover"
+              width="100%"
+              height="400px"
+            />
+            <Box p={4}>
+              <Heading size="md" mb={2}>{title || 'Untitled'}</Heading>
+              <Text color="gray.600" noOfLines={3}>
+                {description || 'No description'}
+              </Text>
+              <HStack mt={4}>
+                <Badge colorScheme="blue">
+                  {step === 'draft' ? 'Draft' : 'Ready to Submit'}
+                </Badge>
+              </HStack>
             </Box>
-          )}
-        </SimpleGrid>
+          </Box>
+        )}
       </VStack>
     </Container>
   );
