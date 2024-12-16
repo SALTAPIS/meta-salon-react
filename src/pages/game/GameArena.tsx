@@ -652,7 +652,6 @@ export function GameArena({ onExit }: GameArenaProps) {
         {/* Heart Animation Layer */}
         <HeartFountain 
           isActive={showHeartAnimation.isActive} 
-          voteWeight={votePacks?.[0]?.vote_power || 1}
           position={showHeartAnimation.position}
         />
       </>
@@ -778,7 +777,6 @@ export function GameArena({ onExit }: GameArenaProps) {
       {/* Heart Animation Layer */}
       <HeartFountain 
         isActive={showHeartAnimation.isActive} 
-        voteWeight={votePacks?.[0]?.vote_power || 1}
         position={showHeartAnimation.position}
       />
     </>
