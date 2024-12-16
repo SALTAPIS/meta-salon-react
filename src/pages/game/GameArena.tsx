@@ -17,8 +17,7 @@ import {
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
 import { useVotingArena } from '../../hooks/useVotingArena';
-import { useState, useCallback } from 'react';
-import { useDebugMode } from '../../hooks/useDebugMode';
+import { useState, useCallback, useEffect } from 'react';
 import { FaHeart } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTokens } from '../../hooks/token/useTokens';
@@ -34,6 +33,95 @@ interface GameArenaProps {
 const MotionBox = motion(Box as any);
 const MotionImage = motion(ChakraImage as any);
 
+const colors = [
+  '#FF0000', // Red
+  '#FF69B4', // Pink
+  '#FF8C00', // Orange
+  '#FFD700', // Gold
+  '#9400D3', // Purple
+  '#4B0082', // Indigo
+  '#00FF00', // Green
+  '#00FFFF', // Cyan
+];
+
+const Sparkle = ({ delay = 0, color = '#FFFFFF' }: { delay?: number; color?: string }) => (
+  <motion.div
+    initial={{ scale: 0, opacity: 0 }}
+    animate={{
+      scale: [0, 1, 0],
+      opacity: [0, 1, 0],
+      rotate: [0, 180],
+    }}
+    transition={{
+      duration: 0.8,
+      delay,
+      ease: "easeOut"
+    }}
+    style={{
+      position: 'absolute',
+      width: '12px',
+      height: '12px',
+      filter: 'brightness(1.5) contrast(1.2)',
+    }}
+  >
+    <svg width="12" height="12" viewBox="0 0 10 10" fill="none">
+      <path d="M5 0L6.12257 3.87743L10 5L6.12257 6.12257L5 10L3.87743 6.12257L0 5L3.87743 3.87743L5 0Z" fill={color} />
+    </svg>
+  </motion.div>
+);
+
+const HeartFountain = ({ isActive, voteWeight = 1, position }: { isActive: boolean; voteWeight?: number; position: { x: number, y: number } }) => {
+  return (
+    <AnimatePresence>
+      {isActive && (
+        <motion.div
+          style={{
+            position: 'fixed',
+            top: position.y,
+            left: position.x,
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+            zIndex: 1000,
+            mixBlendMode: 'difference',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <motion.div
+            initial={{ 
+              opacity: 0,
+              scale: 0.8,
+              y: 0
+            }}
+            animate={{ 
+              opacity: [0, 1, 0],
+              scale: [0.8, 1, 1],
+              y: -60
+            }}
+            transition={{ 
+              duration: 0.5,
+              ease: "easeOut",
+              times: [0, 0.3, 1]
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 19 17" fill="none">
+              <path 
+                fillRule="evenodd" 
+                clipRule="evenodd" 
+                d="M9.5001 15.0881C10.0871 14.6033 10.6722 14.1326 11.1943 13.7125C11.3294 13.6039 11.4603 13.4986 11.5858 13.3973C11.7097 13.2962 11.8321 13.1964 11.9528 13.098C13.7278 11.6504 15.1555 10.4861 16.1406 9.35951L16.1422 9.35771C17.2803 8.06111 17.7003 6.97911 17.7003 5.84331C17.7003 4.68521 17.2875 3.64901 16.5738 2.92411C15.8204 2.16051 14.8217 1.73451 13.6905 1.73451C12.8626 1.73451 12.1372 1.96711 11.4904 2.44641C11.1216 2.72221 10.8095 3.02071 10.5374 3.38111L9.5 4.75581L8.4626 3.38111C8.1927 3.02351 7.8833 2.72691 7.5184 2.45301C6.8507 1.97771 6.1168 1.73451 5.3095 1.73451C4.1687 1.73451 3.1554 2.16671 2.4364 2.91361L2.4313 2.91891L2.4262 2.92411C1.7107 3.65091 1.2997 4.66551 1.2997 5.84331C1.2997 6.95891 1.7216 8.06331 2.8578 9.35771L2.8594 9.35951C3.8445 10.4861 5.2722 11.6504 7.0472 13.098C7.1651 13.1941 7.2844 13.2914 7.4053 13.3901C8.0595 13.8991 8.7754 14.4883 9.5001 15.0881Z" 
+                fill="white"
+                stroke="white"
+                strokeWidth="1.5"
+              />
+            </svg>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 export function GameArena({ onExit }: GameArenaProps) {
   const bg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -42,9 +130,36 @@ export function GameArena({ onExit }: GameArenaProps) {
   const [dragStartY, setDragStartY] = useState(0);
   const [exitDirection, setExitDirection] = useState<'up' | 'down' | null>(null);
   const toast = useToast();
-  const { debugMode } = useDebugMode();
   const isMobile = useBreakpointValue({ base: true, md: false });
   
+  const [testHeartPosition, setTestHeartPosition] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.code === 'Space') {
+        event.preventDefault();
+        setShowHeartAnimation({
+          isActive: true,
+          position: {
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 2
+          }
+        });
+        setTimeout(() => {
+          setShowHeartAnimation({
+            isActive: false,
+            position: { x: 0, y: 0 }
+          });
+        }, 1500);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, []);
+
   const { 
     currentPair,
     isLoading: arenaLoading,
@@ -131,16 +246,44 @@ export function GameArena({ onExit }: GameArenaProps) {
     }
   };
 
-  const handleVote = useCallback(async (artworkId: string) => {
+  const [showHeartAnimation, setShowHeartAnimation] = useState<{ isActive: boolean; position: { x: number; y: number } }>({ 
+    isActive: false, 
+    position: { x: 0, y: 0 } 
+  });
+
+  const handleVote = useCallback(async (artworkId: string, event?: React.MouseEvent | React.TouchEvent) => {
     if (!currentPair || !hasVotePacks || isVoting) return;
 
     setIsVoting(true);
     try {
-      // Trigger exit animation
-      setExitDirection('up');
+      // Get the clicked artwork's position and determine if it's left or right
+      let position;
+      if (event) {
+        const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+        position = {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        };
+      } else {
+        // For desktop, determine position based on which artwork was voted
+        const isLeftArtwork = artworkId === currentPair.left.id;
+        position = {
+          x: window.innerWidth * (isLeftArtwork ? 0.25 : 0.75),
+          y: window.innerHeight * 0.5
+        };
+      }
+
+      // Show heart animation
+      setShowHeartAnimation({ isActive: true, position });
       
       // Wait for animation
       await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Hide animation before transition
+      setShowHeartAnimation({ isActive: false, position: { x: 0, y: 0 } });
+      
+      // Trigger exit animation
+      setExitDirection('up');
       
       // Cast vote
       await castVote(artworkId);
@@ -148,15 +291,6 @@ export function GameArena({ onExit }: GameArenaProps) {
       setSelectedArtwork(null);
       setExitDirection(null);
       
-      if (debugMode) {
-        toast({
-          title: 'Vote recorded',
-          description: 'Your vote has been cast successfully',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
-      }
     } catch (err) {
       console.error('Vote casting failed:', err);
       toast({
@@ -170,7 +304,7 @@ export function GameArena({ onExit }: GameArenaProps) {
     } finally {
       setIsVoting(false);
     }
-  }, [currentPair, hasVotePacks, isVoting, castVote, refreshBalance, debugMode, toast]);
+  }, [currentPair, hasVotePacks, isVoting, castVote, refreshBalance, toast]);
 
   const handleDragStart = (e: DragEvent, artwork: 'left' | 'right') => {
     setDragStartY(e.clientY);
@@ -557,6 +691,13 @@ export function GameArena({ onExit }: GameArenaProps) {
             </VStack>
           </HStack>
         </Box>
+
+        {/* Heart Animation Layer */}
+        <HeartFountain 
+          isActive={showHeartAnimation.isActive} 
+          voteWeight={votePacks?.[0]?.vote_power || 1}
+          position={showHeartAnimation.position}
+        />
       </>
     );
   }
@@ -676,6 +817,13 @@ export function GameArena({ onExit }: GameArenaProps) {
           </VStack>
         </HStack>
       </Box>
+
+      {/* Heart Animation Layer */}
+      <HeartFountain 
+        isActive={showHeartAnimation.isActive} 
+        voteWeight={votePacks?.[0]?.vote_power || 1}
+        position={showHeartAnimation.position}
+      />
     </>
   );
 } 
