@@ -67,17 +67,42 @@ export class AuthService extends SimpleEventEmitter<Events> {
     return AuthService.instance;
   }
 
+  // Add this helper function to generate valid usernames
+  private generateValidUsername(email: string): string {
+    // Get the part before @ in email
+    const baseUsername = email.split('@')[0]
+      // Replace any invalid characters with underscore
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      // Convert to lowercase for consistency
+      .toLowerCase();
+    
+    // If baseUsername is already 3+ chars, use it
+    if (baseUsername.length >= 3) {
+      return baseUsername;
+    }
+    
+    // If too short, add random numbers until we reach minimum length
+    const randomSuffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `${baseUsername}${randomSuffix}`;
+  }
+
   async signUp({ email, password, username, displayName }: SignUpData) {
     try {
-      // First, sign up the user
+      // Generate valid username if not provided or too short
+      const validUsername = username?.length >= 3 ? 
+        username : 
+        this.generateValidUsername(email);
+
+      console.log('[AuthService] Using generated username:', validUsername);
+
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
-            username,
-            display_name: displayName,
+            username: validUsername,
+            display_name: displayName || validUsername,
           },
         },
       });
