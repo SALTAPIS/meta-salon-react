@@ -67,47 +67,63 @@ export class AuthService extends SimpleEventEmitter<Events> {
     return AuthService.instance;
   }
 
-  // Add this helper function to generate valid usernames
   private generateValidUsername(email: string): string {
-    // Get the part before @ in email
-    const baseUsername = email.split('@')[0]
-      // Replace any invalid characters with underscore
-      .replace(/[^a-zA-Z0-9_-]/g, '_')
-      // Convert to lowercase for consistency
-      .toLowerCase();
+    // Get the part before @ and convert to lowercase
+    let baseUsername = email.split('@')[0].toLowerCase();
     
-    // If baseUsername is already 3+ chars, use it
-    if (baseUsername.length >= 3) {
-      return baseUsername;
+    // Ensure starts with a letter (if not, prepend 'u')
+    if (!/^[a-z]/.test(baseUsername)) {
+      baseUsername = 'u' + baseUsername;
     }
     
-    // If too short, add random numbers until we reach minimum length
-    const randomSuffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    return `${baseUsername}${randomSuffix}`;
+    // If the base is too short (needs at least 3 chars after first letter)
+    if (baseUsername.length < 4) {
+      baseUsername = baseUsername + 'user';  // Add 'user' to ensure length
+    }
+    
+    // Add timestamp for uniqueness (last 3 digits)
+    const timestamp = Date.now().toString().slice(-3);
+    const finalUsername = `${baseUsername}${timestamp}`;
+    
+    console.log('[AuthService] Username generation:', {
+      original: email.split('@')[0],
+      baseUsername,
+      finalUsername,
+      length: finalUsername.length,
+      pattern: '^[a-zA-Z][a-zA-Z0-9_-]{2,29}$',
+      matches: new RegExp('^[a-zA-Z][a-zA-Z0-9_-]{2,29}$').test(finalUsername)
+    });
+    
+    return finalUsername;
   }
 
   async signUp({ email, password, username, displayName }: SignUpData) {
     try {
-      // Generate valid username if not provided or too short
-      const validUsername = username?.length >= 3 ? 
-        username : 
-        this.generateValidUsername(email);
+      console.log('[AuthService] Starting signup:', { 
+        email, 
+        providedUsername: username,
+        displayName 
+      });
 
-      console.log('[AuthService] Using generated username:', validUsername);
-
+      // Let the database handle username generation by passing null
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
-            username: validUsername,
-            display_name: displayName || validUsername,
+            username: null, // Let the database trigger handle this
+            display_name: displayName || email.split('@')[0],
           },
         },
       });
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        console.error('[AuthService] Signup error:', {
+          error: signUpError,
+        });
+        throw signUpError;
+      }
 
       console.log('[AuthService] Sign up successful:', {
         userId: signUpData.user?.id,
