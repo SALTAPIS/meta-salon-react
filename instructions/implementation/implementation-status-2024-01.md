@@ -1,6 +1,6 @@
 # Meta Salon Implementation Status Report - January 2024
 
-## System Architecture
+## System Architecture2
 
 ### Current Stack
 - Frontend: React + Chakra UI
